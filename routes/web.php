@@ -135,8 +135,8 @@ Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
 Route::get('/queue/guard', [QueueController::class, 'guardPage'])->name('queue.guard');
 Route::post('/queue/guard/generate', [QueueController::class, 'generateNumber'])->name('queue.guard.generate');
 
-// Queue board JSON (serving + waiting)
-Route::get('/queue/board', [QueueBoardController::class, 'data'])->name('queue.board.data');
+// Public queue board JSON (no auth middleware)
+Route::get('/queue/board-data', [QueueBoardController::class, 'data'])->name('queue.board.data');
 
 // Transaction Types
 Route::resource('transaction-types', \App\Http\Controllers\TransactionTypeController::class);
