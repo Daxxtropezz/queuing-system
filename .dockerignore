@@ -1,0 +1,16 @@
+.git
+.gitignore
+node_modules
+vendor
+storage/*.key
+.env.example
+docker-compose.override.yml
+.DS_Store
+.idea
+.vscode
+.phpunit.result.cache
+.php-cs-fixer.cache
+npm-debug.log
+yarn-error.log
+/public/build
+/public/hot
