@@ -6,17 +6,6 @@ import { env } from 'node:process';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-    server: {
-        host: env.APP_URL,
-        port: 5173,
-        origin: 'http://localhost:5173',
-        cors: {
-            origin: ['http://localhost:1620'],
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization'],
-            credentials: true,
-        },
-    },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],

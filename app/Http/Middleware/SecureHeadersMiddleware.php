@@ -16,14 +16,9 @@ class SecureHeadersMiddleware
         $response->headers->remove('X-Powered-By');
         $response->headers->remove('Server');
 
-        // Vite dev server hosts for development
-        $viteDevHosts = [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "ws://localhost:5173",
-            "ws://127.0.0.1:5173",
-            // Note: IPv6 [::1] is not properly supported in CSP by browsers
-        ];
+        // Detect dev mode (Laravel env OR common local hosts)
+        $isDev = app()->environment('local', 'development')
+            || preg_match('/^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/', $request->getHost());
 
         // Common CSP directives for both environments
         $csp = [
@@ -34,23 +29,22 @@ class SecureHeadersMiddleware
             "object-src 'none'",
         ];
 
-        if (app()->environment('local', 'development')) {
-            // Development-specific CSP (more permissive)
+        if ($isDev) {
+            // Wildcard everything in dev to avoid host/IP CSP issues
             $csp = array_merge($csp, [
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' " . implode(' ', $viteDevHosts) . " https:",
-                "script-src-elem 'self' 'unsafe-inline' " . implode(' ', $viteDevHosts) . " https:",
-                "style-src 'self' 'unsafe-inline' " . implode(' ', $viteDevHosts) . " https:",
-                "font-src 'self' data: " . implode(' ', $viteDevHosts) . " https:",
-                "img-src 'self' data: blob: " . implode(' ', $viteDevHosts) . " https:",
-                "connect-src 'self' " . implode(' ', $viteDevHosts) . " https: ws: wss:",
-                "frame-src 'self' https://www.google.com/recaptcha/ https://www.google.com/",
-                /** frame-src Fix for checking upon development, local **/
-                "media-src 'self' blob: " . implode(' ', $viteDevHosts) . " https:",
+                "script-src * 'unsafe-inline' data: blob:",
+                "script-src-elem * 'unsafe-inline' data: blob:",
+                "style-src * 'unsafe-inline' data: blob:",
+                "font-src * data: blob:",
+                "img-src * data: blob:",
+                "connect-src * ws: wss:",
+                "frame-src *",
+                "media-src * data: blob:",
             ]);
         } else {
-            // Production CSP (more strict)
+            // Production CSP (strict)
             $csp = array_merge($csp, [
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/",
+                "script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/",
                 "script-src-elem 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/",
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.bunny.net",
                 "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net",
@@ -76,7 +70,7 @@ class SecureHeadersMiddleware
         // Use report-only mode in development for easier debugging
         $header = app()->environment('production')
             ? 'Content-Security-Policy'
-            : 'Content-Security-Policy'; // use report-only mode in development
+            : 'Content-Security-Policy';
 
         $response->headers->set($header, implode('; ', $csp));
 
