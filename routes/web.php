@@ -128,6 +128,7 @@ Route::group(['middleware' => ['auth', 'role:Administrator']], routes: function 
 // Queuing System Routes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/queue/teller', [QueueController::class, 'tellerPage'])->name('queue.teller');
+    Route::post('/teller/assign', [QueueController::class, 'assignTellerNumber'])->name('queue.teller.assign');
     Route::post('/queue/teller/grab', [QueueController::class, 'grabNumber'])->name('queue.teller.grab');
    Route::post('/queue/teller/next', [QueueController::class, 'nextNumber'])
     ->name('queue.teller.next');
