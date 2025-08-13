@@ -25,9 +25,14 @@ export function AppSidebar() {
             icon: ChartArea,
         },
 
-         {
+        {
             title: 'Teller',
             href: '/queue/teller',
+            icon: ChartArea,
+        },
+        {
+            title: 'Transaction Types',
+            href: '/transaction-types',
             icon: ChartArea,
         },
 
