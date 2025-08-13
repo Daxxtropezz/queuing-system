@@ -14,6 +14,7 @@ use App\Http\Controllers\PsgcController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\QueueController;
+use App\Http\Controllers\QueueBoardController;
 
 // Redirect to login by default
 Route::get('/', function () {
@@ -134,8 +135,14 @@ Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
 Route::get('/queue/guard', [QueueController::class, 'guardPage'])->name('queue.guard');
 Route::post('/queue/guard/generate', [QueueController::class, 'generateNumber'])->name('queue.guard.generate');
 
+// Queue board JSON (serving + waiting)
+Route::get('/queue/board', [QueueBoardController::class, 'data'])->name('queue.board.data');
+
 // Transaction Types
 Route::resource('transaction-types', \App\Http\Controllers\TransactionTypeController::class);
+
+// Public JSON endpoint for serving tickets (polled by main-page)
+Route::get('/queue/serving', [QueueController::class, 'servingIndex'])->name('queue.serving.index');
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
