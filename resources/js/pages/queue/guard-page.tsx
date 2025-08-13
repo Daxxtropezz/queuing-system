@@ -1,13 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useForm } from '@inertiajs/react';
+import {  Head, useForm } from '@inertiajs/react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 export default function GuardPage({ transactionTypes = [] }: { transactionTypes?: any[] }) {
     const { data, setData, post, processing, errors } = useForm({
-        transaction_type: '',
+          transaction_type_id: '',
     });
 
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -45,7 +45,7 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
 
     function handleGenerate(value: string) {
         if (processing) return;
-        setData('transaction_type', value);
+        setData('transaction_type_id', value);
         post(route('queue.guard.generate'), {
             onSuccess: (page: any) => {
                 const number = page.props.generatedNumber || 'N/A';
@@ -57,6 +57,8 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
     }
 
     return (
+        <>
+         <Head title="Generate Number" />
         <div className="kiosk-bg relative flex min-h-screen w-full items-center justify-center p-4 md:p-8">
             <div
                 aria-hidden
@@ -80,7 +82,7 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                                     <button
                                         key={opt.id}
                                         type="button"
-                                        onClick={() => handleGenerate(opt.name)}
+                                       onClick={() => handleGenerate(opt.id)}
                                         disabled={processing}
                                         className={[
                                             'group relative flex flex-col items-center justify-center rounded-2xl p-6 md:p-8',
@@ -167,5 +169,6 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                 `}
             </style>
         </div>
+        </>
     );
 }

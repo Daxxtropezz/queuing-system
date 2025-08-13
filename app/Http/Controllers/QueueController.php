@@ -39,28 +39,28 @@ class QueueController extends Controller
     }
 
     // Guard: generate number
-    public function generateNumber(Request $request)
-    {
-        $request->validate([
-            'transaction_type' => 'required|string',
-        ]);
+ public function generateNumber(Request $request)
+{
+    $request->validate([
+        'transaction_type_id' => 'required|exists:transaction_types,id',
+    ]);
 
         $ticket = null;
 
-        DB::transaction(function () use ($request, &$ticket) {
-            $last = QueueTicket::where('transaction_type', $request->transaction_type)
-                ->orderByDesc('number')
-                ->lockForUpdate()
-                ->first();
+    DB::transaction(function () use ($request, &$ticket) {
+        $last = QueueTicket::where('transaction_type_id', $request->transaction_type_id)
+            ->orderByDesc('number')
+            ->lockForUpdate()
+            ->first();
 
             $number = $last ? $last->number + 1 : 1;
 
-            $ticket = QueueTicket::create([
-                'number' => $number,
-                'transaction_type' => $request->transaction_type,
-                'status' => 'waiting',
-            ]);
-        });
+        $ticket = QueueTicket::create([
+            'number' => $number,
+            'transaction_type_id' => $request->transaction_type_id,
+            'status' => 'waiting',
+        ]);
+    });
 
         return redirect()
             ->route('queue.guard')

@@ -16,7 +16,7 @@ class QueueTicket extends Model
      */
     protected $fillable = [
         'number',
-        'transaction_type',
+        'transaction_type_id',
         'status',
         'served_by',
     ];
@@ -26,8 +26,13 @@ class QueueTicket extends Model
         'updated_at' => 'datetime',
     ];
 
-    public function getFormattedNumberAttribute()
+ public function getFormattedNumberAttribute()
     {
         return strtoupper(substr($this->transaction_type, 0, 1)) . str_pad($this->number, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function transactionType()
+    {
+        return $this->belongsTo(TransactionType::class);
     }
 }
