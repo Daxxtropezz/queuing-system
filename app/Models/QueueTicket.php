@@ -11,11 +11,6 @@ class QueueTicket extends Model
 
     protected $table = 'queue_tickets';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'number',
         'transaction_type_id',
@@ -28,9 +23,12 @@ class QueueTicket extends Model
         'updated_at' => 'datetime',
     ];
 
- public function getFormattedNumberAttribute()
+    protected $appends = ['formatted_number'];
+
+    public function getFormattedNumberAttribute()
     {
-        return strtoupper(substr($this->transaction_type, 0, 1)) . str_pad($this->number, 3, '0', STR_PAD_LEFT);
+        $type = strtoupper(substr($this->transactionType->name ?? '', 0, 3));
+        return sprintf('%s-%03d', $type, $this->number);
     }
 
     public function transactionType()

@@ -1,31 +1,42 @@
 import { Head } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
-type ServingTicket = {
+// Define a single type for the QueueTicket since both lists have the same structure.
+type QueueTicket = {
     id: number;
     number: string | number;
-    transaction_type?: string;
+    transaction_type_id?: string;
     status?: 'waiting' | 'serving' | string;
-    served_by?: string | number; // added (maps to teller / counter)
+    served_by?: string | number;
     teller?: string | number;
     counter?: string | number;
     updated_at?: string;
     created_at?: string;
 };
 
-interface Props {
-    serving: ServingTicket[]; // initial (SSR) list
+// Define the structure of the data returned by the API.
+interface BoardData {
+    serving: QueueTicket[];
+    waiting: QueueTicket[];
+    generated_at: string;
 }
 
-export default function MainPage({ serving }: Props) {
-    const [servingTickets, setServingTickets] = useState<ServingTicket[]>(serving || []);
-    const [waitingTickets, setWaitingTickets] = useState<ServingTicket[]>([]);
+// Update the props to match the data structure from your Laravel controller.
+interface Props {
+    // The initial data will be from the Inertia page props,
+    // which should match the structure of your JSON endpoint.
+    boardData: BoardData;
+}
+
+export default function MainPage({ boardData }: Props) {
+    const [servingTickets, setServingTickets] = useState<QueueTicket[]>(boardData.serving || []);
+    const [waitingTickets, setWaitingTickets] = useState<QueueTicket[]>(boardData.waiting || []);
     const [loading, setLoading] = useState(false);
-    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(boardData.generated_at ? new Date(boardData.generated_at) : null);
     const [now, setNow] = useState<Date>(new Date());
     const intervalRef = useRef<number | null>(null);
     const [redirectError, setRedirectError] = useState<string | null>(null);
-    const BOARD_ENDPOINT = '/queue/board-data'; // new stable JSON endpoint (define in routes)
+    const BOARD_ENDPOINT = '/queue/board-data';
 
     // Clock
     useEffect(() => {
@@ -33,12 +44,17 @@ export default function MainPage({ serving }: Props) {
         return () => window.clearInterval(id);
     }, []);
 
-    // Updated fetch that tries multiple endpoints until one succeeds
-    async function fetchBoard() {
-        if (redirectError) return; // stop polling after detecting redirect loop
+    // Fetching logic is now consolidated and slightly simplified.
+    const fetchBoard = async () => {
+        if (redirectError) {
+            return;
+        }
+
         try {
             setLoading(true);
             let url: string;
+            // The Ziggy route is a good practice, but the fallback is already there.
+            // Let's make it a bit cleaner.
             try {
                 // @ts-ignore Ziggy route (if registered)
                 url = route('queue.board.data');
@@ -51,60 +67,45 @@ export default function MainPage({ serving }: Props) {
                 cache: 'no-store',
             });
 
-            // Detect redirect loop / non‑JSON (Laravel auth redirect returns HTML)
             const contentType = res.headers.get('content-type') || '';
+
             if (res.redirected || (!contentType.includes('application/json') && !res.ok)) {
                 setRedirectError(
-                    'Queue board JSON endpoint is redirecting (likely auth or route conflict). Expose GET ' +
-                        BOARD_ENDPOINT +
-                        ' publicly without auth or rename page route.',
+                    `The endpoint is redirecting or not returning JSON. Ensure GET ${BOARD_ENDPOINT} is public.`
                 );
                 return;
             }
-            if (!res.ok) throw new Error('Board fetch failed');
 
-            const json = await res.json();
+            if (!res.ok) {
+                throw new Error('Failed to fetch queue board data.');
+            }
 
-            const serving = (json.serving || []).map((t: any) => ({
-                id: t.id,
-                number: t.number,
-                transaction_type: t.transaction_type,
-                status: t.status,
-                served_by: t.served_by,
-                teller: t.served_by,
-                counter: t.served_by,
-                updated_at: t.updated_at,
-                created_at: t.created_at,
-            }));
-
-            const waiting = (json.waiting || []).map((t: any) => ({
-                id: t.id,
-                number: t.number,
-                transaction_type: t.transaction_type,
-                status: t.status,
-                served_by: t.served_by,
-                teller: t.served_by,
-                counter: t.served_by,
-                updated_at: t.updated_at,
-                created_at: t.created_at,
-            }));
-
-            setServingTickets(serving);
-            setWaitingTickets(waiting);
+            const json: BoardData = await res.json();
+            
+            // Map the data to your component state. No need for the extra mapping logic,
+            // as the Laravel controller already returns the correct keys.
+            setServingTickets(json.serving || []);
+            setWaitingTickets(json.waiting || []);
             setLastUpdated(json.generated_at ? new Date(json.generated_at) : new Date());
         } catch (e) {
-            // eslint-disable-next-line no-console
-            console.warn('[queue-board] fetch error', e);
+            console.error('[queue-board] fetch error', e);
         } finally {
             setLoading(false);
         }
-    }
+    };
 
+    // This effect now handles the initial fetch and sets up the polling interval.
     useEffect(() => {
         fetchBoard();
-        intervalRef.current = window.setInterval(fetchBoard, 5000) as unknown as number;
+
+        // Use a more modern and type-safe approach for setInterval.
+        const id = window.setInterval(fetchBoard, 5000);
+        intervalRef.current = id;
+
         return () => {
-            if (intervalRef.current) window.clearInterval(intervalRef.current);
+            if (intervalRef.current !== null) {
+                window.clearInterval(intervalRef.current);
+            }
         };
     }, [redirectError]);
 
@@ -123,7 +124,7 @@ export default function MainPage({ serving }: Props) {
                 {/* Header */}
                 <header className="relative z-10 w-full border-b border-slate-800/70 bg-slate-900/70 backdrop-blur supports-[backdrop-filter]:bg-slate-900/55">
                     <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
-                        <h1 className="bg-gradient-to-br from-yellow-300 via-amber-200 to-yellow-400 bg-clip-text text-4xl font-extrabold tracking-[0.2em] text-transparent uppercase drop-shadow md:text-6xl xl:text-7xl">
+                        <h1 className="bg-gradient-to-br from-yellow-300 via-amber-200 to-yellow-400 bg-clip-text text-4xl font-extrabold tracking-[0.2em] uppercase text-transparent drop-shadow md:text-6xl xl:text-7xl">
                             Now Serving
                         </h1>
                         <p className="text-sm font-medium tracking-wide text-slate-300 md:text-base">
@@ -153,11 +154,10 @@ export default function MainPage({ serving }: Props) {
                         <div className="mx-auto mb-6 w-full max-w-7xl rounded-lg border border-amber-600/40 bg-amber-900/30 px-5 py-4 text-sm text-amber-200">
                             <strong className="font-semibold">Data Load Warning:</strong> {redirectError}
                             <div className="mt-2 text-xs opacity-80">
-                                Fix: In routes/web.php add:
-                                <pre className="mt-1 rounded bg-amber-950/40 p-2 font-mono text-[11px] whitespace-pre-wrap">
+                                Fix: In routes/web.php, make sure the following route is NOT inside any auth middleware:
+                                <pre className="mt-1 whitespace-pre-wrap rounded bg-amber-950/40 p-2 font-mono text-[11px]">
                                     {`Route::get('/queue/board-data',[QueueBoardController::class,'data'])->name('queue.board.data');`}
                                 </pre>
-                                Make sure it is NOT inside auth/redirect middleware and no route shares the same path causing a redirect.
                             </div>
                         </div>
                     )}
@@ -174,8 +174,7 @@ export default function MainPage({ serving }: Props) {
                             </header>
 
                             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                                {loading &&
-                                    waitingTickets.length === 0 &&
+                                {loading && waitingTickets.length === 0 && (
                                     skeletonCards.map((_, i) => (
                                         <div
                                             key={`w-skel-${i}`}
@@ -185,7 +184,8 @@ export default function MainPage({ serving }: Props) {
                                             <div className="relative mb-6 h-8 w-24 rounded bg-slate-700/40" />
                                             <div className="relative h-10 w-32 rounded bg-slate-700/40" />
                                         </div>
-                                    ))}
+                                    ))
+                                )}
 
                                 {!loading && waitingTickets.length === 0 && (
                                     <div className="col-span-full rounded-2xl border border-slate-800/60 bg-slate-900/50 p-10 text-center">
@@ -199,12 +199,12 @@ export default function MainPage({ serving }: Props) {
                                         className="group relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-slate-900/60 p-6 shadow ring-1 ring-slate-800/40 transition hover:shadow-lg hover:ring-slate-700/60"
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className="rounded-full bg-slate-700/40 px-3 py-1 text-[10px] font-semibold tracking-wider text-slate-300 uppercase">
+                                            <span className="rounded-full bg-slate-700/40 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300">
                                                 Waiting
                                             </span>
-                                            {t.transaction_type && (
+                                            {t.transaction_type_id && (
                                                 <span className="truncate rounded-full bg-slate-800/70 px-3 py-1 text-[10px] font-medium tracking-wide text-slate-400">
-                                                    {t.transaction_type}
+                                                   {t.transaction_type?.name} 
                                                 </span>
                                             )}
                                         </div>
@@ -237,8 +237,7 @@ export default function MainPage({ serving }: Props) {
                             </header>
 
                             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                {loading &&
-                                    servingTickets.length === 0 &&
+                                {loading && servingTickets.length === 0 && (
                                     skeletonCards.map((_, i) => (
                                         <div
                                             key={`s-skel-${i}`}
@@ -248,7 +247,8 @@ export default function MainPage({ serving }: Props) {
                                             <div className="relative mb-8 h-10 w-36 rounded bg-slate-700/40" />
                                             <div className="relative h-24 w-44 rounded bg-slate-700/40" />
                                         </div>
-                                    ))}
+                                    ))
+                                )}
 
                                 {!loading && servingTickets.length === 0 && (
                                     <div className="col-span-full rounded-2xl border border-slate-800/60 bg-slate-900/50 p-10 text-center">
@@ -268,20 +268,20 @@ export default function MainPage({ serving }: Props) {
                                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(245,158,11,0.10),transparent_55%)]" />
                                             </div>
                                             <div className="relative mb-5 flex items-center justify-between">
-                                                <span className="rounded-full bg-rose-500/15 px-4 py-1 text-[10px] font-semibold tracking-wider text-rose-300 uppercase">
+                                                <span className="rounded-full bg-rose-500/15 px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
                                                     Serving
                                                 </span>
-                                                <span className="rounded-full bg-indigo-500/15 px-4 py-1 text-[10px] font-semibold tracking-wider text-indigo-300 uppercase">
+                                                <span className="rounded-full bg-indigo-500/15 px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
                                                     Counter {counter}
                                                 </span>
                                             </div>
                                             <div className="relative flex flex-col items-center gap-4">
-                                                <div className="bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-7xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-8xl">
+                                                <div className="bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-7xl font-black tabular-nums tracking-tight text-transparent drop-shadow-sm md:text-8xl">
                                                     {t.number}
                                                 </div>
-                                                {t.transaction_type && (
+                                                {t.transaction_type_id && (
                                                     <div className="rounded-xl border border-slate-700/60 bg-slate-800/70 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-200 shadow-sm">
-                                                        {t.transaction_type}
+                                                        {t.transaction_type?.name}
                                                     </div>
                                                 )}
                                             </div>

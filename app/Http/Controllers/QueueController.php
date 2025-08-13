@@ -11,23 +11,31 @@ use Inertia\Inertia;
 class QueueController extends Controller
 {
     // Main page: show tellers and serving numbers
-    public function mainPage()
-    {
-        $tellers = User::role('Teller')->get();
-        $serving = [];
-        foreach ($tellers as $teller) {
-            $ticket = QueueTicket::where('served_by', $teller->id)
-                ->where('status', 'serving')
-                ->first();
-            $serving[] = [
-                'id' => $ticket ? $ticket->id : ('teller-' . $teller->id), // ensure unique key for frontend
-                'teller' => $teller->first_name . ' ' . $teller->last_name,
-                'number' => $ticket ? $ticket->number : null,
-                'transaction_type' => $ticket ? $ticket->transaction_type : null,
-            ];
-        }
-        return Inertia::render('queue/main-page', ['serving' => $serving]);
-    }
+   public function mainPage()
+{
+    // Fetch the same data as your JSON endpoint for initial page load
+    $serving = QueueTicket::select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'created_at', 'updated_at')
+        ->where('status', 'serving')
+        ->orderByDesc('updated_at')
+        ->get();
+
+    $waiting = QueueTicket::select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'created_at', 'updated_at')
+        ->where('status', 'waiting')
+        ->orderBy('created_at')
+        ->limit(200)
+        ->get();
+
+    $boardData = [
+        'serving' => $serving,
+        'waiting' => $waiting,
+        'generated_at' => now()->toIso8601String(),
+    ];
+
+    // Pass the data to the Inertia component
+    return Inertia::render('queue/main-page', [
+        'boardData' => $boardData,
+    ]);
+}
 
     // Guard page: form to generate number
     public function guardPage()
@@ -39,28 +47,28 @@ class QueueController extends Controller
     }
 
     // Guard: generate number
- public function generateNumber(Request $request)
-{
-    $request->validate([
-        'transaction_type_id' => 'required|exists:transaction_types,id',
-    ]);
+    public function generateNumber(Request $request)
+    {
+        $request->validate([
+            'transaction_type_id' => 'required|exists:transaction_types,id',
+        ]);
 
         $ticket = null;
 
-    DB::transaction(function () use ($request, &$ticket) {
-        $last = QueueTicket::where('transaction_type_id', $request->transaction_type_id)
-            ->orderByDesc('number')
-            ->lockForUpdate()
-            ->first();
+        DB::transaction(function () use ($request, &$ticket) {
+            $last = QueueTicket::where('transaction_type_id', $request->transaction_type_id)
+                ->orderByDesc('number')
+                ->lockForUpdate()
+                ->first();
 
             $number = $last ? $last->number + 1 : 1;
 
-        $ticket = QueueTicket::create([
-            'number' => $number,
-            'transaction_type_id' => $request->transaction_type_id,
-            'status' => 'waiting',
-        ]);
-    });
+            $ticket = QueueTicket::create([
+                'number' => $number,
+                'transaction_type_id' => $request->transaction_type_id,
+                'status' => 'waiting',
+            ]);
+        });
 
         return redirect()
             ->route('queue.guard')
@@ -100,7 +108,6 @@ class QueueController extends Controller
 
     public function servingIndex()
     {
-        // Collect all currently serving tickets with teller info
         $tickets = QueueTicket::where('status', 'serving')->get();
         $userIds = $tickets->pluck('served_by')->filter()->unique();
         $users = $userIds->isEmpty()
@@ -119,5 +126,31 @@ class QueueController extends Controller
         })->values();
 
         return response()->json(['data' => $data, 'timestamp' => now()->toIso8601String()]);
+    }
+
+    public function nextNumber(Request $request)
+    {
+        $user = $request->user();
+
+        // Mark current ticket as done
+        QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->update(['status' => 'done']);
+
+        // Fetch the next waiting ticket
+        $next = QueueTicket::where('status', 'waiting')
+            ->orderBy('id')
+            ->first();
+
+        if ($next) {
+            $next->update([
+                'status' => 'serving',
+                'served_by' => $user->id,
+            ]);
+
+            return back()->with('success', "Now serving: {$next->formatted_number}");
+        }
+
+        return back()->with('error', 'No waiting numbers at the moment.');
     }
 }

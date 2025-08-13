@@ -10,13 +10,13 @@ class QueueBoardController extends Controller
     public function data(Request $request)
     {
         // Serving tickets (latest first)
-        $serving = QueueTicket::select('id', 'number', 'transaction_type', 'status', 'served_by', 'created_at', 'updated_at')
+        $serving = QueueTicket::select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'created_at', 'updated_at')
             ->where('status', 'serving')
             ->orderByDesc('updated_at')
             ->get();
 
         // Waiting tickets (oldest first, limit to avoid huge payload)
-        $waiting = QueueTicket::select('id', 'number', 'transaction_type', 'status', 'served_by', 'created_at', 'updated_at')
+        $waiting = QueueTicket::select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'created_at', 'updated_at')
             ->where('status', 'waiting')
             ->orderBy('created_at')
             ->limit(200)
