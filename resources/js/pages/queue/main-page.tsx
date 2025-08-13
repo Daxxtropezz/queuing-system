@@ -8,7 +8,7 @@ type QueueTicket = {
     transaction_type_id?: string;
     status?: 'waiting' | 'serving' | string;
     served_by?: string | number;
-    teller?: string | number;
+    teller_number?: string;
     counter?: string | number;
     updated_at?: string;
     created_at?: string;
@@ -256,38 +256,38 @@ export default function MainPage({ boardData }: Props) {
                                     </div>
                                 )}
 
-                                {servingTickets.map((t) => {
-                                    const counter = t.teller ?? t.counter ?? '—';
-                                    return (
-                                        <div
-                                            key={`serving-${t.id}`}
-                                            className="group relative overflow-hidden rounded-3xl border border-slate-800/70 bg-gradient-to-br from-slate-900/70 via-slate-900/60 to-slate-950/70 p-6 shadow-xl ring-1 ring-slate-800/50 transition hover:shadow-2xl hover:ring-slate-700/70"
-                                        >
-                                            <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100">
-                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(250,204,21,0.10),transparent_65%)]" />
-                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(245,158,11,0.10),transparent_55%)]" />
-                                            </div>
-                                            <div className="relative mb-5 flex items-center justify-between">
-                                                <span className="rounded-full bg-rose-500/15 px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
-                                                    Serving
-                                                </span>
-                                                <span className="rounded-full bg-indigo-500/15 px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
-                                                    Counter {counter}
-                                                </span>
-                                            </div>
-                                            <div className="relative flex flex-col items-center gap-4">
-                                                <div className="bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-7xl font-black tabular-nums tracking-tight text-transparent drop-shadow-sm md:text-8xl">
-                                                    {t.number}
-                                                </div>
-                                                {t.transaction_type_id && (
-                                                    <div className="rounded-xl border border-slate-700/60 bg-slate-800/70 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-200 shadow-sm">
-                                                        {t.transaction_type?.name}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                               {servingTickets.map((t) => {
+    const counter = t.teller_number ?? t.counter ?? '—'; // Use the new teller_number field
+    return (
+        <div
+            key={`serving-${t.id}`}
+            className="group relative overflow-hidden rounded-3xl border border-slate-800/70 bg-gradient-to-br from-slate-900/70 via-slate-900/60 to-slate-950/70 p-6 shadow-xl ring-1 ring-slate-800/50 transition hover:shadow-2xl hover:ring-slate-700/70"
+        >
+            <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(250,204,21,0.10),transparent_65%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(245,158,11,0.10),transparent_55%)]" />
+            </div>
+            <div className="relative mb-5 flex items-center justify-between">
+                <span className="rounded-full bg-rose-500/15 px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
+                    Serving
+                </span>
+                <span className="rounded-full bg-indigo-500/15 px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-300">
+                    Counter {counter}
+                </span>
+            </div>
+            <div className="relative flex flex-col items-center gap-4">
+                <div className="bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-7xl font-black tabular-nums tracking-tight text-transparent drop-shadow-sm md:text-8xl">
+                    {t.number}
+                </div>
+                {t.transaction_type && (
+                    <div className="rounded-xl border border-slate-700/60 bg-slate-800/70 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-200 shadow-sm">
+                        {t.transaction_type?.name}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+})}
                             </div>
                         </section>
                     </div>

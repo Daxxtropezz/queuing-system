@@ -11,31 +11,31 @@ use Inertia\Inertia;
 class QueueController extends Controller
 {
     // Main page: show tellers and serving numbers
-   public function mainPage()
-{
-    // Fetch the same data as your JSON endpoint for initial page load
-    $serving = QueueTicket::select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'created_at', 'updated_at')
-        ->where('status', 'serving')
-        ->orderByDesc('updated_at')
-        ->get();
+    public function mainPage()
+    {
+        // Fetch the same data as your JSON endpoint for initial page load
+        $serving = QueueTicket::with('transactionType')
+            ->where('status', 'serving')
+            ->orderByDesc('updated_at')
+            ->get();
 
-    $waiting = QueueTicket::select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'created_at', 'updated_at')
-        ->where('status', 'waiting')
-        ->orderBy('created_at')
-        ->limit(200)
-        ->get();
+        $waiting = QueueTicket::with('transactionType')
+            ->where('status', 'waiting')
+            ->orderBy('created_at')
+            ->limit(200)
+            ->get();
 
-    $boardData = [
-        'serving' => $serving,
-        'waiting' => $waiting,
-        'generated_at' => now()->toIso8601String(),
-    ];
+        $boardData = [
+            'serving' => $serving,
+            'waiting' => $waiting,
+            'generated_at' => now()->toIso8601String(),
+        ];
 
-    // Pass the data to the Inertia component
-    return Inertia::render('queue/main-page', [
-        'boardData' => $boardData,
-    ]);
-}
+        // Pass the data to the Inertia component
+        return Inertia::render('queue/main-page', [
+            'boardData' => $boardData,
+        ]);
+    }
 
     // Guard page: form to generate number
     public function guardPage()
@@ -80,29 +80,66 @@ class QueueController extends Controller
     public function tellerPage(Request $request)
     {
         $user = $request->user();
-        $current = QueueTicket::where('served_by', $user->id)
+        $current = QueueTicket::with('transactionType')
+            ->where('served_by', $user->id)
             ->where('status', 'serving')->first();
-        return Inertia::render('queue/teller-page', ['current' => $current]);
+
+        // Pass the user's teller number to the frontend
+        return Inertia::render('queue/teller-page', [
+            'current' => $current,
+            'userTellerNumber' => $user->teller_number, // Pass this to the frontend
+        ]);
     }
 
-    // Teller: grab next number
+    // New method to handle assigning a teller number to a user
+    public function assignTellerNumber(Request $request)
+    {
+        //    $data = $request->json()->all();
+        // dd($data);
+
+        $user = $request->user();
+        $request->validate([
+            'teller_number' => ['required', 'string'],
+        ]);
+
+        // Update the authenticated user's teller number
+        $user->update(['teller_number' => $request->teller_number]);
+
+
+
+
+        // Redirect back to the teller page with the updated state
+        return redirect()->route('queue.teller');
+    }
+
+    // Modify your existing grabNumber method
     public function grabNumber(Request $request)
     {
         $user = $request->user();
-        $current = QueueTicket::where('served_by', $user->id)
-            ->where('status', 'serving')->first();
+
+        // Check if the user has a teller number before proceeding
+        if (is_null($user->teller_number)) {
+            return back()->with('error', 'Please select a teller number first.');
+        }
+
+        $current = QueueTicket::where('served_by', $user->id)->where('status', 'serving')->first();
+
         if ($current) {
-            // Already serving
             return back()->with('error', 'Already serving a number');
         }
+
         $next = QueueTicket::where('status', 'waiting')->orderBy('id')->first();
+
         if ($next) {
             $next->update([
                 'status' => 'serving',
                 'served_by' => $user->id,
+                'teller_number' => $user->teller_number, // Use the teller number from the user model
             ]);
+
             return back()->with('success', "Now serving: {$next->number}");
         }
+
         return back()->with('error', 'No waiting numbers');
     }
 
