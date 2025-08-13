@@ -1,112 +1,220 @@
-import { useForm } from "@inertiajs/react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Loader2, HelpCircle, DollarSign, UserPlus } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useState } from "react";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useForm } from '@inertiajs/react';
+import { DollarSign, HelpCircle, Info, Loader2, Maximize2, Minimize2, UserPlus } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function GuardPage() {
-  const { data, setData, post, processing, errors, reset } = useForm({
-    transaction_type: "",
-  });
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [generatedNumber, setGeneratedNumber] = useState("");
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    post(route("queue.guard.generate"), {
-      onSuccess: (page: any) => {
-        const number = page.props.generatedNumber || "N/A"; // server must return generated number
-        setGeneratedNumber(number);
-        setDialogOpen(true);
-
-        // Trigger print after short delay so dialog renders
-        setTimeout(() => {
-          window.print();
-        }, 300);
-      },
+    const { data, setData, post, processing, errors, reset } = useForm({
+        transaction_type: '',
     });
-  }
 
-  function handleDialogClose() {
-    setDialogOpen(false);
-    reset(); // resets dropdown to default
-  }
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [generatedNumber, setGeneratedNumber] = useState('');
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-4">
-      <Card className="w-full max-w-2xl shadow-2xl rounded-3xl border border-gray-200">
-        <CardHeader className="text-center pb-6">
-          <CardTitle className="text-3xl font-bold text-blue-800">
-            Generate Your Queue Number
-          </CardTitle>
-          <p className="text-gray-500 text-lg">Please select your transaction type</p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Select
-              value={data.transaction_type}
-              onValueChange={(val) => setData("transaction_type", val)}
-            >
-              <SelectTrigger className="h-16 text-lg px-6 rounded-2xl">
-                <SelectValue placeholder="Tap to choose transaction type" />
-              </SelectTrigger>
-              <SelectContent className="text-lg">
-                <SelectItem value="General Inquiry">
-                  <div className="flex items-center gap-3">
-                    <HelpCircle className="w-6 h-6 text-blue-500" /> General Inquiry
-                  </div>
-                </SelectItem>
-                <SelectItem value="Cash Withdrawal">
-                  <div className="flex items-center gap-3">
-                    <DollarSign className="w-6 h-6 text-green-500" /> Cash Withdrawal
-                  </div>
-                </SelectItem>
-                <SelectItem value="Account Opening">
-                  <div className="flex items-center gap-3">
-                    <UserPlus className="w-6 h-6 text-orange-500" /> Account Opening
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.transaction_type && (
-              <div className="text-red-500 text-center text-lg">
-                {errors.transaction_type}
-              </div>
-            )}
-            <Button
-              type="submit"
-              disabled={processing}
-              size="lg"
-              className="w-full h-20 text-2xl rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg"
-            >
-              {processing && <Loader2 className="mr-3 h-6 w-6 animate-spin" />}
-              Generate Number
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    // Toggle fullscreen (for kiosk)
+    const toggleFullscreen = useCallback(async () => {
+        if (!document.fullscreenElement) {
+            try {
+                await document.documentElement.requestFullscreen();
+                setIsFullscreen(true);
+            } catch {}
+        } else {
+            await document.exitFullscreen();
+            setIsFullscreen(false);
+        }
+    }, []);
 
-      {/* Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="max-w-sm rounded-2xl text-center">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-green-700">Your Number Is</DialogTitle>
-            <DialogDescription asChild>
-              <div className="mt-4 text-5xl font-extrabold text-gray-900">{generatedNumber}</div>
-            </DialogDescription>
-          </DialogHeader>
-          <Button
-            onClick={handleDialogClose}
-            className="mt-6 w-full h-14 text-lg bg-blue-600 hover:bg-blue-700"
-          >
-            OK
-          </Button>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+    useEffect(() => {
+        function onKey(e: KeyboardEvent) {
+            if (e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                toggleFullscreen();
+            } else if (e.key === 'Escape' && dialogOpen) {
+                setDialogOpen(false);
+            }
+            // Removed Enter shortcut (no manual submit button now)
+        }
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [dialogOpen, toggleFullscreen]);
+
+    // Removed handleSubmit (no manual submit)
+    // ...existing code (handleDialogClose)...
+
+    function handleGenerate(value: string) {
+        if (processing) return;
+        setData('transaction_type', value);
+        post(route('queue.guard.generate'), {
+            onSuccess: (page: any) => {
+                const number = page.props.generatedNumber || 'N/A';
+                setGeneratedNumber(number);
+                setDialogOpen(true);
+                setTimeout(() => window.print(), 300);
+            },
+        });
+    }
+
+    // New: transaction options (instead of dropdown)
+    const transactionOptions = [
+        {
+            value: 'General Inquiry',
+            label: 'General Inquiry',
+            icon: HelpCircle,
+            accent: 'from-blue-500/10 to-sky-500/10 hover:from-blue-500/20 hover:to-sky-500/20',
+            iconColor: 'text-blue-600',
+        },
+        {
+            value: 'Cash Withdrawal',
+            label: 'Cash Withdrawal',
+            icon: DollarSign,
+            accent: 'from-green-500/10 to-emerald-500/10 hover:from-green-500/20 hover:to-emerald-500/20',
+            iconColor: 'text-green-600',
+        },
+        {
+            value: 'Account Opening',
+            label: 'Account Opening',
+            icon: UserPlus,
+            accent: 'from-orange-500/10 to-amber-500/10 hover:from-orange-500/20 hover:to-amber-500/20',
+            iconColor: 'text-orange-600',
+        },
+    ];
+
+    // Added: handleDialogClose (was missing, causing compile error)
+    function handleDialogClose(open: boolean) {
+        if (open) {
+            setDialogOpen(true);
+            return;
+        }
+        setDialogOpen(false);
+        reset(); // clears form (transaction_type)
+        setData('transaction_type', ''); // explicit for clarity
+    }
+
+    return (
+        <div className="kiosk-bg relative flex min-h-screen w-full items-center justify-center p-4 md:p-8">
+            {/* Subtle animated gradient background */}
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.18),transparent_60%),radial-gradient(circle_at_70%_80%,rgba(29,78,216,0.25),transparent_55%)]"
+            />
+            <Card className="w-full max-w-3xl rounded-3xl border border-white/10 bg-white/70 shadow-2xl backdrop-blur-xl transition-all dark:bg-slate-900/70">
+                <CardHeader className="space-y-3 pb-4 text-center md:pb-6">
+                    <CardTitle className="bg-gradient-to-br from-blue-700 via-indigo-600 to-blue-800 bg-clip-text text-3xl font-black tracking-tight text-transparent md:text-4xl xl:text-5xl">
+                        Generate Your Queue Number
+                    </CardTitle>
+                    <p className="flex items-center justify-center gap-2 text-base text-slate-600 md:text-lg dark:text-slate-300">
+                        <Info className="h-5 w-5 opacity-70" />
+                        Please select your transaction type
+                    </p>
+                </CardHeader>
+                <CardContent className="pb-10">
+                    {/* Form retained for layout but no submit */}
+                    <form className="space-y-8">
+                        {/* Clickable transaction cards */}
+                        <div className="grid gap-5 sm:grid-cols-2">
+                            {transactionOptions.map((opt) => {
+                                const selected = data.transaction_type === opt.value;
+                                const Icon = opt.icon;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => handleGenerate(opt.value)}
+                                        disabled={processing}
+                                        className={[
+                                            'group relative flex flex-col items-center justify-center rounded-2xl p-6 md:p-8',
+                                            'border shadow-sm transition-all focus:outline-none focus-visible:ring-4',
+                                            'border-slate-300/60 dark:border-slate-600/40',
+                                            'bg-gradient-to-br',
+                                            opt.accent,
+                                            selected
+                                                ? 'border-blue-400/60 ring-4 ring-blue-400/60 ring-offset-2 ring-offset-white dark:border-blue-500/60 dark:ring-blue-500/50 dark:ring-offset-slate-900'
+                                                : 'hover:shadow-md',
+                                            processing ? 'cursor-wait opacity-70' : '',
+                                        ].join(' ')}
+                                        aria-pressed={selected}
+                                        aria-busy={processing && selected}
+                                        aria-label={opt.label}
+                                    >
+                                        <div
+                                            className={[
+                                                'mb-5 flex h-20 w-20 items-center justify-center rounded-2xl text-4xl',
+                                                'bg-white/70 shadow-inner dark:bg-slate-800/70',
+                                                selected ? 'scale-105' : 'group-hover:scale-105',
+                                                'transition-transform',
+                                            ].join(' ')}
+                                        >
+                                            {processing && selected ? (
+                                                <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+                                            ) : (
+                                                <Icon className={`h-12 w-12 ${opt.iconColor}`} />
+                                            )}
+                                        </div>
+                                        <span className="text-center text-lg leading-snug font-semibold text-slate-800 md:text-xl dark:text-slate-100">
+                                            {opt.label}
+                                        </span>
+                                        {selected && !processing && (
+                                            <span className="absolute top-3 right-3 h-3 w-3 rounded-full bg-blue-500 ring-4 ring-blue-500/30" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {errors.transaction_type && (
+                            <div className="text-center text-lg font-medium text-red-600 dark:text-red-400">{errors.transaction_type}</div>
+                        )}
+
+                        {/* Footer (removed Generate button) */}
+                        <div className="flex items-center justify-between px-1 text-xs text-slate-500 md:text-sm dark:text-slate-400">
+                            <span>Tap a transaction to generate your number</span>
+                            <button
+                                type="button"
+                                onClick={toggleFullscreen}
+                                className="inline-flex items-center gap-1 rounded-full border border-slate-300/50 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-white/50 dark:border-slate-600/50 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                            >
+                                {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                                {isFullscreen ? 'Exit Fullscreen (F)' : 'Fullscreen (F)'}
+                            </button>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
+
+            {/* Dialog */}
+            <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+                <DialogContent className="max-w-md rounded-3xl border border-slate-200/80 text-center dark:border-slate-600/60 print:!bg-white print:!p-0 print:!shadow-none">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold text-emerald-700 md:text-3xl dark:text-emerald-300 print:!text-black">
+                            Your Number
+                        </DialogTitle>
+                        <DialogDescription asChild>
+                            <div className="mt-6 bg-gradient-to-br from-slate-900 to-slate-700 bg-clip-text text-6xl font-extrabold tracking-tight text-transparent md:text-7xl dark:from-white dark:to-slate-200 print:!text-black">
+                                {generatedNumber}
+                            </div>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-8 space-y-4 print:hidden">
+                        <Button onClick={handleDialogClose} className="h-16 w-full rounded-2xl bg-blue-600 text-xl font-semibold hover:bg-blue-700">
+                            OK
+                        </Button>
+                        <p className="text-xs text-slate-500">This ticket will auto-print. Present it to the teller.</p>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Print styles (scoped) */}
+            <style>
+                {`
+          @media print {
+            body, html { background: #fff !important; }
+            .kiosk-bg, .kiosk-bg *:not(.print\\:block) { background: #fff !important; }
+          }
+        `}
+            </style>
+        </div>
+    );
 }
