@@ -134,5 +134,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/queue/guard', [QueueController::class, 'guardPage'])->name('queue.guard');
     Route::post('/queue/guard/generate', [QueueController::class, 'generateNumber'])->name('queue.guard.generate');
 
+// Transaction Types
+Route::resource('transaction-types', \App\Http\Controllers\TransactionTypeController::class);
+
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';

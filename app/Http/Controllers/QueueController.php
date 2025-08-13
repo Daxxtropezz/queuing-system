@@ -31,7 +31,10 @@ class QueueController extends Controller
     // Guard page: form to generate number
     public function guardPage()
     {
-        return Inertia::render('queue/guard-page');
+        $transactionTypes = \App\Models\TransactionType::orderBy('name')->get();
+        return inertia('queue/guard-page', [
+            'transactionTypes' => $transactionTypes,
+        ]);
     }
 
     // Guard: generate number

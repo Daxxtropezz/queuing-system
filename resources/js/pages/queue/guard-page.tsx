@@ -2,11 +2,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useForm } from '@inertiajs/react';
-import { DollarSign, HelpCircle, Info, Loader2, Maximize2, Minimize2, UserPlus } from 'lucide-react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-export default function GuardPage() {
-    const { data, setData, post, processing, errors, reset } = useForm({
+export default function GuardPage({ transactionTypes = [] }: { transactionTypes?: any[] }) {
+    const { data, setData, post, processing, errors } = useForm({
         transaction_type: '',
     });
 
@@ -14,7 +14,6 @@ export default function GuardPage() {
     const [generatedNumber, setGeneratedNumber] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Toggle fullscreen (for kiosk)
     const toggleFullscreen = useCallback(async () => {
         if (!document.fullscreenElement) {
             try {
@@ -35,14 +34,14 @@ export default function GuardPage() {
             } else if (e.key === 'Escape' && dialogOpen) {
                 setDialogOpen(false);
             }
-            // Removed Enter shortcut (no manual submit button now)
         }
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [dialogOpen, toggleFullscreen]);
 
-    // Removed handleSubmit (no manual submit)
-    // ...existing code (handleDialogClose)...
+    function handleDialogClose() {
+        setDialogOpen(false);
+    }
 
     function handleGenerate(value: string) {
         if (processing) return;
@@ -57,45 +56,8 @@ export default function GuardPage() {
         });
     }
 
-    // New: transaction options (instead of dropdown)
-    const transactionOptions = [
-        {
-            value: 'General Inquiry',
-            label: 'General Inquiry',
-            icon: HelpCircle,
-            accent: 'from-blue-500/10 to-sky-500/10 hover:from-blue-500/20 hover:to-sky-500/20',
-            iconColor: 'text-blue-600',
-        },
-        {
-            value: 'Cash Withdrawal',
-            label: 'Cash Withdrawal',
-            icon: DollarSign,
-            accent: 'from-green-500/10 to-emerald-500/10 hover:from-green-500/20 hover:to-emerald-500/20',
-            iconColor: 'text-green-600',
-        },
-        {
-            value: 'Account Opening',
-            label: 'Account Opening',
-            icon: UserPlus,
-            accent: 'from-orange-500/10 to-amber-500/10 hover:from-orange-500/20 hover:to-amber-500/20',
-            iconColor: 'text-orange-600',
-        },
-    ];
-
-    // Added: handleDialogClose (was missing, causing compile error)
-    function handleDialogClose(open: boolean) {
-        if (open) {
-            setDialogOpen(true);
-            return;
-        }
-        setDialogOpen(false);
-        reset(); // clears form (transaction_type)
-        setData('transaction_type', ''); // explicit for clarity
-    }
-
     return (
         <div className="kiosk-bg relative flex min-h-screen w-full items-center justify-center p-4 md:p-8">
-            {/* Subtle animated gradient background */}
             <div
                 aria-hidden
                 className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.18),transparent_60%),radial-gradient(circle_at_70%_80%,rgba(29,78,216,0.25),transparent_55%)]"
@@ -106,30 +68,25 @@ export default function GuardPage() {
                         Generate Your Queue Number
                     </CardTitle>
                     <p className="flex items-center justify-center gap-2 text-base text-slate-600 md:text-lg dark:text-slate-300">
-                        <Info className="h-5 w-5 opacity-70" />
                         Please select your transaction type
                     </p>
                 </CardHeader>
                 <CardContent className="pb-10">
-                    {/* Form retained for layout but no submit */}
                     <form className="space-y-8">
-                        {/* Clickable transaction cards */}
                         <div className="grid gap-5 sm:grid-cols-2">
-                            {transactionOptions.map((opt) => {
-                                const selected = data.transaction_type === opt.value;
-                                const Icon = opt.icon;
+                            {transactionTypes.map((opt) => {
+                                const selected = data.transaction_type === opt.name;
                                 return (
                                     <button
-                                        key={opt.value}
+                                        key={opt.id}
                                         type="button"
-                                        onClick={() => handleGenerate(opt.value)}
+                                        onClick={() => handleGenerate(opt.name)}
                                         disabled={processing}
                                         className={[
                                             'group relative flex flex-col items-center justify-center rounded-2xl p-6 md:p-8',
                                             'border shadow-sm transition-all focus:outline-none focus-visible:ring-4',
                                             'border-slate-300/60 dark:border-slate-600/40',
-                                            'bg-gradient-to-br',
-                                            opt.accent,
+                                            'bg-gradient-to-br from-blue-500/10 to-sky-500/10 hover:from-blue-500/20 hover:to-sky-500/20',
                                             selected
                                                 ? 'border-blue-400/60 ring-4 ring-blue-400/60 ring-offset-2 ring-offset-white dark:border-blue-500/60 dark:ring-blue-500/50 dark:ring-offset-slate-900'
                                                 : 'hover:shadow-md',
@@ -137,7 +94,7 @@ export default function GuardPage() {
                                         ].join(' ')}
                                         aria-pressed={selected}
                                         aria-busy={processing && selected}
-                                        aria-label={opt.label}
+                                        aria-label={opt.name}
                                     >
                                         <div
                                             className={[
@@ -147,15 +104,12 @@ export default function GuardPage() {
                                                 'transition-transform',
                                             ].join(' ')}
                                         >
-                                            {processing && selected ? (
-                                                <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-                                            ) : (
-                                                <Icon className={`h-12 w-12 ${opt.iconColor}`} />
-                                            )}
+                                            <span className="text-4xl font-bold text-blue-600">{opt.name[0]}</span>
                                         </div>
                                         <span className="text-center text-lg leading-snug font-semibold text-slate-800 md:text-xl dark:text-slate-100">
-                                            {opt.label}
+                                            {opt.name}
                                         </span>
+                                        <span className="text-xs text-slate-500">{opt.description}</span>
                                         {selected && !processing && (
                                             <span className="absolute top-3 right-3 h-3 w-3 rounded-full bg-blue-500 ring-4 ring-blue-500/30" />
                                         )}
@@ -168,7 +122,6 @@ export default function GuardPage() {
                             <div className="text-center text-lg font-medium text-red-600 dark:text-red-400">{errors.transaction_type}</div>
                         )}
 
-                        {/* Footer (removed Generate button) */}
                         <div className="flex items-center justify-between px-1 text-xs text-slate-500 md:text-sm dark:text-slate-400">
                             <span>Tap a transaction to generate your number</span>
                             <button
@@ -184,7 +137,6 @@ export default function GuardPage() {
                 </CardContent>
             </Card>
 
-            {/* Dialog */}
             <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
                 <DialogContent className="max-w-md rounded-3xl border border-slate-200/80 text-center dark:border-slate-600/60 print:!bg-white print:!p-0 print:!shadow-none">
                     <DialogHeader>
@@ -206,14 +158,13 @@ export default function GuardPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Print styles (scoped) */}
             <style>
                 {`
-          @media print {
-            body, html { background: #fff !important; }
-            .kiosk-bg, .kiosk-bg *:not(.print\\:block) { background: #fff !important; }
-          }
-        `}
+                @media print {
+                    body, html { background: #fff !important; }
+                    .kiosk-bg, .kiosk-bg *:not(.print\\:block) { background: #fff !important; }
+                }
+                `}
             </style>
         </div>
     );
