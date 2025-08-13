@@ -43,20 +43,20 @@ class QueueController extends Controller
 
     $ticket = null;
 
-   DB::transaction(function () use ($user, &$next) {
-    $next = QueueTicket::where('status', 'waiting')
-        ->orderBy('id')
-        ->lockForUpdate()
-        ->first();
+    DB::transaction(function () use ($request, &$ticket) {
+        $last = QueueTicket::where('transaction_type', $request->transaction_type)
+            ->orderByDesc('number')
+            ->lockForUpdate()
+            ->first();
 
-    if ($next) {
-        $next->update([
-            'status' => 'serving',
-            'served_by' => $user->id,
+        $number = $last ? $last->number + 1 : 1;
+
+        $ticket = QueueTicket::create([
+            'number' => $number,
+            'transaction_type' => $request->transaction_type,
+            'status' => 'waiting',
         ]);
-    }
-});
-
+    });
 
     return redirect()
         ->route('queue.guard')
