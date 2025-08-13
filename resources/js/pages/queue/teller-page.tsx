@@ -16,6 +16,7 @@ export default function TellerPage({ current }: { current?: any }) {
     post(route("queue.teller.next"));
   }
 
+
   const breadcrumbs = [
     {
       title: "Teller",
@@ -40,7 +41,7 @@ export default function TellerPage({ current }: { current?: any }) {
                   {current.number}
                 </div>
                 <div className="text-lg text-gray-600 font-medium">
-                  {current.transaction_type}
+                  {current.transaction_type?.name}
                 </div>
                 <Badge
                   variant="outline"

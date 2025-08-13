@@ -129,6 +129,8 @@ Route::group(['middleware' => ['auth', 'role:Administrator']], routes: function 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/queue/teller', [QueueController::class, 'tellerPage'])->name('queue.teller');
     Route::post('/queue/teller/grab', [QueueController::class, 'grabNumber'])->name('queue.teller.grab');
+   Route::post('/queue/teller/next', [QueueController::class, 'nextNumber'])
+    ->name('queue.teller.next');
 });
 
 Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
@@ -143,6 +145,7 @@ Route::resource('transaction-types', \App\Http\Controllers\TransactionTypeContro
 
 // Public JSON endpoint for serving tickets (polled by main-page)
 Route::get('/queue/serving', [QueueController::class, 'servingIndex'])->name('queue.serving.index');
+
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
