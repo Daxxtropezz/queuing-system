@@ -23,19 +23,19 @@ Route::get('/', function () {
 // Use the custom AuthControllerDjango for login
 Route::post('djangologin', [AuthControllerDjango::class, 'login'])->name('djangologin');
 
-Route::get('/two-factor-challenge', function () {
+Route::get('/twodasactor-challenge', function () {
     return Inertia::render('auth/TwoFactorChallenge');
-})->middleware(['guest'])->name('two-factor.login');
+})->middleware(middleware: ['guest'])->name('two-factor.login');
 
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    // Route::get('dashboard', function () {
+    //     return Inertia::render('dashboard');
+    // })->name('dashboard');
 
     // Optional: Add a new home route for authenticated users
     Route::get('/home', function () {
-        return redirect()->route('dashboard');
+        return redirect()->route('queue.teller');
     })->name('home.authenticated');
 });
 
@@ -130,9 +130,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/queue/teller/grab', [QueueController::class, 'grabNumber'])->name('queue.teller.grab');
 });
 
-    Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
-    Route::get('/queue/guard', [QueueController::class, 'guardPage'])->name('queue.guard');
-    Route::post('/queue/guard/generate', [QueueController::class, 'generateNumber'])->name('queue.guard.generate');
+Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
+Route::get('/queue/guard', [QueueController::class, 'guardPage'])->name('queue.guard');
+Route::post('/queue/guard/generate', [QueueController::class, 'generateNumber'])->name('queue.guard.generate');
 
 // Transaction Types
 Route::resource('transaction-types', \App\Http\Controllers\TransactionTypeController::class);

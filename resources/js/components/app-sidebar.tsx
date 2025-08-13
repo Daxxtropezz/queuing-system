@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Building, ChartArea, Earth, House, Library, Logs, MessageSquareQuote, UserRoundCog, Users, Wrench } from 'lucide-react';
+import { Building, ChartArea, Earth, House, Logs, UserRoundCog, Users, Wrench } from 'lucide-react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
@@ -19,11 +19,11 @@ export function AppSidebar() {
     const isAdmin = auth?.user?.roles?.includes('Administrator');
 
     const mainNavItems: NavItem[] = [
-        {
-            title: 'Dashboard',
-            href: '/dashboard',
-            icon: ChartArea,
-        },
+        // {
+        //     title: 'Dashboard',
+        //     href: '/dashboard',
+        //     icon: ChartArea,
+        // },
 
         {
             title: 'Teller',
@@ -41,8 +41,6 @@ export function AppSidebar() {
         //     href: '/queue/guard',
         //     icon: ChartArea,
         // },
-       
-       
     ];
 
     if (isAdmin) {
@@ -95,7 +93,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
+                            <Link href="/" prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
