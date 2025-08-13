@@ -20,6 +20,7 @@ class QueueController extends Controller
                 ->where('status', 'serving')
                 ->first();
             $serving[] = [
+                'id' => $ticket ? $ticket->id : ('teller-' . $teller->id), // ensure unique key for frontend
                 'teller' => $teller->first_name . ' ' . $teller->last_name,
                 'number' => $ticket ? $ticket->number : null,
                 'transaction_type' => $ticket ? $ticket->transaction_type : null,
@@ -38,33 +39,33 @@ class QueueController extends Controller
     }
 
     // Guard: generate number
-  public function generateNumber(Request $request)
-{
-    $request->validate([
-        'transaction_type' => 'required|string',
-    ]);
-
-    $ticket = null;
-
-    DB::transaction(function () use ($request, &$ticket) {
-        $last = QueueTicket::where('transaction_type', $request->transaction_type)
-            ->orderByDesc('number')
-            ->lockForUpdate()
-            ->first();
-
-        $number = $last ? $last->number + 1 : 1;
-
-        $ticket = QueueTicket::create([
-            'number' => $number,
-            'transaction_type' => $request->transaction_type,
-            'status' => 'waiting',
+    public function generateNumber(Request $request)
+    {
+        $request->validate([
+            'transaction_type' => 'required|string',
         ]);
-    });
 
-    return redirect()
-        ->route('queue.guard')
-        ->with('success', "Your number: {$ticket->number}");
-}
+        $ticket = null;
+
+        DB::transaction(function () use ($request, &$ticket) {
+            $last = QueueTicket::where('transaction_type', $request->transaction_type)
+                ->orderByDesc('number')
+                ->lockForUpdate()
+                ->first();
+
+            $number = $last ? $last->number + 1 : 1;
+
+            $ticket = QueueTicket::create([
+                'number' => $number,
+                'transaction_type' => $request->transaction_type,
+                'status' => 'waiting',
+            ]);
+        });
+
+        return redirect()
+            ->route('queue.guard')
+            ->with('success', "Your number: {$ticket->number}");
+    }
 
 
     // Teller page: show current serving and button to grab next
@@ -95,5 +96,28 @@ class QueueController extends Controller
             return back()->with('success', "Now serving: {$next->number}");
         }
         return back()->with('error', 'No waiting numbers');
+    }
+
+    public function servingIndex()
+    {
+        // Collect all currently serving tickets with teller info
+        $tickets = QueueTicket::where('status', 'serving')->get();
+        $userIds = $tickets->pluck('served_by')->filter()->unique();
+        $users = $userIds->isEmpty()
+            ? collect()
+            : User::whereIn('id', $userIds)->get()->keyBy('id');
+
+        $data = $tickets->map(function ($t) use ($users) {
+            $u = $users->get($t->served_by);
+            return [
+                'id' => $t->id,
+                'number' => $t->number,
+                'transaction_type' => $t->transaction_type,
+                'teller' => $u ? ($u->first_name . ' ' . $u->last_name) : null,
+                'updated_at' => $t->updated_at?->toIso8601String(),
+            ];
+        })->values();
+
+        return response()->json(['data' => $data, 'timestamp' => now()->toIso8601String()]);
     }
 }
