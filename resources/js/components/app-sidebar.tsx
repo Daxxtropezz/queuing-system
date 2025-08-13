@@ -31,11 +31,11 @@ export function AppSidebar() {
             icon: ChartArea,
         },
 
-         {
-            title: 'Guard',
-            href: '/queue/guard',
-            icon: ChartArea,
-        },
+        //  {
+        //     title: 'Guard',
+        //     href: '/queue/guard',
+        //     icon: ChartArea,
+        // },
        
        
     ];
