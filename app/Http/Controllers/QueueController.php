@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\QueueTicket;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class QueueController extends Controller
@@ -24,31 +25,44 @@ class QueueController extends Controller
                 'transaction_type' => $ticket ? $ticket->transaction_type : null,
             ];
         }
-        return Inertia::render('queue/MainPage', ['serving' => $serving]);
+        return Inertia::render('queue/main-page', ['serving' => $serving]);
     }
 
     // Guard page: form to generate number
     public function guardPage()
     {
-        return Inertia::render('queue/GuardPage');
+        return Inertia::render('queue/guard-page');
     }
 
     // Guard: generate number
-    public function generateNumber(Request $request)
-    {
-        $request->validate([
-            'transaction_type' => 'required|string',
+  public function generateNumber(Request $request)
+{
+    $request->validate([
+        'transaction_type' => 'required|string',
+    ]);
+
+    $ticket = null;
+
+   DB::transaction(function () use ($user, &$next) {
+    $next = QueueTicket::where('status', 'waiting')
+        ->orderBy('id')
+        ->lockForUpdate()
+        ->first();
+
+    if ($next) {
+        $next->update([
+            'status' => 'serving',
+            'served_by' => $user->id,
         ]);
-        $last = QueueTicket::where('transaction_type', $request->transaction_type)
-            ->orderByDesc('number')->first();
-        $number = $last ? $last->number + 1 : 1;
-        $ticket = QueueTicket::create([
-            'number' => $number,
-            'transaction_type' => $request->transaction_type,
-            'status' => 'waiting',
-        ]);
-        return redirect()->route('queue.guard')->with('success', "Your number: {$ticket->number}");
     }
+});
+
+
+    return redirect()
+        ->route('queue.guard')
+        ->with('success', "Your number: {$ticket->number}");
+}
+
 
     // Teller page: show current serving and button to grab next
     public function tellerPage(Request $request)
@@ -56,7 +70,7 @@ class QueueController extends Controller
         $user = $request->user();
         $current = QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')->first();
-        return Inertia::render('queue/TellerPage', ['current' => $current]);
+        return Inertia::render('queue/teller-page', ['current' => $current]);
     }
 
     // Teller: grab next number
