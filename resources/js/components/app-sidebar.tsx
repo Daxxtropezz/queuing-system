@@ -24,18 +24,20 @@ export function AppSidebar() {
             href: '/dashboard',
             icon: ChartArea,
         },
-        {
-            title: 'Parent',
-            href: '#',
-            icon: Library,
-            children: [
-                {
-                    title: 'Child',
-                    href: '/',
-                    icon: MessageSquareQuote,
-                },
-            ],
+
+         {
+            title: 'Teller',
+            href: '/queue/teller',
+            icon: ChartArea,
         },
+
+         {
+            title: 'Guard',
+            href: '/queue/guard',
+            icon: ChartArea,
+        },
+       
+       
     ];
 
     if (isAdmin) {

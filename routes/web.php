@@ -13,6 +13,7 @@ use App\Http\Controllers\ProvinceController;
 use App\Http\Controllers\PsgcController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\QueueController;
 
 // Redirect to login by default
 Route::get('/', function () {
@@ -121,6 +122,20 @@ Route::group(['middleware' => ['auth', 'role:Administrator']], routes: function 
     Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
     Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::put('/users/{user}/change-role', [UserController::class, 'changeRole']);
+});
+
+// Queuing System Routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Main page: display tellers and serving numbers
+    Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
+
+    // Guard page: generate number
+    Route::get('/queue/guard', [QueueController::class, 'guardPage'])->name('queue.guard');
+    Route::post('/queue/guard/generate', [QueueController::class, 'generateNumber'])->name('queue.guard.generate');
+
+    // Teller page: grab number
+    Route::get('/queue/teller', [QueueController::class, 'tellerPage'])->name('queue.teller');
+    Route::post('/queue/teller/grab', [QueueController::class, 'grabNumber'])->name('queue.teller.grab');
 });
 
 require __DIR__ . '/settings.php';

@@ -14,13 +14,8 @@ class RolePermissionSeeder extends Seeder
     public function run(): void
     {
         $roles = [
-            'BarangayFocal',
-            'LGUFocal',
-            'ProvincialFocal',
-            'RegionalFocal',
-            'DSWDFocal',
-            'Sectoral',
-            'LedSecretariat',
+            'Teller',
+            'Guard',
             'Administrator',
             'Guest'
         ];
