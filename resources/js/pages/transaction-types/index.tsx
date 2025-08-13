@@ -1,99 +1,207 @@
-import React from 'react';
-import { useForm, usePage, Head } from '@inertiajs/react';
-import { route } from 'ziggy-js';
+import React, { useState, useEffect } from 'react';
+import { Head, usePage, router } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { FileWarning, SquarePen, Trash2, Search as SearchIcon } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import TransactionTypeModal from '@/components/transaction-types/transactiontype-modal';
+import { Input } from '@/components/ui/input';
 
 export default function TransactionTypes() {
-    const { types } = usePage().props;
-    const [editId, setEditId] = React.useState(null);
+    const { types, flash, filters = {} } = usePage().props;
+    const [isCreateModalVisible, setIsCreateModal] = useState(false);
+    const [isEditModalVisible, setIsEditModal] = useState(false);
+    const [selectedType, setSelectedType] = useState(null);
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
-        name: '',
-        description: '',
-    });
-
-    React.useEffect(() => {
-        if (editId) {
-            const type = types.data.find(t => t.id === editId);
-            if (type) {
-                setData({ name: type.name, description: type.description || '' });
-            }
-        } else {
-            reset();
-        }
-    }, [editId]);
-
-    function handleSubmit(e) {
-        e.preventDefault();
-        if (editId) {
-            put(route('transaction-types.update', editId), {
-                onSuccess: () => { setEditId(null); reset(); },
+    useEffect(() => {
+        if (flash.success) {
+            Swal.fire({
+                title: 'Success',
+                text: flash.success,
+                icon: 'success',
+                toast: true,
+                position: 'top-end',
+                timer: 3000,
+                showConfirmButton: false,
             });
-        } else {
-            post(route('transaction-types.store'), { onSuccess: reset });
         }
-    }
+        if (flash.error) {
+            Swal.fire({
+                title: 'Error',
+                text: flash.error,
+                icon: 'error',
+                toast: true,
+                position: 'top-end',
+                timer: 3000,
+                showConfirmButton: false,
+            });
+        }
+    }, [flash]);
 
-    function handleEdit(id) {
-        setEditId(id);
-    }
+    const onSearchInputChange = (e) => {
+        const value = e.target.value;
+        setSearchQuery(value);
+        if (value.length >= 3 || value.length === 0) {
+            setIsLoading(true);
+            router.get(
+                route('transaction-types.index'),
+                { search: value },
+                {
+                    preserveState: true,
+                    replace: true,
+                    onFinish: () => setIsLoading(false),
+                }
+            );
+        }
+    };
 
-    function handleDelete(id) {
-        destroy(route('transaction-types.destroy', id));
-    }
+    const openCreateModal = () => {
+        setIsCreateModal(true);
+    };
+
+    const closeCreateModal = () => {
+        setIsCreateModal(false);
+        router.reload({ only: ['types'] });
+    };
+
+    const openEditModal = (type) => {
+        setSelectedType(type);
+        setIsEditModal(true);
+    };
+
+    const closeEditModal = () => {
+        setIsEditModal(false);
+        setSelectedType(null);
+        router.reload({ only: ['types'] });
+    };
+
+    const confirmDelete = (id) => {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('transaction-types.destroy', id), {
+                    onSuccess: () => {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: 'Transaction type deleted successfully.',
+                            icon: 'success',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                        });
+                    },
+                });
+            }
+        });
+    };
 
     return (
-        <AppLayout>
+        <>
             <Head title="Transaction Types" />
-            <div className="max-w-2xl mx-auto p-6">
-                <h1 className="text-2xl font-bold mb-4">Transaction Types</h1>
-                <form onSubmit={handleSubmit} className="mb-6 space-y-2">
-                    <Input
-                        placeholder="Name"
-                        value={data.name}
-                        onChange={e => setData('name', e.target.value)}
-                    />
-                    <Input
-                        placeholder="Description"
-                        value={data.description}
-                        onChange={e => setData('description', e.target.value)}
-                    />
-                    <div className="space-x-2">
-                        <Button type="submit" disabled={processing}>
-                            {editId ? 'Update' : 'Create'}
-                        </Button>
-                        {editId && (
-                            <Button type="button" variant="outline" onClick={() => setEditId(null)}>
-                                Cancel
-                            </Button>
-                        )}
+            <AppLayout>
+                 <div className="py-2">
+                    <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                        <div className="overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-6">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <Button onClick={openCreateModal} disabled={isLoading}>
+                                        {' '}
+                                        {/* Disable button when loading */}
+                                        Create Transaction Type
+                                    </Button>
+                                    <div className="relative block">
+                                        <span className="absolute inset-y-0 left-0 flex h-full items-center pl-2">
+                                            <SearchIcon className="h-4 w-4 text-gray-500" />
+                                        </span>
+                                        <div className="relative block">
+                                            <Input
+                                                value={searchQuery}
+                                                placeholder="Search..."
+                                                onChange={onSearchInputChange}
+                                                maxLength={50}
+                                                className="block w-full appearance-none rounded-l rounded-r border border-b border-gray-400 bg-white py-2 pr-6 pl-8 text-sm text-gray-700 placeholder-gray-400 focus:bg-white focus:text-gray-700 focus:placeholder-gray-600 focus:outline-none sm:rounded-l-none"
+                                                disabled={isLoading} // Disable input when loading
+                                            />
+
+                                            {searchQuery.length > 0 && searchQuery.length < 3 && (
+                                                <p className="mt-1 text-xs text-red-500">Type at least 3 characters to search</p>
+                                            )}
+                                            {filters?.search && <p className="mt-1 text-xs text-green-500">Showing results for "{filters.search}"</p>}
+                                        </div>
+                                    </div>
+                                </div>
+                    <div className="overflow-x-auto rounded-lg">
+                        <Table className="w-full">
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="text-center">Name</TableHead>
+                                    <TableHead className="text-center">Description</TableHead>
+                                    <TableHead className="text-center">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {types?.data?.length > 0 ? (
+                                    types.data.map((type) => (
+                                        <TableRow key={type.id}>
+                                            <TableCell className="text-center">{type.name}</TableCell>
+                                            <TableCell className="text-center">{type.description}</TableCell>
+                                            <TableCell className="text-center space-x-2">
+                                                <Button size="sm" onClick={() => openEditModal(type)}>
+                                                    <SquarePen className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    onClick={() => confirmDelete(type.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="p-10 text-center">
+                                            <div className="flex flex-col items-center">
+                                                <FileWarning className="h-12 w-12 text-gray-400" />
+                                                <p className="text-lg font-medium">No Transaction Types Found</p>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
                     </div>
-                    {errors.name && <div className="text-red-500">{errors.name}</div>}
-                </form>
-                <table className="w-full border">
-                    <thead>
-                        <tr>
-                            <th className="border px-2 py-1">Name</th>
-                            <th className="border px-2 py-1">Description</th>
-                            <th className="border px-2 py-1">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {types?.data?.map(type => (
-                            <tr key={type.id}>
-                                <td className="border px-2 py-1">{type.name}</td>
-                                <td className="border px-2 py-1">{type.description}</td>
-                                <td className="border px-2 py-1 space-x-2">
-                                    <Button size="sm" onClick={() => handleEdit(type.id)}>Edit</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => handleDelete(type.id)}>Delete</Button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </AppLayout>
+                </div>
+
+                {/* Create Modal */}
+                {isCreateModalVisible && (
+                    <TransactionTypeModal isModalVisible={isCreateModalVisible} onClose={closeCreateModal} />
+                )}
+
+                {/* Edit Modal */}
+                {isEditModalVisible && (
+                    <TransactionTypeModal
+                        type={selectedType}
+                        isModalVisible={isEditModalVisible}
+                        onClose={closeEditModal}
+                    />
+                )}
+                </div>
+                </div>
+                </div>
+            </AppLayout>
+        </>
     );
 }
