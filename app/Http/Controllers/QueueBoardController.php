@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\QueueTicket;
+use Illuminate\Http\Request;
 
 class QueueBoardController extends Controller
 {
     public function data(Request $request)
     {
-        // Serving tickets (most recently updated first)
+        // Serving tickets (latest first)
         $serving = QueueTicket::select('id', 'number', 'transaction_type', 'status', 'served_by', 'created_at', 'updated_at')
             ->where('status', 'serving')
             ->orderByDesc('updated_at')
@@ -19,7 +19,7 @@ class QueueBoardController extends Controller
         $waiting = QueueTicket::select('id', 'number', 'transaction_type', 'status', 'served_by', 'created_at', 'updated_at')
             ->where('status', 'waiting')
             ->orderBy('created_at')
-            ->limit(100)
+            ->limit(200)
             ->get();
 
         return response()->json([

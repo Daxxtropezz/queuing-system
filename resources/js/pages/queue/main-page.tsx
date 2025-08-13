@@ -24,6 +24,8 @@ export default function MainPage({ serving }: Props) {
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [now, setNow] = useState<Date>(new Date());
     const intervalRef = useRef<number | null>(null);
+    const [redirectError, setRedirectError] = useState<string | null>(null);
+    const BOARD_ENDPOINT = '/queue/board-data'; // new stable JSON endpoint (define in routes)
 
     // Clock
     useEffect(() => {
@@ -33,17 +35,34 @@ export default function MainPage({ serving }: Props) {
 
     // Updated fetch that tries multiple endpoints until one succeeds
     async function fetchBoard() {
+        if (redirectError) return; // stop polling after detecting redirect loop
         try {
             setLoading(true);
             let url: string;
             try {
-                // @ts-ignore
+                // @ts-ignore Ziggy route (if registered)
                 url = route('queue.board.data');
             } catch {
-                url = '/queue/board';
+                url = BOARD_ENDPOINT;
             }
-            const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+
+            const res = await fetch(url, {
+                headers: { Accept: 'application/json' },
+                cache: 'no-store',
+            });
+
+            // Detect redirect loop / non‑JSON (Laravel auth redirect returns HTML)
+            const contentType = res.headers.get('content-type') || '';
+            if (res.redirected || (!contentType.includes('application/json') && !res.ok)) {
+                setRedirectError(
+                    'Queue board JSON endpoint is redirecting (likely auth or route conflict). Expose GET ' +
+                        BOARD_ENDPOINT +
+                        ' publicly without auth or rename page route.',
+                );
+                return;
+            }
             if (!res.ok) throw new Error('Board fetch failed');
+
             const json = await res.json();
 
             const serving = (json.serving || []).map((t: any) => ({
@@ -87,7 +106,7 @@ export default function MainPage({ serving }: Props) {
         return () => {
             if (intervalRef.current) window.clearInterval(intervalRef.current);
         };
-    }, []);
+    }, [redirectError]);
 
     const skeletonCards = Array.from({ length: 4 });
 
@@ -130,6 +149,18 @@ export default function MainPage({ serving }: Props) {
 
                 {/* Content */}
                 <main className="relative z-10 mx-auto flex w-full flex-1 flex-col px-4 pt-6 pb-12 md:px-8 md:pt-10">
+                    {redirectError && (
+                        <div className="mx-auto mb-6 w-full max-w-7xl rounded-lg border border-amber-600/40 bg-amber-900/30 px-5 py-4 text-sm text-amber-200">
+                            <strong className="font-semibold">Data Load Warning:</strong> {redirectError}
+                            <div className="mt-2 text-xs opacity-80">
+                                Fix: In routes/web.php add:
+                                <pre className="mt-1 rounded bg-amber-950/40 p-2 font-mono text-[11px] whitespace-pre-wrap">
+                                    {`Route::get('/queue/board-data',[QueueBoardController::class,'data'])->name('queue.board.data');`}
+                                </pre>
+                                Make sure it is NOT inside auth/redirect middleware and no route shares the same path causing a redirect.
+                            </div>
+                        </div>
+                    )}
                     <div className="mx-auto grid w-full max-w-7xl gap-8 lg:grid-cols-2">
                         {/* Waiting Column */}
                         <section className="flex flex-col gap-5">
