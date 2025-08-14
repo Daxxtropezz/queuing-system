@@ -6,7 +6,14 @@ import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 import Swal from 'sweetalert2';
 
-export default function TransactionTypeModal({ isModalVisible, onClose, type }) {
+type TxType = { id: number; name: string; description?: string | null };
+type ModalProps = {
+    isModalVisible: boolean;
+    onClose: (open: boolean) => void;
+    type?: TxType | null;
+};
+
+export default function TransactionTypeModal({ isModalVisible, onClose, type }: ModalProps) {
     const isEditMode = !!type;
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
@@ -25,10 +32,10 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
         }
     }, [isModalVisible, type]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (isEditMode) {
-            put(route('transaction-types.update', type.id), {
+            put(route('transaction-types.update', type!.id), {
                 onSuccess: () => {
                     Swal.fire({
                         title: 'Updated!',
@@ -39,7 +46,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
                         timer: 3000,
                         showConfirmButton: false,
                     });
-                    onClose();
+                    onClose(false);
                 },
             });
         } else {
@@ -54,7 +61,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
                         timer: 3000,
                         showConfirmButton: false,
                     });
-                    onClose();
+                    onClose(false);
                 },
             });
         }
@@ -62,36 +69,56 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
 
     return (
         <Dialog open={isModalVisible} onOpenChange={onClose}>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg border border-slate-200 bg-white/90 ring-1 ring-slate-200/60 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-slate-800/70 dark:bg-slate-900/80 dark:ring-slate-800/50">
                 <DialogHeader>
-                    <DialogTitle>{isEditMode ? 'Edit Transaction Type' : 'Create Transaction Type'}</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-slate-800 dark:text-slate-100">
+                        {isEditMode ? 'Edit Transaction Type' : 'Create Transaction Type'}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-600 dark:text-slate-400">
                         {isEditMode ? 'Update the details of the transaction type.' : 'Fill in the details to create a new transaction type.'}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name">Name</Label>
-                            <Input id="name" className="col-span-3" value={data.name} onChange={(e) => setData('name', e.target.value)} />
-                            {errors.name && <p className="col-span-4 text-sm text-red-500">{errors.name}</p>}
+                            <Label htmlFor="name" className="text-slate-700 dark:text-slate-300">
+                                Name
+                            </Label>
+                            <Input
+                                id="name"
+                                className="col-span-3 rounded-md border border-slate-300 bg-white text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-0 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-600 dark:focus-visible:ring-blue-400/30"
+                                value={data.name}
+                                onChange={(e) => setData('name', e.target.value)}
+                            />
+                            {errors.name && <p className="col-span-4 text-sm text-red-600 dark:text-red-400">{errors.name}</p>}
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="description">Description</Label>
+                            <Label htmlFor="description" className="text-slate-700 dark:text-slate-300">
+                                Description
+                            </Label>
                             <Input
                                 id="description"
-                                className="col-span-3"
+                                className="col-span-3 rounded-md border border-slate-300 bg-white text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-0 focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-600 dark:focus-visible:ring-blue-400/30"
                                 value={data.description}
                                 onChange={(e) => setData('description', e.target.value)}
                             />
-                            {errors.description && <p className="col-span-4 text-sm text-red-500">{errors.description}</p>}
+                            {errors.description && <p className="col-span-4 text-sm text-red-600 dark:text-red-400">{errors.description}</p>}
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="submit" disabled={processing}>
+                    <DialogFooter className="border-t border-slate-200 pt-4 dark:border-slate-800">
+                        <Button
+                            type="submit"
+                            disabled={processing}
+                            className="focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:outline-none"
+                        >
                             {isEditMode ? 'Update' : 'Create'}
                         </Button>
-                        <Button type="button" variant="outline" onClick={onClose}>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onClose(false)}
+                            className="focus-visible:ring-2 focus-visible:ring-slate-500/30 focus-visible:outline-none"
+                        >
                             Cancel
                         </Button>
                     </DialogFooter>

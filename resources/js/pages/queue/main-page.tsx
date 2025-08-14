@@ -6,6 +6,7 @@ type QueueTicket = {
     id: number;
     number: string | number;
     transaction_type_id?: string;
+    transaction_type?: { name: string } | null;
     status?: 'waiting' | 'serving' | string;
     served_by?: string | number;
     teller_number?: string;
@@ -27,6 +28,58 @@ interface Props {
     boardData: BoardData;
 }
 
+// Lightweight, themed video slot used in the header corners.
+// Update VideoSlot to use a fixed responsive height so it doesn't push waiting cards off-screen.
+function VideoSlot({ src, emptyText = 'No video configured' }: { src: string | null; emptyText?: string }) {
+    // Detect and normalize YouTube URL to an embeddable src
+    const toYouTubeEmbed = (url: string): string | null => {
+        try {
+            const u = new URL(url);
+            const host = u.hostname.replace(/^www\./, '');
+            let id: string | null = null;
+            if (host === 'youtu.be') {
+                // https://youtu.be/<id>
+                id = u.pathname.split('/').filter(Boolean)[0] || null;
+            } else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+                // https://youtube.com/watch?v=<id> | /shorts/<id> | /embed/<id>
+                if (u.pathname.startsWith('/watch')) id = u.searchParams.get('v');
+                else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] || null;
+                else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || null;
+            }
+            return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=1&playsinline=1&rel=0` : null;
+        } catch {
+            return null;
+        }
+    };
+
+    const ytEmbed = src ? toYouTubeEmbed(src) : null;
+
+    return (
+        <div className="h-[37.5vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[37.5vh] lg:h-[42.5vh] xl:h-[47.5vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
+            <div className="h-full w-full">
+                {src ? (
+                    ytEmbed ? (
+                        <iframe
+                            className="h-full w-full"
+                            src={ytEmbed}
+                            title="Information"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                            allowFullScreen
+                            referrerPolicy="no-referrer-when-downgrade"
+                        />
+                    ) : (
+                        <video className="h-full w-full object-cover" src={src} controls playsInline muted />
+                    )
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">
+                        {emptyText}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function MainPage({ boardData }: Props) {
     const [servingTickets, setServingTickets] = useState<QueueTicket[]>(boardData.serving || []);
     const [waitingTickets, setWaitingTickets] = useState<QueueTicket[]>(boardData.waiting || []);
@@ -37,6 +90,15 @@ export default function MainPage({ boardData }: Props) {
     const [redirectError, setRedirectError] = useState<string | null>(null);
     const BOARD_ENDPOINT = '/queue/board-data';
 
+    // New: single video source via URL params (?video=..., falls back to rightVideo/leftVideo)
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
+    // Fit-to-screen: compute how many cards can be shown in each area.
+    const servingWrapRef = useRef<HTMLDivElement | null>(null);
+    const waitingWrapRef = useRef<HTMLDivElement | null>(null);
+    const [servingCapacity, setServingCapacity] = useState(4);
+    const [waitingCapacity, setWaitingCapacity] = useState(4);
+
     // Clock
     useEffect(() => {
         const id = window.setInterval(() => setNow(new Date()), 1000);
@@ -45,7 +107,6 @@ export default function MainPage({ boardData }: Props) {
 
     // Fetching logic is now consolidated and slightly simplified.
     const fetchBoard = async () => {
-       
         try {
             setLoading(true);
             let url: string;
@@ -90,39 +151,109 @@ export default function MainPage({ boardData }: Props) {
 
     // This effect now handles the initial fetch and sets up the polling interval.
     useEffect(() => {
-    fetchBoard();
-    const id = window.setInterval(fetchBoard, 5000);
-    intervalRef.current = id;
-    return () => {
-        if (intervalRef.current !== null) {
-            window.clearInterval(intervalRef.current);
-        }
-    };
-}, []); // remove redirectError from deps
+        fetchBoard();
+        const id = window.setInterval(fetchBoard, 5000);
+        intervalRef.current = id;
+        return () => {
+            if (intervalRef.current !== null) {
+                window.clearInterval(intervalRef.current);
+            }
+        };
+    }, []); // remove redirectError from deps
 
+    // Read video URL from query params once on mount
+    useEffect(() => {
+        const sp = new URLSearchParams(window.location.search);
+        setVideoUrl(sp.get('video') || sp.get('rightVideo') || sp.get('leftVideo') || null);
+    }, []);
+
+    // ResizeObserver to keep content within viewport (no scroll/overlap)
+    useEffect(() => {
+        const ro = new ResizeObserver(() => {
+            // Serving area (always 2 columns on the right)
+            if (servingWrapRef.current) {
+                const h = servingWrapRef.current.clientHeight;
+                const rowH = 200 + 20; // slightly tighter to fit more rows
+                const rows = Math.max(1, Math.floor((h + 20) / rowH));
+                setServingCapacity(rows * 2);
+            }
+            // Waiting area (left bottom)
+            if (waitingWrapRef.current) {
+                const el = waitingWrapRef.current;
+                const h = el.clientHeight;
+                const w = el.clientWidth;
+                const cols = w >= 640 ? 2 : 1; // sm breakpoint
+                const rowH = 56 + 8; // locked waiting card height (h-14) + gap
+                const rows = Math.max(1, Math.floor((h + 10) / rowH));
+                const capacity = rows * cols;
+                setWaitingCapacity(Math.min(2, capacity)); // max 2 cards
+            }
+        });
+        if (servingWrapRef.current) ro.observe(servingWrapRef.current);
+        if (waitingWrapRef.current) ro.observe(waitingWrapRef.current);
+        // Also observe body to react to viewport changes
+        ro.observe(document.body);
+        return () => ro.disconnect();
+    }, []);
+
+    // Group serving tickets by transaction type (right side; 2 columns)
+    function groupByType(list: QueueTicket[]): Array<[string, QueueTicket[]]> {
+        const map = new Map<string, QueueTicket[]>();
+        for (const t of list) {
+            // @ts-ignore API may attach transaction_type object
+            const key = t.transaction_type?.name || 'Other';
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(t);
+        }
+        return Array.from(map.entries());
+    }
+
+    // Slice grouped items to fit a total capacity (keeps order, fills groups top-down)
+    function sliceGroups(groups: Array<[string, QueueTicket[]]>, total: number): Array<[string, QueueTicket[]]> {
+        let remain = total;
+        const out: Array<[string, QueueTicket[]]> = [];
+        for (const [label, items] of groups) {
+            if (remain <= 0) break;
+            const take = Math.min(items.length, remain);
+            out.push([label, items.slice(0, take)]);
+            remain -= take;
+        }
+        return out;
+    }
+
+    // Apply capacities
+    const groupedServing = groupByType(servingTickets);
+    const groupedServingLimited = sliceGroups(groupedServing, servingCapacity);
+    const waitingLimited = waitingTickets.slice(0, waitingCapacity);
+    // Serving columns: left = "Guarantee Letter", right = "Cash Assistance"
+    const servingRows = Math.max(1, Math.floor(servingCapacity / 2));
+    const guaranteeAll = servingTickets.filter((t) => {
+        // @ts-ignore
+        return (t.transaction_type?.name || '').toLowerCase() === 'guarantee letter';
+    });
+    const cashAll = servingTickets.filter((t) => {
+        // @ts-ignore
+        return (t.transaction_type?.name || '').toLowerCase() === 'cash assistance';
+    });
+    const guaranteeLimited = guaranteeAll.slice(0, servingRows);
+    const cashLimited = cashAll.slice(0, servingRows);
 
     const skeletonCards = Array.from({ length: 4 });
 
     return (
         <>
             <Head title="Now Serving" />
-            <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+            <div className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
                 {/* Decorative radial glows (DSWD colors, light/dark) */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
                     <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
                     <div className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl dark:bg-red-600/15" />
                 </div>
 
-                {/* Header */}
+                {/* Header (compact toolbar) */}
                 <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
-                    <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
-                        <h1 className="bg-gradient-to-r from-blue-700 via-red-600 to-blue-700 bg-clip-text text-4xl font-extrabold tracking-[0.2em] text-transparent uppercase drop-shadow-sm md:text-6xl xl:text-7xl dark:from-blue-400 dark:via-red-400 dark:to-blue-400">
-                            Now Serving
-                        </h1>
-                        <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
-                            Please proceed to the indicated teller when your number appears
-                        </p>
-                        <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs md:text-sm">
+                    <div className="mx-auto flex max-w-7xl items-center justify-center px-4 py-2 md:justify-between md:px-6">
+                        <div className="flex flex-wrap items-center justify-center gap-4 text-xs md:text-sm">
                             <div className="rounded-full bg-slate-200/70 px-4 py-1 font-mono text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
                                 {now.toLocaleTimeString()}
                             </div>
@@ -150,9 +281,9 @@ export default function MainPage({ boardData }: Props) {
                 </header>
 
                 {/* Content */}
-                <main className="relative z-10 mx-auto flex w-full flex-1 flex-col px-4 pt-6 pb-12 md:px-8 md:pt-10">
+                <main className="relative z-10 mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden px-4 pt-3 pb-3 md:px-8 md:pt-5 md:pb-5">
                     {redirectError && (
-                        <div className="mx-auto mb-6 w-full max-w-7xl rounded-lg border border-yellow-500/30 bg-yellow-100/60 px-5 py-4 text-sm text-yellow-900 dark:border-amber-600/40 dark:bg-amber-900/30 dark:text-amber-200">
+                        <div className="mx-auto mb-4 w-full max-w-7xl rounded-lg border border-yellow-500/30 bg-yellow-100/60 px-5 py-3 text-sm text-yellow-900 dark:border-amber-600/40 dark:bg-amber-900/30 dark:text-amber-200">
                             <strong className="font-semibold">Data Load Warning:</strong> {redirectError}
                             <div className="mt-2 text-xs opacity-80">
                                 Fix: In routes/web.php, make sure the following route is NOT inside any auth middleware:
@@ -163,12 +294,90 @@ export default function MainPage({ boardData }: Props) {
                         </div>
                     )}
 
-                    <div className="mx-auto grid w-full max-w-7xl gap-8 lg:grid-cols-2">
-                        {/* Serving Column */}
-                        <section className="flex flex-col gap-5">
+                    {/* Left = Video (top) + Waiting (bottom); Right = Serving (2 cols, fixed types) */}
+                    <div className="mx-auto grid h-full w-full max-w-7xl gap-4 lg:grid-cols-12">
+                        {/* Left column */}
+                        <section className="flex min-h-0 flex-col gap-4 lg:col-span-7">
+                            {/* Video */}
+                            <div>
+                                <header className="mb-3 flex items-center justify-between">
+                                    <h2 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
+                                        <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
+                                            Department of Social Welfare and Development
+                                        </span>
+                                    </h2>
+                                </header>
+                                <VideoSlot src={videoUrl} emptyText="No video configured. Append ?video=<url> to the address." />
+                            </div>
+
+                            {/* Waiting (fills the rest) */}
+                            <div className="flex min-h-0 flex-1 flex-col gap-3">
+                                <header className="flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold tracking-wide text-slate-800 md:text-xl dark:text-slate-200">
+                                        <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
+                                            Please Wait
+                                        </span>
+                                    </h3>
+                                    <div className="rounded-full bg-slate-200/70 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
+                                        {waitingTickets.length} queued
+                                    </div>
+                                </header>
+                                <div ref={waitingWrapRef} className="min-h-0 flex-1">
+                                    <div className="grid h-full grid-cols-1 gap-2 sm:grid-cols-2">
+                                        {loading && waitingTickets.length === 0 && (
+                                            <>
+                                                {Array.from({ length: 2 }).map((_, i) => (
+                                                    <div
+                                                        key={`w-skel-${i}`}
+                                                        className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/40"
+                                                    >
+                                                        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-slate-800/40 dark:via-slate-800/10 dark:to-slate-900/40" />
+                                                        <div className="relative mb-6 h-8 w-24 rounded bg-slate-200 dark:bg-slate-700/40" />
+                                                        <div className="relative h-10 w-32 rounded bg-slate-200 dark:bg-slate-700/40" />
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
+                                        {!loading && waitingLimited.length === 0 && (
+                                            <div className="col-span-full flex h-full items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
+                                                No waiting tickets
+                                            </div>
+                                        )}
+                                        {waitingLimited.map((t) => (
+                                            <div
+                                                key={`waiting-${t.id}`}
+                                                className="group relative flex h-14 items-center justify-between gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white px-3 py-2 whitespace-nowrap shadow-sm ring-1 ring-slate-200/50 transition hover:shadow-md hover:ring-slate-300/70 md:h-16 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-slate-800/40 dark:hover:ring-slate-700/60"
+                                            >
+                                                {/* Left: Type chip */}
+                                                {t.transaction_type_id && (
+                                                    <span className="max-w-[36%] truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+                                                        {t.transaction_type?.name}
+                                                    </span>
+                                                )}
+                                                {/* Center: Number */}
+                                                <div className="flex-1 overflow-hidden text-center">
+                                                    <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 bg-clip-text text-4xl leading-none font-black tracking-tight text-transparent tabular-nums drop-shadow-sm dark:from-slate-200 dark:via-slate-300 dark:to-white">
+                                                        {t.number}
+                                                    </div>
+                                                </div>
+                                                {/* Right: Teller chip */}
+                                                {t.teller_number && (
+                                                    <div className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
+                                                        Cntr {t.teller_number}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Right column: Serving (unchanged layout) */}
+                        <section className="flex min-h-0 flex-col gap-3 lg:col-span-5">
                             <header className="flex items-center justify-between">
                                 <h2 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
-                                    <span className="bg-gradient-to-r from-blue-700 via-red-600 to-blue-700 bg-clip-text text-transparent dark:from-blue-400 dark:via-red-400 dark:to-blue-400">
+                                    <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-transparent dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">
                                         Now Serving
                                     </span>
                                 </h2>
@@ -177,129 +386,114 @@ export default function MainPage({ boardData }: Props) {
                                 </div>
                             </header>
 
-                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                {loading &&
-                                    servingTickets.length === 0 &&
-                                    skeletonCards.map((_, i) => (
-                                        <div
-                                            key={`s-skel-${i}`}
-                                            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/40"
-                                        >
-                                            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-slate-800/40 dark:via-slate-800/10 dark:to-slate-900/40" />
-                                            <div className="relative mb-8 h-10 w-36 rounded bg-slate-200 dark:bg-slate-700/40" />
-                                            <div className="relative h-24 w-44 rounded bg-slate-200 dark:bg-slate-700/40" />
-                                        </div>
-                                    ))}
-
-                                {!loading && servingTickets.length === 0 && (
-                                    <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
+                            <div ref={servingWrapRef} className="min-h-0 flex-1 overflow-hidden">
+                                {!loading && guaranteeLimited.length === 0 && cashLimited.length === 0 ? (
+                                    <div className="flex h-full items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
                                         No tickets are being served
                                     </div>
-                                )}
-
-                                {servingTickets.map((t) => {
-                                    const teller = t.teller_number ?? '—';
-                                    return (
-                                        <div
-                                            key={`serving-${t.id}`}
-                                            className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-200/60 transition hover:shadow-2xl hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-gradient-to-br dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 dark:ring-slate-800/50 dark:hover:ring-slate-700/70"
-                                        >
-                                            {/* Brand hover glows */}
-                                            <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
-                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
-                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
-                                            </div>
-                                            <div className="relative mb-5 flex items-center justify-between">
-                                                <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
-                                                    Serving
+                                ) : (
+                                    <div className="grid h-full grid-cols-2 gap-4">
+                                        {/* Left column: Guarantee Letter */}
+                                        <div className="flex min-h-0 flex-col gap-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                                                    Guarantee Letter
                                                 </span>
-                                                <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
-                                                    Teller {teller}
-                                                </span>
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">{guaranteeAll.length}</span>
                                             </div>
-                                            <div className="relative flex flex-col items-center gap-4">
-                                                <div className="bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-600 bg-clip-text text-7xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-8xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
-                                                    {t.number}
-                                                </div>
-                                                {t.transaction_type && (
-                                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-700 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200">
-                                                        {t.transaction_type?.name}
-                                                    </div>
-                                                )}
+                                            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
+                                                {guaranteeLimited.map((t) => {
+                                                    const teller = t.teller_number ?? '—';
+                                                    return (
+                                                        <div
+                                                            key={`serving-gl-${t.id}`}
+                                                            className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-200/60 transition hover:shadow-2xl hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-gradient-to-br dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 dark:ring-slate-800/50 dark:hover:ring-slate-700/70"
+                                                        >
+                                                            {/* Brand hover glows */}
+                                                            <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
+                                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
+                                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
+                                                            </div>
+                                                            <div className="relative mb-5 flex items-center justify-between">
+                                                                <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
+                                                                    Serving
+                                                                </span>
+                                                                <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
+                                                                    Teller {teller}
+                                                                </span>
+                                                            </div>
+                                                            <div className="relative flex flex-col items-center gap-4">
+                                                                <div className="bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-600 bg-clip-text text-6xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-7xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
+                                                                    {t.number}
+                                                                </div>
+                                                                {/* @ts-ignore */}
+                                                                {t.transaction_type && (
+                                                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-700 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200">
+                                                                        {/* @ts-ignore */}
+                                                                        {t.transaction_type?.name}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-
-                        {/* Waiting Column */}
-                        <section className="flex flex-col gap-5">
-                            <header className="flex items-center justify-between">
-                                <h2 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
-                                    <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
-                                        Please Wait
-                                    </span>
-                                </h2>
-                                <div className="rounded-full bg-slate-200/70 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
-                                    {waitingTickets.length} queued
-                                </div>
-                            </header>
-
-                            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                                {loading &&
-                                    waitingTickets.length === 0 &&
-                                    skeletonCards.map((_, i) => (
-                                        <div
-                                            key={`w-skel-${i}`}
-                                            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/40"
-                                        >
-                                            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-slate-800/40 dark:via-slate-800/10 dark:to-slate-900/40" />
-                                            <div className="relative mb-6 h-8 w-24 rounded bg-slate-200 dark:bg-slate-700/40" />
-                                            <div className="relative h-10 w-32 rounded bg-slate-200 dark:bg-slate-700/40" />
+                                        {/* Right column: Cash Assistance */}
+                                        <div className="flex min-h-0 flex-col gap-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                                                    Cash Assistance
+                                                </span>
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">{cashAll.length}</span>
+                                            </div>
+                                            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
+                                                {cashLimited.map((t) => {
+                                                    const teller = t.teller_number ?? '—';
+                                                    return (
+                                                        <div
+                                                            key={`serving-ca-${t.id}`}
+                                                            className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-200/60 transition hover:shadow-2xl hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-gradient-to-br dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 dark:ring-slate-800/50 dark:hover:ring-slate-700/70"
+                                                        >
+                                                            {/* Brand hover glows */}
+                                                            <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
+                                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
+                                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
+                                                            </div>
+                                                            <div className="relative mb-5 flex items-center justify-between">
+                                                                <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
+                                                                    Serving
+                                                                </span>
+                                                                <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
+                                                                    Teller {teller}
+                                                                </span>
+                                                            </div>
+                                                            <div className="relative flex flex-col items-center gap-4">
+                                                                <div className="bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-600 bg-clip-text text-6xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-7xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
+                                                                    {t.number}
+                                                                </div>
+                                                                {/* @ts-ignore */}
+                                                                {t.transaction_type && (
+                                                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-700 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200">
+                                                                        {/* @ts-ignore */}
+                                                                        {t.transaction_type?.name}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    ))}
-
-                                {!loading && waitingTickets.length === 0 && (
-                                    <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
-                                        No waiting tickets
                                     </div>
                                 )}
-
-                                {waitingTickets.map((t) => (
-                                    <div
-                                        key={`waiting-${t.id}`}
-                                        className="group relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-200/50 transition hover:shadow-md hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-slate-800/40 dark:hover:ring-slate-700/60"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold tracking-wider text-slate-600 uppercase dark:bg-slate-700/40 dark:text-slate-300">
-                                                Waiting
-                                            </span>
-                                            {t.transaction_type_id && (
-                                                <span className="truncate rounded-full bg-slate-100 px-3 py-1 text-[10px] font-medium tracking-wide text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
-                                                    {t.transaction_type?.name}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-end justify-between">
-                                            <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 bg-clip-text text-5xl font-black tracking-tight text-transparent drop-shadow-sm dark:from-slate-200 dark:via-slate-300 dark:to-white">
-                                                {t.number}
-                                            </div>
-                                            {(t.teller) && (
-                                                <div className="self-start rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-medium tracking-wide text-slate-600 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
-                                                    Cntr {t.teller}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
                             </div>
                         </section>
                     </div>
                 </main>
 
                 {/* Footer */}
-                <footer className="relative z-10 mt-auto w-full border-t border-slate-200/70 bg-white/80 py-4 text-center text-xs font-medium tracking-wide text-slate-600 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
+                <footer className="relative z-10 mt-auto w-full shrink-0 border-t border-slate-200/70 bg-white/80 py-3 text-center text-xs font-medium tracking-wide text-slate-600 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
                     DSWD Queuing System • Real-time Serving Board
                 </footer>
             </div>
