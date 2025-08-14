@@ -18,7 +18,7 @@ use App\Http\Controllers\QueueBoardController;
 
 // Redirect to login by default
 Route::get('/', function () {
-    return redirect()->route('login');
+    return redirect()->route('queue.main');
 })->name('home');
 
 // Use the custom AuthControllerDjango for login
@@ -130,8 +130,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/queue/teller', [QueueController::class, 'tellerPage'])->name('queue.teller');
     Route::post('/teller/assign', [QueueController::class, 'assignTellerNumber'])->name('queue.teller.assign');
     Route::post('/queue/teller/grab', [QueueController::class, 'grabNumber'])->name('queue.teller.grab');
-   Route::post('/queue/teller/next', [QueueController::class, 'nextNumber'])
-    ->name('queue.teller.next');
+    Route::post('/queue/teller/next', [QueueController::class, 'nextNumber'])
+        ->name('queue.teller.next');
 });
 
 Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');

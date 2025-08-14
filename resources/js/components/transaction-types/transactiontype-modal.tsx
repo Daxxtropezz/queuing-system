@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
-import { useForm } from '@inertiajs/react';
-import Swal from 'sweetalert2';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useForm } from '@inertiajs/react';
+import { useEffect } from 'react';
+import Swal from 'sweetalert2';
 
 export default function TransactionTypeModal({ isModalVisible, onClose, type }) {
     const isEditMode = !!type;
@@ -66,24 +66,15 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
                 <DialogHeader>
                     <DialogTitle>{isEditMode ? 'Edit Transaction Type' : 'Create Transaction Type'}</DialogTitle>
                     <DialogDescription>
-                        {isEditMode
-                            ? 'Update the details of the transaction type.'
-                            : 'Fill in the details to create a new transaction type.'}
+                        {isEditMode ? 'Update the details of the transaction type.' : 'Fill in the details to create a new transaction type.'}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name">Name</Label>
-                            <Input
-                                id="name"
-                                className="col-span-3"
-                                value={data.name}
-                                onChange={(e) => setData('name', e.target.value)}
-                            />
-                            {errors.name && (
-                                <p className="col-span-4 text-red-500 text-sm">{errors.name}</p>
-                            )}
+                            <Input id="name" className="col-span-3" value={data.name} onChange={(e) => setData('name', e.target.value)} />
+                            {errors.name && <p className="col-span-4 text-sm text-red-500">{errors.name}</p>}
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="description">Description</Label>
@@ -93,9 +84,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
                                 value={data.description}
                                 onChange={(e) => setData('description', e.target.value)}
                             />
-                            {errors.description && (
-                                <p className="col-span-4 text-red-500 text-sm">{errors.description}</p>
-                            )}
+                            {errors.description && <p className="col-span-4 text-sm text-red-500">{errors.description}</p>}
                         </div>
                     </div>
                     <DialogFooter>

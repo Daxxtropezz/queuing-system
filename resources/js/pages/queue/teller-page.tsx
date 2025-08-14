@@ -1,156 +1,176 @@
-import { useForm, Head } from "@inertiajs/react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import AppLayout from "@/layouts/app-layout";
-import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import AppLayout from '@/layouts/app-layout';
+import { Head, useForm } from '@inertiajs/react';
+import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 type TellerPageProps = {
-  current?: any;
-  userTellerNumber?: string;
+    current?: any;
+    userTellerNumber?: string;
 };
 
 export default function TellerPage({ current, userTellerNumber }: TellerPageProps) {
- const tellerOptions = [
-  { value: "1", label: "Teller 1" },
-  { value: "2", label: "Teller 2" },
-  { value: "3", label: "Teller 3" },
-];
+    const tellerOptions = [
+        { value: '1', label: 'Teller 1' },
+        { value: '2', label: 'Teller 2' },
+        { value: '3', label: 'Teller 3' },
+    ];
 
-// Single useForm
-const form = useForm({
-  teller_number: userTellerNumber ?? tellerOptions[0].value
-});
+    // Single useForm
+    const form = useForm({
+        teller_number: userTellerNumber ?? tellerOptions[0].value,
+    });
+    const { processing } = form;
 
-const { processing } = form;
+    // Keep state synced
+    const [selectedTeller, setSelectedTeller] = useState<string>(userTellerNumber ?? tellerOptions[0].value);
 
-// Keep state synced
-const [selectedTeller, setSelectedTeller] = useState<string>(
-  userTellerNumber ?? tellerOptions[0].value
-);
+    // Live clock like main-page
+    const [now, setNow] = useState<Date>(new Date());
+    useEffect(() => {
+        const id = window.setInterval(() => setNow(new Date()), 1000);
+        return () => window.clearInterval(id);
+    }, []);
 
-function handleAssignTeller() {
-  form.teller_number = selectedTeller;
-  form.post(route("queue.teller.assign"), { preserveState: true });
-}
+    function handleAssignTeller() {
+        form.teller_number = selectedTeller;
+        form.post(route('queue.teller.assign'), { preserveState: true });
+    }
 
-function handleGrab() {
-  form.post(route("queue.teller.grab"));
-}
+    function handleGrab() {
+        form.post(route('queue.teller.grab'));
+    }
 
-function handleNext() {
-  form.post(route("queue.teller.next"));
-}
+    function handleNext() {
+        form.post(route('queue.teller.next'));
+    }
 
+    const breadcrumbs = [{ title: 'Teller', href: '/queue/teller' }];
 
-  const breadcrumbs = [
-    {
-      title: "Teller",
-      href: "/queue/teller",
-    },
-  ];
-
-  return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Teller" />
-      <div className="p-6 flex justify-center">
-        <Card className="w-full max-w-lg shadow-xl rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-gray-50">
-          <CardHeader className="border-b pb-4">
-            <CardTitle className="text-xl font-bold text-gray-800">
-              Teller Panel
-            </CardTitle>
-            {userTellerNumber && ( // Use userTellerNumber from props
-              <p className="text-sm text-gray-500 mt-1">
-                Currently logged in as Teller #<span className="font-semibold">{userTellerNumber}</span>
-              </p>
-            )}
-          </CardHeader>
-          <CardContent className="pt-6">
-            {!userTellerNumber ? ( // Check for the prop, not the local state
-              <div className="flex flex-col items-center space-y-4 animate-fadeIn">
-                <p className="text-gray-500 text-sm">
-                  Please select your teller number to begin.
-                </p>
-                <Select onValueChange={setSelectedTeller} value={selectedTeller ?? ""}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a teller number" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Teller Numbers</SelectLabel>
-                      {tellerOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <Button
-                 onClick={handleAssignTeller}
-  disabled={!selectedTeller || processing}
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 ease-in-out rounded-lg shadow-lg"
-                >
-                  {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Assign Teller Number
-                </Button>
-              </div>
-            ) : (
-              current ? (
-                <div className="flex flex-col items-center space-y-4 animate-fadeIn">
-                  <div className="text-6xl font-extrabold text-gray-900 tracking-wider">
-                    {current.number}
-                  </div>
-                  <div className="text-lg text-gray-600 font-medium">
-                    {current.transaction_type?.name}
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm"
-                  >
-                    Now Serving at Teller {userTellerNumber}
-                  </Badge>
-                  <Button
-                    onClick={handleNext}
-                    disabled={processing}
-                    size="lg"
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 ease-in-out rounded-lg shadow-lg"
-                  >
-                    {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Next
-                  </Button>
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Teller" />
+            <div className="relative min-h-screen bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                    <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
+                    <div className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl dark:bg-red-600/15" />
                 </div>
-              ) : (
-                <div className="flex flex-col items-center space-y-4 animate-fadeIn">
-                  <p className="text-gray-500 text-sm">
-                    No current queue number assigned
-                  </p>
-                  <Button
-                    onClick={handleGrab}
-                    disabled={processing}
-                    size="lg"
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 ease-in-out rounded-lg shadow-lg"
-                  >
-                    {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Grab Next Number
-                  </Button>
-                </div>
-              )
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
-  );
+
+                <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
+                    <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
+                        <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
+                            Teller Panel
+                        </h1>
+                        <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm">
+                            <div className="rounded-full bg-slate-200/70 px-4 py-1 font-mono text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                                {now.toLocaleTimeString()}
+                            </div>
+                            {userTellerNumber ? (
+                                <div className="rounded-full bg-blue-100 px-4 py-1 font-semibold tracking-wide text-blue-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                                    Teller #{userTellerNumber}
+                                </div>
+                            ) : (
+                                <div className="rounded-full bg-rose-100 px-4 py-1 font-semibold tracking-wide text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+                                    Not Assigned
+                                </div>
+                            )}
+                            <div
+                                className={[
+                                    'rounded-full px-4 py-1',
+                                    processing
+                                        ? 'bg-yellow-200/70 text-yellow-800 dark:bg-amber-500/10 dark:text-amber-300'
+                                        : 'bg-emerald-200/70 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-300',
+                                ].join(' ')}
+                            >
+                                <span
+                                    className={[
+                                        'mr-2 inline-block h-2 w-2 rounded-full align-middle',
+                                        processing ? 'animate-pulse bg-yellow-500 dark:bg-amber-400' : 'bg-emerald-600 dark:bg-emerald-400',
+                                    ].join(' ')}
+                                />
+                                {processing ? 'Working…' : 'Ready'}
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <main className="relative z-10 mx-auto max-w-3xl px-4 py-8 md:px-6">
+                    <Card className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70">
+                        <CardHeader className="border-b border-slate-200 pb-4 dark:border-slate-800/70">
+                            <CardTitle className="bg-gradient-to-br from-slate-800 to-slate-500 bg-clip-text text-xl font-semibold tracking-wide text-transparent dark:from-slate-200 dark:to-slate-400">
+                                {userTellerNumber ? 'Session' : 'Get Started'}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            {!userTellerNumber ? (
+                                <div className="flex flex-col items-center gap-5">
+                                    <p className="text-sm text-slate-400">Please select your teller number to begin.</p>
+                                    <Select onValueChange={setSelectedTeller} value={selectedTeller ?? ''}>
+                                        <SelectTrigger className="w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                                            <SelectValue placeholder="Select a teller number" />
+                                        </SelectTrigger>
+                                        <SelectContent className="border-slate-200 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                                            <SelectGroup>
+                                                <SelectLabel className="text-slate-600 dark:text-slate-400">Teller Numbers</SelectLabel>
+                                                {tellerOptions.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value} className="focus:bg-slate-800">
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                    <Button
+                                        onClick={handleAssignTeller}
+                                        disabled={!selectedTeller || processing}
+                                        size="lg"
+                                        className="w-full rounded-xl bg-indigo-600 text-slate-50 hover:bg-indigo-500 focus:ring-4 focus:ring-indigo-500/30"
+                                    >
+                                        {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Assign Teller Number
+                                    </Button>
+                                </div>
+                            ) : current ? (
+                                <div className="flex flex-col items-center gap-6">
+                                    <div className="bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-6xl font-extrabold tracking-wider text-transparent tabular-nums drop-shadow md:text-7xl">
+                                        {current.number}
+                                    </div>
+                                    <div className="rounded-xl border border-slate-700/60 bg-slate-800/70 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-200">
+                                        {current.transaction_type?.name}
+                                    </div>
+                                    <div className="rounded-full bg-indigo-500/15 px-4 py-1 text-xs font-semibold tracking-wider text-indigo-300 uppercase">
+                                        Now Serving at Teller {userTellerNumber}
+                                    </div>
+                                    <Button
+                                        onClick={handleNext}
+                                        disabled={processing}
+                                        size="lg"
+                                        className="w-full rounded-xl bg-amber-400 text-slate-900 hover:bg-amber-300 focus:ring-4 focus:ring-amber-400/30"
+                                    >
+                                        {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Next
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-5">
+                                    <p className="text-sm text-slate-400">No current queue number assigned.</p>
+                                    <Button
+                                        onClick={handleGrab}
+                                        disabled={processing}
+                                        size="lg"
+                                        className="w-full rounded-xl bg-emerald-500 text-slate-900 hover:bg-emerald-400 focus:ring-4 focus:ring-emerald-400/30"
+                                    >
+                                        {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Grab Next Number
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </main>
+            </div>
+        </AppLayout>
+    );
 }
