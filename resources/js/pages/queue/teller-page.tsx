@@ -35,7 +35,7 @@ export default function TellerPage({ current, userTellerNumber }: TellerPageProp
     }, []);
 
     function handleAssignTeller() {
-        form.teller_number = selectedTeller;
+        form.setData('teller_number', selectedTeller);
         form.post(route('queue.teller.assign'), { preserveState: true });
     }
 
@@ -107,7 +107,12 @@ export default function TellerPage({ current, userTellerNumber }: TellerPageProp
                             {!userTellerNumber ? (
                                 <div className="flex flex-col items-center gap-5">
                                     <p className="text-sm text-slate-400">Please select your teller number to begin.</p>
-                                    <Select onValueChange={setSelectedTeller} value={selectedTeller ?? ''}>
+                                    <Select
+                                        onValueChange={(value) => {
+                                            setSelectedTeller(value);
+                                            form.setData('teller_number', value);
+                                        }}
+                                        value={selectedTeller ?? ''}>
                                         <SelectTrigger className="w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                             <SelectValue placeholder="Select a teller number" />
                                         </SelectTrigger>

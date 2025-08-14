@@ -25,9 +25,25 @@ class QueueController extends Controller
             ->limit(200)
             ->get();
 
+        $data = QueueTicket::with('transactionType')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_number')
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => $ticket->transactionType->name ?? '',
+                    'status' => $ticket->status,
+                    'served_by' => $ticket->served_by,
+                    'teller_number' => $ticket->teller_number,
+                ];
+            });
+
+
         $boardData = [
             'serving' => $serving,
             'waiting' => $waiting,
+            'data' => $data,
             'generated_at' => now()->toIso8601String(),
         ];
 
@@ -94,7 +110,7 @@ class QueueController extends Controller
     // New method to handle assigning a teller number to a user
     public function assignTellerNumber(Request $request)
     {
-        //    $data = $request->json()->all();
+        // $data = $request->all(); // <-- Change this line
         // dd($data);
 
         $user = $request->user();
@@ -104,8 +120,6 @@ class QueueController extends Controller
 
         // Update the authenticated user's teller number
         $user->update(['teller_number' => $request->teller_number]);
-
-
 
 
         // Redirect back to the teller page with the updated state
