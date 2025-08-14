@@ -55,7 +55,7 @@ function VideoSlot({ src, emptyText = 'No video configured' }: { src: string | n
     const ytEmbed = src ? toYouTubeEmbed(src) : null;
 
     return (
-        <div className="h-[32.5vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[37.5vh] lg:h-[42.5vh] xl:h-[47.5vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
+        <div className="h-[37.5vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[37.5vh] lg:h-[42.5vh] xl:h-[47.5vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
             <div className="h-full w-full">
                 {src ? (
                     ytEmbed ? (
