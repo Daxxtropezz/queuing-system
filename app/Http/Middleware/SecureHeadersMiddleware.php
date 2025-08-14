@@ -16,9 +16,13 @@ class SecureHeadersMiddleware
         $response->headers->remove('X-Powered-By');
         $response->headers->remove('Server');
 
-        // Detect dev mode (Laravel env OR common local hosts)
+        // Detect dev mode (Laravel env OR common local/LAN hosts)
+        $host = $request->getHost();
         $isDev = app()->environment('local', 'development')
-            || preg_match('/^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/', $request->getHost());
+            || (bool) preg_match(
+                '/^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})$/',
+                $host
+            );
 
         // Common CSP directives for both environments
         $csp = [
@@ -30,10 +34,10 @@ class SecureHeadersMiddleware
         ];
 
         if ($isDev) {
-            // Wildcard everything in dev to avoid host/IP CSP issues
+            // Relaxed dev CSP to allow Vite/HMR over LAN
             $csp = array_merge($csp, [
-                "script-src * 'unsafe-inline' data: blob:",
-                "script-src-elem * 'unsafe-inline' data: blob:",
+                "script-src * 'unsafe-inline' 'unsafe-eval' data: blob:",
+                "script-src-elem * 'unsafe-inline' 'unsafe-eval' data: blob:",
                 "style-src * 'unsafe-inline' data: blob:",
                 "font-src * data: blob:",
                 "img-src * data: blob:",
@@ -67,10 +71,9 @@ class SecureHeadersMiddleware
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
         }
 
-        // Use report-only mode in development for easier debugging
-        $header = app()->environment('production')
-            ? 'Content-Security-Policy'
-            : 'Content-Security-Policy';
+        // Enforce CSP only when NOT in dev; otherwise send Report-Only
+        $enforceCsp = !$isDev && app()->environment('production');
+        $header = $enforceCsp ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only';
 
         $response->headers->set($header, implode('; ', $csp));
 
