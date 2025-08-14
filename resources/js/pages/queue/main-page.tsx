@@ -45,7 +45,6 @@ export default function MainPage({ boardData }: Props) {
 
     // Fetching logic is now consolidated and slightly simplified.
     const fetchBoard = async () => {
-       
         try {
             setLoading(true);
             let url: string;
@@ -90,16 +89,15 @@ export default function MainPage({ boardData }: Props) {
 
     // This effect now handles the initial fetch and sets up the polling interval.
     useEffect(() => {
-    fetchBoard();
-    const id = window.setInterval(fetchBoard, 5000);
-    intervalRef.current = id;
-    return () => {
-        if (intervalRef.current !== null) {
-            window.clearInterval(intervalRef.current);
-        }
-    };
-}, []); // remove redirectError from deps
-
+        fetchBoard();
+        const id = window.setInterval(fetchBoard, 5000);
+        intervalRef.current = id;
+        return () => {
+            if (intervalRef.current !== null) {
+                window.clearInterval(intervalRef.current);
+            }
+        };
+    }, []); // remove redirectError from deps
 
     const skeletonCards = Array.from({ length: 4 });
 
@@ -116,7 +114,7 @@ export default function MainPage({ boardData }: Props) {
                 {/* Header */}
                 <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
                     <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
-                        <h1 className="bg-gradient-to-r from-blue-700 via-red-600 to-blue-700 bg-clip-text text-4xl font-extrabold tracking-[0.2em] text-transparent uppercase drop-shadow-sm md:text-6xl xl:text-7xl dark:from-blue-400 dark:via-red-400 dark:to-blue-400">
+                        <h1 className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-4xl font-extrabold tracking-[0.2em] text-transparent uppercase drop-shadow-sm md:text-6xl xl:text-7xl dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">
                             Now Serving
                         </h1>
                         <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
@@ -168,7 +166,7 @@ export default function MainPage({ boardData }: Props) {
                         <section className="flex flex-col gap-5">
                             <header className="flex items-center justify-between">
                                 <h2 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
-                                    <span className="bg-gradient-to-r from-blue-700 via-red-600 to-blue-700 bg-clip-text text-transparent dark:from-blue-400 dark:via-red-400 dark:to-blue-400">
+                                    <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-transparent dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">
                                         Now Serving
                                     </span>
                                 </h2>
@@ -285,7 +283,7 @@ export default function MainPage({ boardData }: Props) {
                                             <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 bg-clip-text text-5xl font-black tracking-tight text-transparent drop-shadow-sm dark:from-slate-200 dark:via-slate-300 dark:to-white">
                                                 {t.number}
                                             </div>
-                                            {(t.teller) && (
+                                            {t.teller && (
                                                 <div className="self-start rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-medium tracking-wide text-slate-600 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
                                                     Cntr {t.teller}
                                                 </div>
