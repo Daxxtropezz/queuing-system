@@ -1,4 +1,4 @@
-# Base-Template
+# queuing-system
 
 A **Gender-Based Violence Information System** built with **Laravel 12** and **React (TypeScript)** using **shadcn/ui**. This system is designed for sensitive and secure data management related to GBV cases, built for performance and clarity.
 
@@ -14,7 +14,7 @@ A **Gender-Based Violence Information System** built with **Laravel 12** and **R
 ## 📁 Project Structure
 
 ```
-base-template/
+queuing-system/
 ├── app/
 │   ├── Console/
 │   ├── Exceptions/

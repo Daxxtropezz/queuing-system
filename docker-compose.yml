@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: base-template-app
+    container_name: queuing-app
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:

@@ -42,8 +42,8 @@ Ensure your environment is aligned with the following:
 1. **Clone the repository**
 
     ```bash
-    git clone https://github.com/your-org/base-template.git
-    cd base-template
+    git clone https://github.com/your-org/queuing-system.git
+    cd queuing-system
     ```
 
 2. **Install dependencies**

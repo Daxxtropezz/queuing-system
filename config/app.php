@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'base-template'),
+    'name' => env('APP_NAME', 'queuing-system'),
 
     /*
     |--------------------------------------------------------------------------
