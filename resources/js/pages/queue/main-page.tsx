@@ -6,6 +6,7 @@ type QueueTicket = {
     id: number;
     number: string | number;
     transaction_type_id?: string;
+    transaction_type?: { name: string } | null;
     status?: 'waiting' | 'serving' | string;
     served_by?: string | number;
     teller_number?: string;
@@ -54,7 +55,7 @@ function VideoSlot({ src, emptyText = 'No video configured' }: { src: string | n
     const ytEmbed = src ? toYouTubeEmbed(src) : null;
 
     return (
-        <div className="h-[26vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[30vh] lg:h-[34vh] xl:h-[38vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
+        <div className="h-[32.5vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[37.5vh] lg:h-[42.5vh] xl:h-[47.5vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
             <div className="h-full w-full">
                 {src ? (
                     ytEmbed ? (
@@ -181,11 +182,11 @@ export default function MainPage({ boardData }: Props) {
                 const el = waitingWrapRef.current;
                 const h = el.clientHeight;
                 const w = el.clientWidth;
-                const cols = w >= 640 ? 2 : 1; // sm breakpoint heuristic
-                const rowH = 84 + 10; // compact waiting card height + tight gap
+                const cols = w >= 640 ? 2 : 1; // sm breakpoint
+                const rowH = 56 + 8; // locked waiting card height (h-14) + gap
                 const rows = Math.max(1, Math.floor((h + 10) / rowH));
-                // Guarantee at least 3 visible cards if available
-                setWaitingCapacity(Math.max(3, rows * cols));
+                const capacity = rows * cols;
+                setWaitingCapacity(Math.min(2, capacity)); // max 2 cards
             }
         });
         if (servingWrapRef.current) ro.observe(servingWrapRef.current);
@@ -345,7 +346,7 @@ export default function MainPage({ boardData }: Props) {
                                         {waitingLimited.map((t) => (
                                             <div
                                                 key={`waiting-${t.id}`}
-                                                className="group relative flex items-center justify-between gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white px-3 py-2 whitespace-nowrap shadow-sm ring-1 ring-slate-200/50 transition hover:shadow-md hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-slate-800/40 dark:hover:ring-slate-700/60"
+                                                className="group relative flex h-14 items-center justify-between gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white px-3 py-2 whitespace-nowrap shadow-sm ring-1 ring-slate-200/50 transition hover:shadow-md hover:ring-slate-300/70 md:h-16 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-slate-800/40 dark:hover:ring-slate-700/60"
                                             >
                                                 {/* Left: Type chip */}
                                                 {t.transaction_type_id && (
@@ -360,9 +361,9 @@ export default function MainPage({ boardData }: Props) {
                                                     </div>
                                                 </div>
                                                 {/* Right: Teller chip */}
-                                                {t.teller && (
+                                                {t.teller_number && (
                                                     <div className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
-                                                        Cntr {t.teller}
+                                                        Cntr {t.teller_number}
                                                     </div>
                                                 )}
                                             </div>

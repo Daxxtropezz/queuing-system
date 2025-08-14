@@ -6,7 +6,14 @@ import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 import Swal from 'sweetalert2';
 
-export default function TransactionTypeModal({ isModalVisible, onClose, type }) {
+type TxType = { id: number; name: string; description?: string | null };
+type ModalProps = {
+    isModalVisible: boolean;
+    onClose: (open: boolean) => void;
+    type?: TxType | null;
+};
+
+export default function TransactionTypeModal({ isModalVisible, onClose, type }: ModalProps) {
     const isEditMode = !!type;
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
@@ -25,10 +32,10 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
         }
     }, [isModalVisible, type]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (isEditMode) {
-            put(route('transaction-types.update', type.id), {
+            put(route('transaction-types.update', type!.id), {
                 onSuccess: () => {
                     Swal.fire({
                         title: 'Updated!',
@@ -39,7 +46,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
                         timer: 3000,
                         showConfirmButton: false,
                     });
-                    onClose();
+                    onClose(false);
                 },
             });
         } else {
@@ -54,7 +61,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
                         timer: 3000,
                         showConfirmButton: false,
                     });
-                    onClose();
+                    onClose(false);
                 },
             });
         }
@@ -109,7 +116,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }) 
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={onClose}
+                            onClick={() => onClose(false)}
                             className="focus-visible:ring-2 focus-visible:ring-slate-500/30 focus-visible:outline-none"
                         >
                             Cancel
