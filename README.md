@@ -128,6 +128,13 @@ php artisan serve
 npm run dev
 ```
 
+## 🌐 Access over LAN
+
+- Start dev: `npm start` (this binds PHP on 0.0.0.0:1620 and Vite on 0.0.0.0:5173)
+- Open from other devices: `http://<your-lan-ip>:1620/queue`
+- The page loads assets from Vite on port 5173. If it times out, allow TCP 5173 on Windows Firewall (the start script tries to add Private rules for 1620/5173).
+- If you still can’t reach 5173, verify your LAN IP isn’t from a VPN/virtual adapter and both devices are on the same subnet.
+
 ## ⚙️ Scripts
 
 | Command               | Description                              |
