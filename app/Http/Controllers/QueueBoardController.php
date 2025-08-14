@@ -22,10 +22,25 @@ class QueueBoardController extends Controller
             ->limit(200)
             ->get();
 
+             $data = QueueTicket::with('transactionType')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_number')
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => $ticket->transactionType->name ?? '',
+                    'status' => $ticket->status,
+                    'served_by' => $ticket->served_by,
+                    'teller_number' => $ticket->teller_number,
+                ];
+            });
+
         return response()
             ->json([
                 'serving' => $serving,
                 'waiting' => $waiting,
+                'data' => $data,
                 'generated_at' => now()->toIso8601String(),
             ])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')

@@ -9,7 +9,6 @@ type QueueTicket = {
     status?: 'waiting' | 'serving' | string;
     served_by?: string | number;
     teller_number?: string;
-    counter?: string | number;
     updated_at?: string;
     created_at?: string;
 };
@@ -121,7 +120,7 @@ export default function MainPage({ boardData }: Props) {
                             Now Serving
                         </h1>
                         <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
-                            Please proceed to the indicated counter when your number appears
+                            Please proceed to the indicated teller when your number appears
                         </p>
                         <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs md:text-sm">
                             <div className="rounded-full bg-slate-200/70 px-4 py-1 font-mono text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
@@ -199,7 +198,7 @@ export default function MainPage({ boardData }: Props) {
                                 )}
 
                                 {servingTickets.map((t) => {
-                                    const counter = t.teller_number ?? t.counter ?? '—';
+                                    const teller = t.teller_number ?? '—';
                                     return (
                                         <div
                                             key={`serving-${t.id}`}
@@ -215,7 +214,7 @@ export default function MainPage({ boardData }: Props) {
                                                     Serving
                                                 </span>
                                                 <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
-                                                    Counter {counter}
+                                                    Teller {teller}
                                                 </span>
                                             </div>
                                             <div className="relative flex flex-col items-center gap-4">
@@ -286,9 +285,9 @@ export default function MainPage({ boardData }: Props) {
                                             <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 bg-clip-text text-5xl font-black tracking-tight text-transparent drop-shadow-sm dark:from-slate-200 dark:via-slate-300 dark:to-white">
                                                 {t.number}
                                             </div>
-                                            {(t.teller || t.counter) && (
+                                            {(t.teller) && (
                                                 <div className="self-start rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-medium tracking-wide text-slate-600 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
-                                                    Cntr {t.teller ?? t.counter}
+                                                    Cntr {t.teller}
                                                 </div>
                                             )}
                                         </div>
