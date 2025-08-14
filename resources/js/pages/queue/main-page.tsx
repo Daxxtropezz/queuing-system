@@ -46,10 +46,7 @@ export default function MainPage({ boardData }: Props) {
 
     // Fetching logic is now consolidated and slightly simplified.
     const fetchBoard = async () => {
-        if (redirectError) {
-            return;
-        }
-
+       
         try {
             setLoading(true);
             let url: string;
@@ -94,18 +91,16 @@ export default function MainPage({ boardData }: Props) {
 
     // This effect now handles the initial fetch and sets up the polling interval.
     useEffect(() => {
-        fetchBoard();
+    fetchBoard();
+    const id = window.setInterval(fetchBoard, 5000);
+    intervalRef.current = id;
+    return () => {
+        if (intervalRef.current !== null) {
+            window.clearInterval(intervalRef.current);
+        }
+    };
+}, []); // remove redirectError from deps
 
-        // Use a more modern and type-safe approach for setInterval.
-        const id = window.setInterval(fetchBoard, 5000);
-        intervalRef.current = id;
-
-        return () => {
-            if (intervalRef.current !== null) {
-                window.clearInterval(intervalRef.current);
-            }
-        };
-    }, [redirectError]);
 
     const skeletonCards = Array.from({ length: 4 });
 

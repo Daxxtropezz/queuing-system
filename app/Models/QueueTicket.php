@@ -26,11 +26,14 @@ class QueueTicket extends Model
 
     protected $appends = ['formatted_number'];
 
-    public function getFormattedNumberAttribute()
-    {
-        $type = strtoupper(substr($this->transactionType->name ?? '', 0, 3));
-        return sprintf('%s-%03d', $type, $this->number);
+  public function getFormattedNumberAttribute()
+{
+    $type = '';
+    if ($this->relationLoaded('transactionType') && $this->transactionType) {
+        $type = strtoupper(substr($this->transactionType->name, 0, 3));
     }
+    return sprintf('%s-%03d', $type, $this->number);
+}
 
     public function transactionType()
     {
