@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\QueueTicket;
+use App\Models\TransactionType;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -63,33 +64,57 @@ class QueueController extends Controller
     }
 
     // Guard: generate number
-    public function generateNumber(Request $request)
-    {
-        $request->validate([
-            'transaction_type_id' => 'required|exists:transaction_types,id',
+ public function generateNumber(Request $request)
+{
+    $validated = $request->validate([
+        'transaction_type_id' => 'required|exists:transaction_types,id',
+        'ispriority' => 'nullable|boolean',
+    ]);
+
+    $ticket = null;
+
+    DB::transaction(function () use ($validated, &$ticket) {
+        $last = QueueTicket::where('transaction_type_id', $validated['transaction_type_id'])
+            ->orderByDesc('number')
+            ->lockForUpdate()
+            ->first();
+
+        $number = $last ? $last->number + 1 : 1;
+
+        $ticket = QueueTicket::create([
+            'number' => $number,
+            'transaction_type_id' => $validated['transaction_type_id'],
+            'status' => 'waiting',
+            'ispriority' => $validated['ispriority'] ?? 0,
         ]);
+    });
 
-        $ticket = null;
+    return response()->json([
+    'generatedNumber' => $ticket->formatted_number,
+]);
 
-        DB::transaction(function () use ($request, &$ticket) {
-            $last = QueueTicket::where('transaction_type_id', $request->transaction_type_id)
-                ->orderByDesc('number')
-                ->lockForUpdate()
-                ->first();
+}
 
-            $number = $last ? $last->number + 1 : 1;
 
-            $ticket = QueueTicket::create([
-                'number' => $number,
-                'transaction_type_id' => $request->transaction_type_id,
-                'status' => 'waiting',
-            ]);
-        });
 
-        return redirect()
-            ->route('queue.guard')
-            ->with('success', "Your number: {$ticket->number}");
-    }
+public function status()
+{
+    $serving = QueueTicket::with('transactionType')
+        ->where('status', 'serving')
+        ->orderByDesc('updated_at')
+        ->get();
+
+    $waiting = QueueTicket::with('transactionType')
+        ->where('status', 'waiting')
+        ->orderBy('created_at')
+        ->get();
+
+    return response()->json([
+        'serving' => $serving,
+        'waiting' => $waiting,
+    ]);
+}
+
 
 
     // Teller page: show current serving and button to grab next

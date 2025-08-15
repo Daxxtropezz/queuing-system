@@ -1,13 +1,16 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
 
 export default function GuardPage({ transactionTypes = [] }: { transactionTypes?: any[] }) {
-    const { data, setData, post, processing, errors } = useForm({
+    // The useForm hook already handles the data. You don't need separate states for transactionTypeId and clientType.
+    const { data, setData, post, processing, errors, reset } = useForm({
         transaction_type_id: '',
+        ispriority: 0,
     });
 
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -34,22 +37,12 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
         });
     }
 
-    // Auto refresh every second (skip while ticket dialog open to avoid flicker)
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (!dialogOpen && !refreshing && !processing) {
-                handleRefresh();
-            }
-        }, 3000); // 3s
-        return () => clearInterval(interval);
-    }, [dialogOpen, refreshing, processing]);
-
     const toggleFullscreen = useCallback(async () => {
         if (!document.fullscreenElement) {
             try {
                 await document.documentElement.requestFullscreen();
                 setIsFullscreen(true);
-            } catch {}
+            } catch { }
         } else {
             await document.exitFullscreen();
             setIsFullscreen(false);
@@ -73,18 +66,29 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
         setDialogOpen(false);
     }
 
-    function handleGenerate(value: string) {
+    // Use a single function to update both the transaction type and priority, then submit.
+    const [clientType, setClientType] = useState('');
+
+    async function handleGenerate(value: string) {
         if (processing) return;
-        setData('transaction_type_id', value);
-        post(route('queue.guard.generate'), {
-            onSuccess: (page: any) => {
-                const number = page.props.generatedNumber || 'N/A';
-                setGeneratedNumber(number);
-                setDialogOpen(true);
-                setTimeout(() => window.print(), 300);
-            },
-        });
+
+        try {
+            const { data } = await axios.post(route('queue.guard.generate'), {
+                transaction_type_id: value,
+                ispriority: clientType,
+            });
+
+            let num = data.generatedNumber.toString().replace(/[^0-9]/g, ''); // keep only digits
+            num = num.padStart(4, '0'); // make sure it's 4 digits
+
+            setGeneratedNumber(num);
+            setDialogOpen(true);
+            setTimeout(() => window.print(), 300);
+        } catch (error) {
+            console.error(error);
+        }
     }
+
 
     return (
         <>
@@ -118,6 +122,22 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                     </CardHeader>
                     <CardContent className="pb-10">
                         <form className="space-y-8">
+                            <div className="flex justify-center gap-4 mb-6">
+                                <Button
+                                    type="button"
+                                    variant={data.ispriority === 0 ? "default" : "outline"}
+                                    onClick={() => setData('ispriority', 0)}
+                                >
+                                    Regular
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={data.ispriority === 1 ? "default" : "outline"}
+                                    onClick={() => setData('ispriority', 1)}
+                                >
+                                    Priority
+                                </Button>
+                            </div>
                             <div className="grid gap-5 sm:grid-cols-2">
                                 {transactionTypes.map((opt: any) => {
                                     const selected = data.transaction_type_id === String(opt.id);
@@ -167,11 +187,9 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                                     );
                                 })}
                             </div>
-
                             {errors.transaction_type_id && (
                                 <div className="text-center text-lg font-medium text-rose-400">{errors.transaction_type_id}</div>
                             )}
-
                             <div className="flex items-center justify-between px-1 text-xs text-slate-500 md:text-sm">
                                 <span className="tracking-wide">Tap a transaction to generate your number</span>
                                 <button
@@ -193,12 +211,11 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                             <DialogTitle className="bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-2xl font-bold text-transparent md:text-3xl">
                                 Your Number
                             </DialogTitle>
-                            <DialogDescription asChild>
-                                <div className="mt-6 bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-6xl font-extrabold tracking-tight text-transparent drop-shadow md:text-7xl">
-                                    {generatedNumber}
-                                </div>
-                            </DialogDescription>
+                            <div className="mt-6 bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-6xl font-extrabold tracking-tight text-transparent drop-shadow md:text-7xl">
+                                {generatedNumber}
+                            </div>
                         </DialogHeader>
+
                         <div className="mt-8 space-y-4 print:hidden">
                             <Button
                                 onClick={handleDialogClose}
@@ -214,9 +231,41 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                 <style>
                     {`
                         @media print {
-                            body, html { background: #fff !important; color:#000 !important; }
-                            .kiosk-bg, .kiosk-bg *:not(.print\\:block) { background: #fff !important; }
-                        }
+    body, html {
+        background: #fff !important;
+        color: #000 !important;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Hide everything except ticket */
+    body * {
+        visibility: hidden;
+    }
+    .print-ticket, .print-ticket * {
+        visibility: visible;
+    }
+    .print-ticket {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+    }
+
+    .ticket-number {
+        font-size: 60px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .ticket-footer {
+        font-size: 14px;
+        color: #555;
+    }
+}
+
                     `}
                 </style>
             </div>
