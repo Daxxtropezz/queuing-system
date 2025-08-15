@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 // Define a single type for the QueueTicket since both lists have the same structure.
 type QueueTicket = {
@@ -29,50 +29,38 @@ interface Props {
 }
 
 // Lightweight, themed video slot used in the header corners.
-// Update VideoSlot to use a fixed responsive height so it doesn't push waiting cards off-screen.
-function VideoSlot({ src, emptyText = 'No video configured' }: { src: string | null; emptyText?: string }) {
-    // Detect and normalize YouTube URL to an embeddable src
-    const toYouTubeEmbed = (url: string): string | null => {
-        try {
-            const u = new URL(url);
-            const host = u.hostname.replace(/^www\./, '');
-            let id: string | null = null;
-            if (host === 'youtu.be') {
-                // https://youtu.be/<id>
-                id = u.pathname.split('/').filter(Boolean)[0] || null;
-            } else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
-                // https://youtube.com/watch?v=<id> | /shorts/<id> | /embed/<id>
-                if (u.pathname.startsWith('/watch')) id = u.searchParams.get('v');
-                else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2] || null;
-                else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || null;
-            }
-            return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=1&playsinline=1&rel=0` : null;
-        } catch {
-            return null;
-        }
-    };
-
-    const ytEmbed = src ? toYouTubeEmbed(src) : null;
+// Build a local playlist from resources/videos and auto-play/auto-next.
+function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }) {
+    // Collect local videos from resources/videos (including subfolders). Supported: mp4, webm, ogg
+    const modules = import.meta.glob('/resources/videos/**/*.{mp4,webm,ogg}', { eager: true, as: 'url' }) as Record<string, string>;
+    const sources = useMemo(() => {
+        // Sort by path so playback is predictable
+        return Object.entries(modules)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([, url]) => url);
+    }, []);
+    const [index, setIndex] = useState(0);
+    const hasVideos = sources.length > 0;
+    const src = hasVideos ? sources[index % sources.length] : null;
 
     return (
         <div className="h-[37.5vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[37.5vh] lg:h-[42.5vh] xl:h-[47.5vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
             <div className="h-full w-full">
                 {src ? (
-                    ytEmbed ? (
-                        <iframe
-                            className="h-full w-full"
-                            src={ytEmbed}
-                            title="Information"
-                            allow="autoplay; encrypted-media; picture-in-picture"
-                            allowFullScreen
-                            referrerPolicy="no-referrer-when-downgrade"
-                        />
-                    ) : (
-                        <video className="h-full w-full object-cover" src={src} controls playsInline muted />
-                    )
+                    <video
+                        key={src}
+                        className="h-full w-full object-cover"
+                        src={src}
+                        autoPlay
+                        muted
+                        controls
+                        playsInline
+                        onEnded={() => setIndex((i) => (i + 1) % sources.length)}
+                        onError={() => setIndex((i) => (i + 1) % sources.length)}
+                    />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">
-                        {emptyText}
+                        {emptyText} <br /> Place videos in resources/videos
                     </div>
                 )}
             </div>
@@ -89,9 +77,6 @@ export default function MainPage({ boardData }: Props) {
     const intervalRef = useRef<number | null>(null);
     const [redirectError, setRedirectError] = useState<string | null>(null);
     const BOARD_ENDPOINT = '/queue/board-data';
-
-    // New: single video source via URL params (?video=..., falls back to rightVideo/leftVideo)
-    const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
     // Fit-to-screen: compute how many cards can be shown in each area.
     const servingWrapRef = useRef<HTMLDivElement | null>(null);
@@ -160,12 +145,6 @@ export default function MainPage({ boardData }: Props) {
             }
         };
     }, []); // remove redirectError from deps
-
-    // Read video URL from query params once on mount
-    useEffect(() => {
-        const sp = new URLSearchParams(window.location.search);
-        setVideoUrl(sp.get('video') || sp.get('rightVideo') || sp.get('leftVideo') || null);
-    }, []);
 
     // ResizeObserver to keep content within viewport (no scroll/overlap)
     useEffect(() => {
@@ -307,7 +286,7 @@ export default function MainPage({ boardData }: Props) {
                                         </span>
                                     </h2>
                                 </header>
-                                <VideoSlot src={videoUrl} emptyText="No video configured. Append ?video=<url> to the address." />
+                                <VideoSlot emptyText="No video found." />
                             </div>
 
                             {/* Waiting (fills the rest) */}
