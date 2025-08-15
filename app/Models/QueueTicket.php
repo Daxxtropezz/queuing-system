@@ -14,8 +14,9 @@ class QueueTicket extends Model
     protected $fillable = [
         'number',
         'transaction_type_id',
-         'teller_number',
+        'teller_number',
         'status',
+        'ispriority',
         'served_by',
     ];
 

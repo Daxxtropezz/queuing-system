@@ -15,7 +15,8 @@ public function up()
         $table->foreignId('transaction_type_id')->constrained('transaction_types');
         $table->string('status')->default('waiting');
         $table->foreignId('served_by')->nullable()->constrained('users');
-         $table->string('teller_number')->nullable();
+        $table->boolean('ispriority')->default(0);
+        $table->string('teller_number')->nullable();
         $table->timestamps();
     });
 }
