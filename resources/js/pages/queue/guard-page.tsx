@@ -15,15 +15,19 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [generatedNumber, setGeneratedNumber] = useState('');
+    const [category, setCategory] = useState('');
+    const [priority, setPriority] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [now, setNow] = useState<Date>(new Date());
     const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
     const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
-        const id = window.setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(id);
-    }, []);
+        if (generatedNumber && category && priority) {
+            window.print();
+        }
+    }, [generatedNumber, category, priority]);
+
 
     function handleRefresh() {
         if (refreshing || processing) return;
@@ -226,45 +230,51 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                             <p className="text-xs text-slate-400">This ticket will auto-print. Present it to the teller.</p>
                         </div>
                     </DialogContent>
+
+                    {/* Ticket layout for printing only */}
+                    <div className="print-ticket hidden print:block text-center">
+                        <div className="ticket-number text-5xl font-bold">{generatedNumber}</div>
+                        <div className="ticket-category text-lg">{category}</div>
+                        <div className="ticket-priority text-lg">{priority}</div>
+                        <div className="ticket-footer text-sm mt-2">Please wait for your turn</div>
+                    </div>
                 </Dialog>
+
 
                 <style>
                     {`
                         @media print {
-    body, html {
-        background: #fff !important;
-        color: #000 !important;
-        margin: 0;
-        padding: 0;
-    }
-
-    /* Hide everything except ticket */
-    body * {
-        visibility: hidden;
-    }
-    .print-ticket, .print-ticket * {
-        visibility: visible;
-    }
-    .print-ticket {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        text-align: center;
-        padding: 20px;
-        font-family: Arial, sans-serif;
-    }
-
-    .ticket-number {
-        font-size: 60px;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .ticket-footer {
-        font-size: 14px;
-        color: #555;
-    }
+  body * {
+    visibility: hidden;
+  }
+  .print-ticket, .print-ticket * {
+    visibility: visible;
+  }
+  .print-ticket {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+  .ticket-number {
+    font-size: 60px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  .ticket-category, .ticket-priority {
+    font-size: 18px;
+    margin-bottom: 5px;
+  }
+  .ticket-footer {
+    font-size: 14px;
+    color: #555;
+    margin-top: 10px;
+  }
 }
+
 
                     `}
                 </style>
