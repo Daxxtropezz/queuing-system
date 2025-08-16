@@ -34,21 +34,34 @@ export default function TellerModal({ isModalVisible, onClose, teller }: ModalPr
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (isEditMode) {
-            put(route('teller-numbers.update', teller!.id), {
-                onSuccess: () => {
-                    Swal.fire({
-                        title: 'Updated!',
-                        text: 'Teller updated successfully.',
-                        icon: 'success',
-                        toast: true,
-                        position: 'top-end',
-                        timer: 3000,
-                        showConfirmButton: false,
-                    });
-                    onClose(false);
-                },
-            });
+      if (isEditMode) {
+        put(route('teller-numbers.update', teller!.id), {
+            onSuccess: () => {
+                Swal.fire({
+                    title: 'Updated!',
+                    text: 'Teller updated successfully.',
+                    icon: 'success',
+                    toast: true,
+                    position: 'top-end',
+                    timer: 3000,
+                    showConfirmButton: false,
+                });
+                onClose(false);
+            },
+            onError: (errors) => {
+                // Add an error handler to see what's going wrong
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while updating the teller.',
+                    icon: 'error',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                });
+                console.error(errors);
+            },
+        });
         } else {
             post(route('teller-numbers.store'), {
                 onSuccess: () => {

@@ -86,7 +86,8 @@ export default function Tellers() {
             confirmButtonText: 'Yes, delete it!',
         }).then((result) => {
             if (result.isConfirmed) {
-                router.delete(route('tellers.destroy', id), {
+                // This is the correct way to call the delete route
+                router.delete(route('teller-numbers.destroy', id), {
                     onSuccess: () => {
                         Swal.fire({
                             title: 'Deleted!',
@@ -97,8 +98,23 @@ export default function Tellers() {
                             showConfirmButton: false,
                             timer: 3000,
                         });
+                        // Reloading the page after a successful delete
+                        router.reload({ only: ['tellers'] });
                     },
+                    onError: (errors) => {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'An error occurred while deleting the teller.',
+                            icon: 'error',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                        });
+                        console.error(errors);
+                    }
                 });
+
             }
         });
     };
@@ -171,8 +187,7 @@ export default function Tellers() {
                                                 <TableRow>
                                                     <TableHead className="w-16 text-center">#</TableHead>
                                                     <TableHead className="text-center">Name</TableHead>
-                                                    <TableHead className="text-center">Counter</TableHead>
-                                                    <TableHead className="text-center">Status</TableHead>
+                                                    <TableHead className="text-center">Description</TableHead>
                                                     <TableHead className="text-center">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -182,8 +197,7 @@ export default function Tellers() {
                                                         <TableRow key={teller.id}>
                                                             <TableCell className="text-center">{index + 1}</TableCell>
                                                             <TableCell className="text-center">{teller.name}</TableCell>
-                                                            <TableCell className="text-center">{teller.counter_number}</TableCell>
-                                                            <TableCell className="text-center">{teller.status}</TableCell>
+                                                            <TableCell className="text-center">{teller.description}</TableCell>
                                                             <TableCell className="space-x-2 text-center">
                                                                 <Button size="sm" onClick={() => openEditModal(teller)}>
                                                                     <SquarePen className="h-4 w-4" />
