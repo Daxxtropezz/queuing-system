@@ -20,7 +20,6 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'teller_number',
         'id_number',
         'first_name',
         'last_name',
@@ -32,6 +31,8 @@ class User extends Authenticatable
         'section',
         'division',
         'is_enabled',
+        'teller_number',
+        'transaction_type_id',
     ];
 
     protected $appends = ['role_names'];
@@ -62,5 +63,10 @@ class User extends Authenticatable
     public function getRoleNamesAttribute()
     {
         return $this->roles->pluck('name'); // Returns an array of role names
+    }
+
+    public function transactionType()
+    {
+        return $this->belongsTo(TransactionType::class, 'transaction_type_id');
     }
 }

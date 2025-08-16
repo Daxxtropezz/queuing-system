@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('teller_number')->nullable();
             $table->string('id_number')->unique();
             $table->string('first_name');
             $table->string('last_name');
@@ -26,6 +25,14 @@ return new class extends Migration
             $table->string('username')->unique();
             $table->string('role')->default('Guest');
             $table->boolean('is_enabled')->default(true);
+            $table->string('teller_number')->nullable();
+
+            $table->unsignedBigInteger('transaction_type_id')->nullable();
+            $table->foreign('transaction_type_id')
+                ->references('id')
+                ->on('transaction_types')
+                ->nullOnDelete();
+
             $table->rememberToken();
             $table->timestamps();
         });

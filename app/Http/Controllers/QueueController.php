@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\QueueTicket;
+use App\Models\TransactionType;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -125,7 +126,8 @@ class QueueController extends Controller
         // Pass the user's teller number to the frontend
         return Inertia::render('queue/teller-page', [
             'current' => $current,
-            'userTellerNumber' => $user->teller_number, // Pass this to the frontend
+            'userTellerNumber' => $user->teller_number, 
+            'transactionTypes' => TransactionType::all(['id', 'name']),
         ]);
     }
 
@@ -138,10 +140,14 @@ class QueueController extends Controller
         $user = $request->user();
         $request->validate([
             'teller_number' => ['required', 'string'],
+            'transaction_type_id' => 'required|exists:transaction_types,id',
         ]);
 
         // Update the authenticated user's teller number
-        $user->update(['teller_number' => $request->teller_number]);
+        $user->update([
+            'teller_number' => $request->teller_number,
+            'transaction_type_id' => $request->transaction_type_id,
+        ]);
 
 
         // Redirect back to the teller page with the updated state
@@ -149,35 +155,42 @@ class QueueController extends Controller
     }
 
     // Modify your existing grabNumber method
-    public function grabNumber(Request $request)
-    {
-        $user = $request->user();
+   public function grabNumber(Request $request)
+{
+    $user = $request->user();
 
-        // Check if the user has a teller number before proceeding
-        if (is_null($user->teller_number)) {
-            return back()->with('error', 'Please select a teller number first.');
-        }
-
-        $current = QueueTicket::where('served_by', $user->id)->where('status', 'serving')->first();
-
-        if ($current) {
-            return back()->with('error', 'Already serving a number');
-        }
-
-        $next = QueueTicket::where('status', 'waiting')->orderBy('id')->first();
-
-        if ($next) {
-            $next->update([
-                'status' => 'serving',
-                'served_by' => $user->id,
-                'teller_number' => $user->teller_number, // Use the teller number from the user model
-            ]);
-
-            return back()->with('success', "Now serving: {$next->number}");
-        }
-
-        return back()->with('error', 'No waiting numbers');
+    // Ensure teller has both teller_number & transaction_type_id
+    if (is_null($user->teller_number) || is_null($user->transaction_type_id)) {
+        return back()->with('error', 'Please select a teller number and transaction type first.');
     }
+
+    $current = QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->first();
+
+    if ($current) {
+        return back()->with('error', 'Already serving a number');
+    }
+
+    // 🔹 Grab only from the teller’s transaction type
+    $next = QueueTicket::where('status', 'waiting')
+        ->where('transaction_type_id', $user->transaction_type_id)
+        ->orderBy('id')
+        ->first();
+
+    if ($next) {
+        $next->update([
+            'status' => 'serving',
+            'served_by' => $user->id,
+            'teller_number' => $user->teller_number,
+        ]);
+
+        return back()->with('success', "Now serving: {$next->formatted_number}");
+    }
+
+    return back()->with('error', 'No waiting numbers for your transaction type.');
+}
+
 
     public function servingIndex()
     {
@@ -201,29 +214,32 @@ class QueueController extends Controller
         return response()->json(['data' => $data, 'timestamp' => now()->toIso8601String()]);
     }
 
-    public function nextNumber(Request $request)
-    {
-        $user = $request->user();
+   public function nextNumber(Request $request)
+{
+    $user = $request->user();
 
-        // Mark current ticket as done
-        QueueTicket::where('served_by', $user->id)
-            ->where('status', 'serving')
-            ->update(['status' => 'done']);
+    // Mark current ticket as done
+    QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->update(['status' => 'done']);
 
-        // Fetch the next waiting ticket
-        $next = QueueTicket::where('status', 'waiting')
-            ->orderBy('id')
-            ->first();
+    // 🔹 Fetch the next waiting ticket only for this teller’s transaction type
+    $next = QueueTicket::where('status', 'waiting')
+        ->where('transaction_type_id', $user->transaction_type_id)
+        ->orderBy('id')
+        ->first();
 
-        if ($next) {
-            $next->update([
-                'status' => 'serving',
-                'served_by' => $user->id,
-            ]);
+    if ($next) {
+        $next->update([
+            'status' => 'serving',
+            'served_by' => $user->id,
+            'teller_number' => $user->teller_number,
+        ]);
 
-            return back()->with('success', "Now serving: {$next->formatted_number}");
-        }
-
-        return back()->with('error', 'No waiting numbers at the moment.');
+        return back()->with('success', "Now serving: {$next->formatted_number}");
     }
+
+    return back()->with('error', 'No waiting numbers for your transaction type.');
+}
+
 }
