@@ -31,7 +31,7 @@ class User extends Authenticatable
         'section',
         'division',
         'is_enabled',
-        'teller_number',
+        'teller_id',
         'transaction_type_id',
     ];
 
@@ -68,5 +68,10 @@ class User extends Authenticatable
     public function transactionType()
     {
         return $this->belongsTo(TransactionType::class, 'transaction_type_id');
+    }
+
+    public function teller()
+    {
+        return $this->belongsTo(Teller::class, 'teller_id');
     }
 }

@@ -10,25 +10,22 @@ type TellerPageProps = {
     current?: any;
     userTellerNumber?: string;
     transactionTypes?: { id: string; name: string }[];
+    tellers?: { id: string; name: string }[];
 };
 
-export default function TellerPage({ current, userTellerNumber, transactionTypes = [] }: TellerPageProps) {
-    const tellerOptions = [
-        { value: '1', label: 'Teller 1' },
-        { value: '2', label: 'Teller 2' },
-        { value: '3', label: 'Teller 3' },
-    ];
+export default function TellerPage({ current, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
+
 
     // Single useForm
     const form = useForm({
-        teller_number: userTellerNumber ?? tellerOptions[0].value,
+        teller_id: userTellerNumber ?? tellers[0]?.id ?? '',
         transaction_type_id: transactionTypes[0]?.id ?? '',
     });
     const { processing } = form;
 
     // Keep state synced
-    const [selectedTeller, setSelectedTeller] = useState<string>(userTellerNumber ?? tellerOptions[0].value);
- const [selectedTransaction, setSelectedTransaction] = useState(form.data.transaction_type_id);
+    const [selectedTeller, setSelectedTeller] = useState<string>(form.data.teller_id);
+    const [selectedTransaction, setSelectedTransaction] = useState(form.data.transaction_type_id);
 
     // Live clock like main-page
     const [now, setNow] = useState<Date>(new Date());
@@ -38,7 +35,7 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
     }, []);
 
     function handleAssignTeller() {
-        form.setData('teller_number', selectedTeller);
+        form.setData('teller_id', selectedTeller);
         form.setData('transaction_type_id', selectedTransaction);
         form.post(route('queue.teller.assign'), { preserveState: true });
     }
@@ -114,54 +111,55 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
                                     <Select
                                         onValueChange={(value) => {
                                             setSelectedTeller(value);
-                                            form.setData('teller_number', value);
+                                            form.setData('teller_id', value);
                                         }}
                                         value={selectedTeller ?? ''}>
-                                        <SelectTrigger className="w-full border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-                                            <SelectValue placeholder="Select a teller number" />
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select a teller" />
                                         </SelectTrigger>
-                                        <SelectContent className="border-slate-200 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                                        <SelectContent>
                                             <SelectGroup>
-                                                <SelectLabel className="text-slate-600 dark:text-slate-400">Teller Numbers</SelectLabel>
-                                                {tellerOptions.map((option) => (
-                                                    <SelectItem key={option.value} value={option.value} className="focus:bg-slate-800">
-                                                        {option.label}
+                                                <SelectLabel>Tellers</SelectLabel>
+                                                {tellers.map((t) => (
+                                                    <SelectItem key={t.id} value={String(t.id)}>
+                                                        {t.name}
                                                     </SelectItem>
                                                 ))}
                                             </SelectGroup>
                                         </SelectContent>
                                     </Select>
-                                      {/* Transaction select */}
-                                <Select
-                                    onValueChange={(value) => {
-                                        setSelectedTransaction(value);
-                                        form.setData('transaction_type_id', value);
-                                    }}
-                                    value={selectedTransaction}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select transaction type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            <SelectLabel>Transaction Types</SelectLabel>
-                                            {transactionTypes.map((t) => (
-                                                <SelectItem key={t.id} value={t.id}>
-                                                    {t.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
 
-                                {/* Assign button */}
-                                <Button
-                                    onClick={handleAssignTeller}
-                                    disabled={!selectedTeller || !selectedTransaction || processing}
-                                >
-                                    {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Assign Teller
-                                </Button>
+                                    {/* Transaction select */}
+                                    <Select
+                                        onValueChange={(value) => {
+                                            setSelectedTransaction(value);
+                                            form.setData('transaction_type_id', value);
+                                        }}
+                                        value={selectedTransaction}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select transaction type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectLabel>Transaction Types</SelectLabel>
+                                                {transactionTypes.map((t) => (
+                                                    <SelectItem key={t.id} value={t.id}>
+                                                        {t.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+
+                                    {/* Assign button */}
+                                    <Button
+                                        onClick={handleAssignTeller}
+                                        disabled={!selectedTeller || !selectedTransaction || processing}
+                                    >
+                                        {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Assign Teller
+                                    </Button>
                                 </div>
                             ) : current ? (
                                 <div className="flex flex-col items-center gap-6">

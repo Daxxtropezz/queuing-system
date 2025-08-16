@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\QueueTicket;
+use App\Models\Teller;
 use App\Models\TransactionType;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class QueueController extends Controller
@@ -27,7 +29,7 @@ class QueueController extends Controller
             ->get();
 
         $data = QueueTicket::with('transactionType')
-            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_number')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
             ->get()
             ->map(function ($ticket) {
                 return [
@@ -36,7 +38,7 @@ class QueueController extends Controller
                     'transaction_type' => $ticket->transactionType->name ?? '',
                     'status' => $ticket->status,
                     'served_by' => $ticket->served_by,
-                    'teller_number' => $ticket->teller_number,
+                    'teller_id' => $ticket->teller_id,
                 ];
             });
 
@@ -66,6 +68,7 @@ class QueueController extends Controller
     // Guard: generate number
     public function generateNumber(Request $request)
     {
+        Log::info($request->all()); 
         $validated = $request->validate([
             'transaction_type_id' => 'required|exists:transaction_types,id',
             'ispriority' => 'required|in:0,1',
@@ -126,8 +129,9 @@ class QueueController extends Controller
         // Pass the user's teller number to the frontend
         return Inertia::render('queue/teller-page', [
             'current' => $current,
-            'userTellerNumber' => $user->teller_number, 
+            'userTellerNumber' => $user->teller_id, 
             'transactionTypes' => TransactionType::all(['id', 'name']),
+            'tellers' => Teller::all(['id', 'name']),
         ]);
     }
 
@@ -139,13 +143,13 @@ class QueueController extends Controller
 
         $user = $request->user();
         $request->validate([
-            'teller_number' => ['required', 'string'],
+            'teller_id' => ['required', 'string'],
             'transaction_type_id' => 'required|exists:transaction_types,id',
         ]);
 
         // Update the authenticated user's teller number
         $user->update([
-            'teller_number' => $request->teller_number,
+            'teller_id' => $request->teller_id,
             'transaction_type_id' => $request->transaction_type_id,
         ]);
 
@@ -159,8 +163,8 @@ class QueueController extends Controller
 {
     $user = $request->user();
 
-    // Ensure teller has both teller_number & transaction_type_id
-    if (is_null($user->teller_number) || is_null($user->transaction_type_id)) {
+    // Ensure teller has both teller_id & transaction_type_id
+    if (is_null($user->teller_id) || is_null($user->transaction_type_id)) {
         return back()->with('error', 'Please select a teller number and transaction type first.');
     }
 
@@ -182,7 +186,7 @@ class QueueController extends Controller
         $next->update([
             'status' => 'serving',
             'served_by' => $user->id,
-            'teller_number' => $user->teller_number,
+            'teller_id' => $user->teller_id,
         ]);
 
         return back()->with('success', "Now serving: {$next->formatted_number}");
@@ -233,7 +237,7 @@ class QueueController extends Controller
         $next->update([
             'status' => 'serving',
             'served_by' => $user->id,
-            'teller_number' => $user->teller_number,
+            'teller_id' => $user->teller_id,
         ]);
 
         return back()->with('success', "Now serving: {$next->formatted_number}");

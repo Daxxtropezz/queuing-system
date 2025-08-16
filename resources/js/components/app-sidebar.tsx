@@ -35,6 +35,11 @@ export function AppSidebar() {
             href: '/transaction-types',
             icon: ChartArea,
         },
+        {
+            title: 'Teller Numbers',
+            href: '/teller-numbers',
+            icon: ChartArea,
+        },
 
         //  {
         //     title: 'Guard',
