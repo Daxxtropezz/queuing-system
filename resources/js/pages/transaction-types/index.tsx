@@ -139,9 +139,13 @@ export default function TransactionTypes() {
                                     {/* Top bar */}
                                     <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                                         <h2 className="text-lg font-semibold tracking-wide text-slate-800 md:text-xl dark:text-slate-200">
-                                            <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
-                                                List
-                                            </span>
+                                           <Button
+                                                onClick={openCreateModal}
+                                                disabled={isLoading}
+                                                className="rounded-xl bg-amber-400 px-4 py-2 font-semibold text-slate-900 hover:bg-amber-300 disabled:opacity-60"
+                                            >
+                                                Create Transaction Type
+                                            </Button>
                                         </h2>
                                         <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
                                             <div className="relative w-full sm:w-72">
@@ -167,13 +171,7 @@ export default function TransactionTypes() {
                                                     </p>
                                                 )}
                                             </div>
-                                            <Button
-                                                onClick={openCreateModal}
-                                                disabled={isLoading}
-                                                className="rounded-xl bg-amber-400 px-4 py-2 font-semibold text-slate-900 hover:bg-amber-300 disabled:opacity-60"
-                                            >
-                                                Create Transaction Type
-                                            </Button>
+                                            
                                         </div>
                                     </div>
 
@@ -182,6 +180,7 @@ export default function TransactionTypes() {
                                         <Table className="w-full">
                                             <TableHeader className="bg-slate-50 dark:bg-slate-900/60">
                                                 <TableRow className="hover:bg-transparent">
+                                                    <TableHead className="w-16 text-center text-slate-600 dark:text-slate-300">#</TableHead>
                                                     <TableHead className="text-center text-slate-600 dark:text-slate-300">Name</TableHead>
                                                     <TableHead className="text-center text-slate-600 dark:text-slate-300">Description</TableHead>
                                                     <TableHead className="text-center text-slate-600 dark:text-slate-300">Actions</TableHead>
@@ -189,8 +188,14 @@ export default function TransactionTypes() {
                                             </TableHeader>
                                             <TableBody>
                                                 {types?.data?.length > 0 ? (
-                                                    types.data.map((type) => (
-                                                        <TableRow key={type.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                                                    types.data.map((type, index) => (
+                                                        <TableRow
+                                                            key={type.id}
+                                                            className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
+                                                        >
+                                                            <TableCell className="text-center text-slate-700 dark:text-slate-200">
+                                                                {index + 1}
+                                                            </TableCell>
                                                             <TableCell className="text-center text-slate-700 dark:text-slate-200">
                                                                 {type.name}
                                                             </TableCell>
@@ -201,7 +206,11 @@ export default function TransactionTypes() {
                                                                 <Button size="sm" onClick={() => openEditModal(type)}>
                                                                     <SquarePen className="h-4 w-4" />
                                                                 </Button>
-                                                                <Button size="sm" variant="destructive" onClick={() => confirmDelete(type.id)}>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="destructive"
+                                                                    onClick={() => confirmDelete(type.id)}
+                                                                >
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
                                                             </TableCell>
@@ -209,7 +218,7 @@ export default function TransactionTypes() {
                                                     ))
                                                 ) : (
                                                     <TableRow>
-                                                        <TableCell colSpan={3} className="p-10">
+                                                        <TableCell colSpan={4} className="p-10">
                                                             <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
                                                                 <FileWarning className="mb-2 h-12 w-12 text-slate-400 dark:text-slate-500" />
                                                                 <p className="text-lg font-medium">No Transaction Types Found</p>
@@ -219,6 +228,7 @@ export default function TransactionTypes() {
                                                 )}
                                             </TableBody>
                                         </Table>
+
                                     </div>
                                 </div>
 
