@@ -14,7 +14,7 @@ export default function AuthFloatingCardLayout({ children, title, description }:
     return (
         <div className="relative min-h-dvh bg-gray-50">
             {/* Background image with gradient overlay */}
-            <div className="absolute inset-0 bg-[url('/img/bglogin.jpg')] bg-cover bg-center dark:bg-[url('/img/bglogin.jpg')]">
+            <div className="absolute inset-0 bg-[url('/img/payout-login.jpg')] bg-cover bg-center dark:bg-[url('/img/payout-login.jpg')]">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-900/99 via-black/35 to-red-900/90"></div>
                 <div className="absolute inset-0 bg-gradient-to-bl from-red-900/90 via-black/35 to-blue-900/99"></div>
             </div>
