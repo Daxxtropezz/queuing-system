@@ -25,7 +25,13 @@ return new class extends Migration
             $table->string('username')->unique();
             $table->string('role')->default('Guest');
             $table->boolean('is_enabled')->default(true);
-            $table->string('teller_number')->nullable();
+
+            $table->unsignedBigInteger('teller_id')->nullable();
+            $table->foreign('teller_id')
+                ->references('id')
+                ->on('tellers')
+                ->nullOnDelete();
+
 
             $table->unsignedBigInteger('transaction_type_id')->nullable();
             $table->foreign('transaction_type_id')

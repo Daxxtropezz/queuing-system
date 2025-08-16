@@ -15,6 +15,8 @@ use App\Http\Controllers\RegionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\QueueController;
 use App\Http\Controllers\QueueBoardController;
+use App\Http\Controllers\TellerController;
+use App\Http\Controllers\TransactionTypeController;
 
 // Redirect to login by default
 Route::get('/', function () {
@@ -132,6 +134,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/queue/teller/grab', [QueueController::class, 'grabNumber'])->name('queue.teller.grab');
     Route::post('/queue/teller/next', [QueueController::class, 'nextNumber'])
         ->name('queue.teller.next');
+
+    Route::resource('transaction-types', TransactionTypeController::class);
+    Route::resource('teller-numbers', TellerController::class);
 });
 
 Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
@@ -141,9 +146,6 @@ Route::post('/queue/guard/generate', [QueueController::class, 'generateNumber'])
 
 // Public queue board JSON (no auth middleware)
 Route::get('/queue/board-data', [QueueBoardController::class, 'data'])->name('queue.board.data');
-
-// Transaction Types
-Route::resource('transaction-types', \App\Http\Controllers\TransactionTypeController::class);
 
 // Public JSON endpoint for serving tickets (polled by main-page)
 Route::get('/queue/serving', [QueueController::class, 'servingIndex'])->name('queue.serving.index');

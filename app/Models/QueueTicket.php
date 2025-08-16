@@ -14,7 +14,7 @@ class QueueTicket extends Model
     protected $fillable = [
         'number',
         'transaction_type_id',
-        'teller_number',
+        'teller_id',
         'status',
         'ispriority',
         'served_by',
@@ -39,5 +39,10 @@ class QueueTicket extends Model
     public function transactionType()
     {
         return $this->belongsTo(TransactionType::class);
+    }
+
+    public function teller()
+    {
+        return $this->belongsTo(Teller::class);
     }
 }

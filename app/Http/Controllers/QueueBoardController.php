@@ -10,20 +10,20 @@ class QueueBoardController extends Controller
     public function data(Request $request)
     {
         $serving = QueueTicket::with('transactionType:id,name')
-            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_number', 'created_at', 'updated_at')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'created_at', 'updated_at')
             ->where('status', 'serving')
             ->orderByDesc('updated_at')
             ->get();
 
         $waiting = QueueTicket::with('transactionType:id,name')
-            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_number', 'created_at', 'updated_at')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'created_at', 'updated_at')
             ->where('status', 'waiting')
             ->orderBy('created_at')
             ->limit(200)
             ->get();
 
              $data = QueueTicket::with('transactionType')
-            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_number')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
             ->get()
             ->map(function ($ticket) {
                 return [
@@ -32,7 +32,7 @@ class QueueBoardController extends Controller
                     'transaction_type' => $ticket->transactionType->name ?? '',
                     'status' => $ticket->status,
                     'served_by' => $ticket->served_by,
-                    'teller_number' => $ticket->teller_number,
+                    'teller_id' => $ticket->teller_id,
                 ];
             });
 

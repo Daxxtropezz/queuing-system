@@ -9,7 +9,7 @@ type QueueTicket = {
     transaction_type?: { name: string } | null;
     status?: 'waiting' | 'serving' | string;
     served_by?: string | number;
-    teller_number?: string;
+    teller_id?: string;
     updated_at?: string;
     created_at?: string;
 };
@@ -340,9 +340,9 @@ export default function MainPage({ boardData }: Props) {
                                                     </div>
                                                 </div>
                                                 {/* Right: Teller chip */}
-                                                {t.teller_number && (
+                                                {t.teller_id && (
                                                     <div className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
-                                                        Cntr {t.teller_number}
+                                                        Cntr {t.teller_id}
                                                     </div>
                                                 )}
                                             </div>
@@ -382,7 +382,7 @@ export default function MainPage({ boardData }: Props) {
                                             </div>
                                             <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
                                                 {guaranteeLimited.map((t) => {
-                                                    const teller = t.teller_number ?? '—';
+                                                    const teller = t.teller_id ?? '—';
                                                     return (
                                                         <div
                                                             key={`serving-gl-${t.id}`}
@@ -428,7 +428,7 @@ export default function MainPage({ boardData }: Props) {
                                             </div>
                                             <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
                                                 {cashLimited.map((t) => {
-                                                    const teller = t.teller_number ?? '—';
+                                                    const teller = t.teller_id ?? '—';
                                                     return (
                                                         <div
                                                             key={`serving-ca-${t.id}`}
