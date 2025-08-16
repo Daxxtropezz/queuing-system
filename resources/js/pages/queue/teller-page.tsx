@@ -9,9 +9,10 @@ import { useEffect, useState } from 'react';
 type TellerPageProps = {
     current?: any;
     userTellerNumber?: string;
+    transactionTypes?: { id: string; name: string }[];
 };
 
-export default function TellerPage({ current, userTellerNumber }: TellerPageProps) {
+export default function TellerPage({ current, userTellerNumber, transactionTypes = [] }: TellerPageProps) {
     const tellerOptions = [
         { value: '1', label: 'Teller 1' },
         { value: '2', label: 'Teller 2' },
@@ -21,11 +22,13 @@ export default function TellerPage({ current, userTellerNumber }: TellerPageProp
     // Single useForm
     const form = useForm({
         teller_number: userTellerNumber ?? tellerOptions[0].value,
+        transaction_type_id: transactionTypes[0]?.id ?? '',
     });
     const { processing } = form;
 
     // Keep state synced
     const [selectedTeller, setSelectedTeller] = useState<string>(userTellerNumber ?? tellerOptions[0].value);
+ const [selectedTransaction, setSelectedTransaction] = useState(form.data.transaction_type_id);
 
     // Live clock like main-page
     const [now, setNow] = useState<Date>(new Date());
@@ -36,6 +39,7 @@ export default function TellerPage({ current, userTellerNumber }: TellerPageProp
 
     function handleAssignTeller() {
         form.setData('teller_number', selectedTeller);
+        form.setData('transaction_type_id', selectedTransaction);
         form.post(route('queue.teller.assign'), { preserveState: true });
     }
 
@@ -127,15 +131,37 @@ export default function TellerPage({ current, userTellerNumber }: TellerPageProp
                                             </SelectGroup>
                                         </SelectContent>
                                     </Select>
-                                    <Button
-                                        onClick={handleAssignTeller}
-                                        disabled={!selectedTeller || processing}
-                                        size="lg"
-                                        className="w-full rounded-xl bg-indigo-600 text-slate-50 hover:bg-indigo-500 focus:ring-4 focus:ring-indigo-500/30"
-                                    >
-                                        {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Assign Teller Number
-                                    </Button>
+                                      {/* Transaction select */}
+                                <Select
+                                    onValueChange={(value) => {
+                                        setSelectedTransaction(value);
+                                        form.setData('transaction_type_id', value);
+                                    }}
+                                    value={selectedTransaction}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select transaction type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectLabel>Transaction Types</SelectLabel>
+                                            {transactionTypes.map((t) => (
+                                                <SelectItem key={t.id} value={t.id}>
+                                                    {t.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Assign button */}
+                                <Button
+                                    onClick={handleAssignTeller}
+                                    disabled={!selectedTeller || !selectedTransaction || processing}
+                                >
+                                    {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Assign Teller
+                                </Button>
                                 </div>
                             ) : current ? (
                                 <div className="flex flex-col items-center gap-6">
