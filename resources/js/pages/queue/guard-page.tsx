@@ -276,45 +276,43 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                 <style>
                     {`
                         @media print {
-  body * {
-    visibility: hidden;
-  }
-  .print-ticket, .print-ticket * {
-    visibility: visible;
-  }
-  .print-ticket {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    text-align: center;
-    padding: 5px;
-    font-family: Arial, sans-serif;
-    color: #000;
-  }
-  .ticket-number {
-    font-size: 60px;
-    font-weight: bold;
-    margin-bottom: 2px;
-  }
-  .ticket-category {
-    font-size: 15px;
-    margin-bottom: 2px;
-    font-weight: bold;
-  }
-   .ticket-priority {
-    font-size: 12px;
-    margin-bottom: 2px;
-    font-weight: bold;
-  }
-  .ticket-footer {
-    font-size: 8px;
-    color: #555;
-    margin-top: 2px;
-  }
-}
-
-
+                        body * {
+                          visibility: hidden;
+                        }
+                        .print-ticket, .print-ticket * {
+                          visibility: visible;
+                        }
+                        .print-ticket {
+                          position: absolute;
+                          top: 0;
+                          left: 0;
+                          width: 100%;
+                          text-align: center;
+                          padding: 5px;
+                          font-family: Arial, sans-serif;
+                          color: #000;
+                        }
+                        .ticket-number {
+                          font-size: 60px;
+                          font-weight: bold;
+                          margin-bottom: 2px;
+                        }
+                        .ticket-category {
+                          font-size: 15px;
+                          margin-bottom: 2px;
+                          font-weight: bold;
+                        }
+                         .ticket-priority {
+                          font-size: 12px;
+                          margin-bottom: 2px;
+                          font-weight: bold;
+                        }
+                        .ticket-footer {
+                          font-size: 8px;
+                          color: #555;
+                          margin-top: 2px;
+                        }
+                      }
                     `}
                 </style>
             </div>
