@@ -205,45 +205,21 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     const groupedServing = groupByType(servingTickets);
     const groupedServingLimited = sliceGroups(groupedServing, servingCapacity);
     const waitingLimited = waitingTickets.slice(0, waitingCapacity);
-    // Decide left/right columns dynamically from transactionTypes metadata (if any)
-    // Supported metadata fields: column, side, position, display_column (flexible)
-    const txnTypes = transactionTypes || [];
-    let leftNames: string[] = [];
-    let rightNames: string[] = [];
 
-    for (const t of txnTypes) {
-        const meta = t.column ?? t.side ?? t.position ?? t.display_column ?? t.side_of_screen ?? null;
-        if (meta !== null && meta !== undefined) {
-            const s = String(meta).toLowerCase();
-            if (s.includes('left') || s === 'l' || s === '1' || s === 'a') leftNames.push(t.name);
-            else if (s.includes('right') || s === 'r' || s === '2' || s === 'b') rightNames.push(t.name);
-        }
-    }
-
-    // If no explicit columns found, fall back to first two transaction types (if available)
-    if (leftNames.length === 0 && rightNames.length === 0) {
-        if (txnTypes.length >= 2) {
-            leftNames = [txnTypes[0].name];
-            rightNames = [txnTypes[1].name];
-        } else if (txnTypes.length === 1) {
-            leftNames = [txnTypes[0].name];
-            rightNames = [];
-        } else {
-            // final fallback to previous labels for compatibility
-            leftNames = ['Guarantee Letter'];
-            rightNames = ['Cash Assistance'];
-        }
-    }
-
-    const leftLabel = leftNames[0] ?? 'Left';
-    const rightLabel = rightNames[0] ?? 'Right';
-    const servingRows = Math.max(1, Math.floor(servingCapacity / 2));
-
-    // Filter serving tickets by whether their transaction_type matches left/right names
-    const guaranteeAll = servingTickets.filter((t) => leftNames.includes(t.transaction_type?.name));
-    const cashAll = servingTickets.filter((t) => rightNames.includes(t.transaction_type?.name));
-    const guaranteeLimited = guaranteeAll.slice(0, servingRows);
-    const cashLimited = cashAll.slice(0, servingRows);
+    // --- REPLACE: previous left/right logic with dynamic N columns ---
+    // Build dynamic columns from transactionTypes (one column per transaction type).
+    // Fallback to two legacy labels when no transactionTypes provided.
+    const txnTypes = transactionTypes && transactionTypes.length > 0 ? transactionTypes : null;
+    const columns: string[] = txnTypes ? txnTypes.map((t) => String(t.name)) : ['Guarantee Letter', 'Cash Assistance'];
+    // Safe alias: some compiled artifacts or older builds may reference colsFromTypes — keep compatibility.
+    const colsFromTypes = columns;
+    const numCols = Math.max(1, columns.length);
+    const servingRows = Math.max(1, Math.floor(servingCapacity / numCols));
+    // For each column, filter tickets matching the transaction type (case-insensitive)
+    const columnTickets = columns.map((col) => servingTickets.filter((t) => (t.transaction_type?.name || '').toLowerCase() === col.toLowerCase()));
+    const columnLimited = columnTickets.map((items) => items.slice(0, servingRows));
+    const totalServing = servingTickets.length;
+    // --- END REPLACEMENT ---
 
     const skeletonCards = Array.from({ length: 4 });
 
@@ -397,104 +373,63 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             </header>
 
                             <div ref={servingWrapRef} className="min-h-0 flex-1 overflow-hidden">
-                                {!loading && guaranteeLimited.length === 0 && cashLimited.length === 0 ? (
+                                {!loading && totalServing === 0 ? (
                                     <div className="flex h-full items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
                                         No tickets are being served
                                     </div>
                                 ) : (
-                                    <div className="grid h-full grid-cols-2 gap-4">
-                                        {/* Left column: Guarantee Letter */}
-                                        <div className="flex min-h-0 flex-col gap-3">
-                                            <div className="flex items-center justify-between">
-                                                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                                                    {leftLabel}
-                                                </span>
-                                                <span className="text-xs text-slate-500 dark:text-slate-400">{guaranteeAll.length}</span>
-                                            </div>
-                                            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
-                                                {guaranteeLimited.map((t) => {
-                                                    const teller = t.teller_id ?? '—';
-                                                    return (
-                                                        <div
-                                                            key={`serving-gl-${t.id}`}
-                                                            className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-200/60 transition hover:shadow-2xl hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-gradient-to-br dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 dark:ring-slate-800/50 dark:hover:ring-slate-700/70"
-                                                        >
-                                                            {/* Brand hover glows */}
-                                                            <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
-                                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
-                                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
-                                                            </div>
-                                                            <div className="relative mb-5 flex items-center justify-between">
-                                                                <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
-                                                                    Serving
-                                                                </span>
-                                                                <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
-                                                                    Teller {teller}
-                                                                </span>
-                                                            </div>
-                                                            <div className="relative flex flex-col items-center gap-4">
-                                                                <div className="bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-600 bg-clip-text text-6xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-7xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
-                                                                    {t.number}
-                                                                </div>
-                                                                {/* @ts-ignore */}
-                                                                {t.transaction_type && (
-                                                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-700 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200">
-                                                                        {/* @ts-ignore */}
-                                                                        {t.transaction_type?.name}
+                                    // dynamic columns: one per transaction type in the order received
+                                    <div className="grid h-full gap-4" style={{ gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))` }}>
+                                        {columns.map((colLabel, ci) => {
+                                            const items = columnLimited[ci] ?? [];
+                                            const total = columnTickets[ci]?.length ?? 0;
+                                            return (
+                                                <div key={`col-${ci}`} className="flex min-h-0 flex-col gap-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                                                            {colLabel}
+                                                        </span>
+                                                        <span className="text-xs text-slate-500 dark:text-slate-400">{total}</span>
+                                                    </div>
+                                                    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
+                                                        {items.map((t) => {
+                                                            const teller = t.teller_id ?? '—';
+                                                            return (
+                                                                <div
+                                                                    key={`serving-${ci}-${t.id}`}
+                                                                    className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-200/60 transition hover:shadow-2xl hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-gradient-to-br dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 dark:ring-slate-800/50 dark:hover:ring-slate-700/70"
+                                                                >
+                                                                    <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
+                                                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
+                                                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                        {/* Right column: Cash Assistance */}
-                                        <div className="flex min-h-0 flex-col gap-3">
-                                            <div className="flex items-center justify-between">
-                                                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                                                    {rightLabel}
-                                                </span>
-                                                <span className="text-xs text-slate-500 dark:text-slate-400">{cashAll.length}</span>
-                                            </div>
-                                            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
-                                                {cashLimited.map((t) => {
-                                                    const teller = t.teller_id ?? '—';
-                                                    return (
-                                                        <div
-                                                            key={`serving-ca-${t.id}`}
-                                                            className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-200/60 transition hover:shadow-2xl hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-gradient-to-br dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 dark:ring-slate-800/50 dark:hover:ring-slate-700/70"
-                                                        >
-                                                            {/* Brand hover glows */}
-                                                            <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
-                                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
-                                                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
-                                                            </div>
-                                                            <div className="relative mb-5 flex items-center justify-between">
-                                                                <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
-                                                                    Serving
-                                                                </span>
-                                                                <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
-                                                                    Teller {teller}
-                                                                </span>
-                                                            </div>
-                                                            <div className="relative flex flex-col items-center gap-4">
-                                                                <div className="bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-600 bg-clip-text text-6xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-7xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
-                                                                    {t.number}
-                                                                </div>
-                                                                {/* @ts-ignore */}
-                                                                {t.transaction_type && (
-                                                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-700 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200">
-                                                                        {/* @ts-ignore */}
-                                                                        {t.transaction_type?.name}
+                                                                    <div className="relative mb-5 flex items-center justify-between">
+                                                                        <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
+                                                                            Serving
+                                                                        </span>
+                                                                        <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
+                                                                            Teller {teller}
+                                                                        </span>
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
+                                                                    <div className="relative flex flex-col items-center gap-4">
+                                                                        <div className="bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-600 bg-clip-text text-6xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-7xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
+                                                                            {t.number}
+                                                                        </div>
+                                                                        {/* @ts-ignore */}
+                                                                        {t.transaction_type && (
+                                                                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-700 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200">
+                                                                                {/* @ts-ignore */}
+                                                                                {t.transaction_type?.name}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
