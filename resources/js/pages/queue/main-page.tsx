@@ -349,7 +349,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                 <header className="flex items-center justify-between">
                                     <h3 className="text-lg font-semibold tracking-wide text-slate-800 md:text-xl dark:text-slate-200">
                                         <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
-                                            Please Wait
+                                            Waiting List
                                         </span>
                                     </h3>
                                     <div className="rounded-full bg-slate-200/70 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
@@ -372,12 +372,6 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                     </div>
                                                 ))}
                                             </>
-                                        )}
-
-                                        {!loading && waitingGroups.length === 0 && (
-                                            <div className="col-span-full flex h-full items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
-                                                No waiting tickets
-                                            </div>
                                         )}
 
                                         {/* Render per-transaction-type groups as columns */}
@@ -521,7 +515,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
                                                                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
                                                                     </div>
-                                                                    <div className="relative mb-5 flex items-center justify-between">
+                                                                    <div className="relative flex items-center justify-center gap-2 px-5">
                                                                         <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
                                                                             Serving
                                                                         </span>
@@ -532,9 +526,6 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                     PRIORITY
                                                                                 </span>
                                                                             )}
-                                                                            <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
-                                                                                Teller {teller}
-                                                                            </span>
                                                                         </div>
                                                                     </div>
                                                                     <div className="relative flex flex-col items-center gap-4">
@@ -548,6 +539,9 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                 {t.transaction_type?.name}
                                                                             </div>
                                                                         )}
+                                                                        <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
+                                                                            Teller {teller}
+                                                                        </span>
                                                                     </div>
                                                                 </div>
                                                             );
