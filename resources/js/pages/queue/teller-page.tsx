@@ -46,11 +46,11 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
         form.post(route('queue.teller.next'));
     }
 
-    const breadcrumbs = [{ title: 'Teller', href: '/queue/teller' }];
+    const breadcrumbs = [{ title: 'Service Counter', href: '/queue/teller' }];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Teller" />
+            <Head title="Service Counter" />
             <div className="relative min-h-screen bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
                     <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
@@ -60,7 +60,7 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
                 <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
                     <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
                         <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
-                            Teller Panel
+                            SERVICE COUNTER
                         </h1>
                         <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm">
                             <div className="rounded-full bg-slate-200/70 px-4 py-1 font-mono text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
@@ -99,7 +99,7 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
                     <Card className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70">
                         <CardHeader className="border-b border-slate-200 pb-4 dark:border-slate-800/70">
                             <CardTitle className="bg-gradient-to-br from-slate-800 to-slate-500 bg-clip-text text-xl font-semibold tracking-wide text-transparent dark:from-slate-200 dark:to-slate-400">
-                                {userTellerNumber ? 'Session' : 'Get Started'}
+                                {userTellerNumber ? 'Transaction' : 'Begin Serving'}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6">
