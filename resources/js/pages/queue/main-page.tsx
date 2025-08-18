@@ -161,11 +161,13 @@ export default function MainPage({ boardData }: Props) {
                 const el = waitingWrapRef.current;
                 const h = el.clientHeight;
                 const w = el.clientWidth;
-                const cols = w >= 640 ? 2 : 1; // sm breakpoint
-                const rowH = 56 + 8; // locked waiting card height (h-14) + gap
-                const rows = Math.max(1, Math.floor((h + 10) / rowH));
+                // Heuristic columns by width: small→1, sm→2, md→3, lg→5
+                const cols = w >= 1280 ? 5 : w >= 1024 ? 4 : w >= 768 ? 3 : w >= 640 ? 2 : 1;
+                const rowH = 64 + 12; // compact waiting card height + gap
+                const rows = Math.max(1, Math.floor((h + 12) / rowH));
                 const capacity = rows * cols;
-                setWaitingCapacity(Math.min(2, capacity)); // max 2 cards
+                // Ensure we show at least 5 waiting cards when available
+                setWaitingCapacity(Math.max(5, capacity));
             }
         });
         if (servingWrapRef.current) ro.observe(servingWrapRef.current);
@@ -302,7 +304,8 @@ export default function MainPage({ boardData }: Props) {
                                     </div>
                                 </header>
                                 <div ref={waitingWrapRef} className="min-h-0 flex-1">
-                                    <div className="grid h-full grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {/* horizontal padding provides left/right spacing for the card grid */}
+                                    <div className="grid h-full grid-cols-1 gap-3 px-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                                         {loading && waitingTickets.length === 0 && (
                                             <>
                                                 {Array.from({ length: 2 }).map((_, i) => (
@@ -325,23 +328,25 @@ export default function MainPage({ boardData }: Props) {
                                         {waitingLimited.map((t) => (
                                             <div
                                                 key={`waiting-${t.id}`}
-                                                className="group relative flex h-14 items-center justify-between gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white px-3 py-2 whitespace-nowrap shadow-sm ring-1 ring-slate-200/50 transition hover:shadow-md hover:ring-slate-300/70 md:h-16 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-slate-800/40 dark:hover:ring-slate-700/60"
+                                                className="group relative flex h-16 items-center justify-between gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white px-4 py-2 whitespace-nowrap shadow-sm ring-1 ring-slate-200/50 transition hover:shadow-md hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-slate-800/40 dark:hover:ring-slate-700/60"
                                             >
                                                 {/* Left: Type chip */}
                                                 {t.transaction_type_id && (
-                                                    <span className="max-w-[36%] truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+                                                    <span className="max-w-[40%] truncate rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
                                                         {t.transaction_type?.name}
                                                     </span>
                                                 )}
+
                                                 {/* Center: Number */}
-                                                <div className="flex-1 overflow-hidden text-center">
-                                                    <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 bg-clip-text text-4xl leading-none font-black tracking-tight text-transparent tabular-nums drop-shadow-sm dark:from-slate-200 dark:via-slate-300 dark:to-white">
+                                                <div className="flex-1 overflow-hidden px-1 text-center">
+                                                    <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 bg-clip-text text-3xl leading-none font-black tracking-tight text-transparent tabular-nums drop-shadow-sm dark:from-slate-200 dark:via-slate-300 dark:to-white">
                                                         {t.number}
                                                     </div>
                                                 </div>
+
                                                 {/* Right: Teller chip */}
                                                 {t.teller_id && (
-                                                    <div className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-medium tracking-wide text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
+                                                    <div className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium tracking-wide text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
                                                         Cntr {t.teller_id}
                                                     </div>
                                                 )}
