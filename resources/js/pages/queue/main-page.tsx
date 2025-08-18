@@ -23,9 +23,8 @@ interface BoardData {
 
 // Update the props to match the data structure from your Laravel controller.
 interface Props {
-    // The initial data will be from the Inertia page props,
-    // which should match the structure of your JSON endpoint.
     boardData: BoardData;
+    transactionTypes?: Array<{ id: number; name: string; description?: string; [key: string]: any }>;
 }
 
 // Lightweight, themed video slot used in the header corners.
@@ -68,7 +67,7 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
     );
 }
 
-export default function MainPage({ boardData }: Props) {
+export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     const [servingTickets, setServingTickets] = useState<QueueTicket[]>(boardData.serving || []);
     const [waitingTickets, setWaitingTickets] = useState<QueueTicket[]>(boardData.waiting || []);
     const [loading, setLoading] = useState(false);
@@ -206,16 +205,43 @@ export default function MainPage({ boardData }: Props) {
     const groupedServing = groupByType(servingTickets);
     const groupedServingLimited = sliceGroups(groupedServing, servingCapacity);
     const waitingLimited = waitingTickets.slice(0, waitingCapacity);
-    // Serving columns: left = "Guarantee Letter", right = "Cash Assistance"
+    // Decide left/right columns dynamically from transactionTypes metadata (if any)
+    // Supported metadata fields: column, side, position, display_column (flexible)
+    const txnTypes = transactionTypes || [];
+    let leftNames: string[] = [];
+    let rightNames: string[] = [];
+
+    for (const t of txnTypes) {
+        const meta = t.column ?? t.side ?? t.position ?? t.display_column ?? t.side_of_screen ?? null;
+        if (meta !== null && meta !== undefined) {
+            const s = String(meta).toLowerCase();
+            if (s.includes('left') || s === 'l' || s === '1' || s === 'a') leftNames.push(t.name);
+            else if (s.includes('right') || s === 'r' || s === '2' || s === 'b') rightNames.push(t.name);
+        }
+    }
+
+    // If no explicit columns found, fall back to first two transaction types (if available)
+    if (leftNames.length === 0 && rightNames.length === 0) {
+        if (txnTypes.length >= 2) {
+            leftNames = [txnTypes[0].name];
+            rightNames = [txnTypes[1].name];
+        } else if (txnTypes.length === 1) {
+            leftNames = [txnTypes[0].name];
+            rightNames = [];
+        } else {
+            // final fallback to previous labels for compatibility
+            leftNames = ['Guarantee Letter'];
+            rightNames = ['Cash Assistance'];
+        }
+    }
+
+    const leftLabel = leftNames[0] ?? 'Left';
+    const rightLabel = rightNames[0] ?? 'Right';
     const servingRows = Math.max(1, Math.floor(servingCapacity / 2));
-    const guaranteeAll = servingTickets.filter((t) => {
-        // @ts-ignore
-        return (t.transaction_type?.name || '').toLowerCase() === 'guarantee letter';
-    });
-    const cashAll = servingTickets.filter((t) => {
-        // @ts-ignore
-        return (t.transaction_type?.name || '').toLowerCase() === 'cash assistance';
-    });
+
+    // Filter serving tickets by whether their transaction_type matches left/right names
+    const guaranteeAll = servingTickets.filter((t) => leftNames.includes(t.transaction_type?.name));
+    const cashAll = servingTickets.filter((t) => rightNames.includes(t.transaction_type?.name));
     const guaranteeLimited = guaranteeAll.slice(0, servingRows);
     const cashLimited = cashAll.slice(0, servingRows);
 
@@ -381,7 +407,7 @@ export default function MainPage({ boardData }: Props) {
                                         <div className="flex min-h-0 flex-col gap-3">
                                             <div className="flex items-center justify-between">
                                                 <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                                                    Guarantee Letter
+                                                    {leftLabel}
                                                 </span>
                                                 <span className="text-xs text-slate-500 dark:text-slate-400">{guaranteeAll.length}</span>
                                             </div>
@@ -427,7 +453,7 @@ export default function MainPage({ boardData }: Props) {
                                         <div className="flex min-h-0 flex-col gap-3">
                                             <div className="flex items-center justify-between">
                                                 <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                                                    Cash Assistance
+                                                    {rightLabel}
                                                 </span>
                                                 <span className="text-xs text-slate-500 dark:text-slate-400">{cashAll.length}</span>
                                             </div>
