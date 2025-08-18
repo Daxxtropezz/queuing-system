@@ -50,9 +50,13 @@ class QueueController extends Controller
             'generated_at' => now()->toIso8601String(),
         ];
 
+        // Also pass current transaction types so the frontend can render columns dynamically
+        $transactionTypes = TransactionType::orderBy('name')->get(['id', 'name', 'description']);
+
         // Pass the data to the Inertia component
         return Inertia::render('queue/main-page', [
             'boardData' => $boardData,
+            'transactionTypes' => $transactionTypes,
         ]);
     }
 
