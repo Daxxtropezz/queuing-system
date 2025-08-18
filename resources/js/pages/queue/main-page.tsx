@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-// Define a single type for the QueueTicket since both lists have the same structure.
+// Update QueueTicket type to include ispriority
 type QueueTicket = {
     id: number;
     number: string | number;
@@ -12,6 +12,7 @@ type QueueTicket = {
     teller_id?: string;
     updated_at?: string;
     created_at?: string;
+    ispriority?: number | boolean; // <-- added
 };
 
 // Define the structure of the data returned by the API.
@@ -206,6 +207,56 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     const groupedServingLimited = sliceGroups(groupedServing, servingCapacity);
     const waitingLimited = waitingTickets.slice(0, waitingCapacity);
 
+    // New: group waiting tickets by transaction type, then by priority
+    // NOTE: use the full waitingTickets list (not the already-sliced waitingLimited) so priority separation is accurate.
+    const waitingGroups = useMemo(() => {
+        const map = new Map<string, { name: string; priority: QueueTicket[]; regular: QueueTicket[] }>();
+        for (const t of waitingTickets) {
+            const key = t.transaction_type?.name || 'Other';
+            if (!map.has(key)) map.set(key, { name: key, priority: [], regular: [] });
+            const bucket = map.get(key)!;
+            const isPriority = t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1';
+            if (isPriority) bucket.priority.push(t);
+            else bucket.regular.push(t);
+        }
+
+        if (transactionTypes && transactionTypes.length) {
+            const ordered: { name: string; priority: QueueTicket[]; regular: QueueTicket[] }[] = [];
+            for (const tt of transactionTypes) {
+                const entry = map.get(tt.name);
+                if (entry) ordered.push(entry);
+            }
+            for (const remaining of map.values()) {
+                if (!ordered.find((o) => o.name === remaining.name)) ordered.push(remaining);
+            }
+            return ordered;
+        }
+        return Array.from(map.values());
+    }, [waitingTickets, transactionTypes]);
+
+    // --- NEW: waitingColumns (ordered per transactionTypes) ---
+    const waitingColumns = useMemo(() => {
+        // If transactionTypes exist: ensure same order as columns; otherwise fallback to waitingGroups
+        if (transactionTypes && transactionTypes.length) {
+            // create map from waitingGroups for O(1) lookup
+            const mg = new Map(waitingGroups.map((g) => [g.name, g]));
+            const ordered: { name: string; priority: QueueTicket[]; regular: QueueTicket[] }[] = [];
+            for (const tt of transactionTypes) {
+                const entry = mg.get(tt.name);
+                if (entry) ordered.push(entry);
+            }
+            // append any left-over groups
+            for (const g of waitingGroups) {
+                if (!ordered.find((o) => o.name === g.name)) ordered.push(g);
+            }
+            return ordered;
+        }
+        return waitingGroups;
+    }, [waitingGroups, transactionTypes]);
+
+    // final rendering will cap items per group so Priority items are shown first,
+    // then Regular items fill remaining visible slots per group.
+
     // --- REPLACE: previous left/right logic with dynamic N columns ---
     // Build dynamic columns from transactionTypes (one column per transaction type).
     // Fallback to two legacy labels when no transactionTypes provided.
@@ -307,7 +358,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                 </header>
                                 <div ref={waitingWrapRef} className="min-h-0 flex-1">
                                     {/* horizontal padding provides left/right spacing for the card grid */}
-                                    <div className="grid h-full grid-cols-1 gap-3 px-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                                    <div className="grid h-full grid-cols-1 gap-3 px-3">
                                         {loading && waitingTickets.length === 0 && (
                                             <>
                                                 {Array.from({ length: 2 }).map((_, i) => (
@@ -322,38 +373,104 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                 ))}
                                             </>
                                         )}
-                                        {!loading && waitingLimited.length === 0 && (
+
+                                        {!loading && waitingGroups.length === 0 && (
                                             <div className="col-span-full flex h-full items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
                                                 No waiting tickets
                                             </div>
                                         )}
-                                        {waitingLimited.map((t) => (
-                                            <div
-                                                key={`waiting-${t.id}`}
-                                                className="group relative flex h-16 items-center justify-between gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white px-4 py-2 whitespace-nowrap shadow-sm ring-1 ring-slate-200/50 transition hover:shadow-md hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-slate-900/60 dark:ring-slate-800/40 dark:hover:ring-slate-700/60"
-                                            >
-                                                {/* Left: Type chip */}
-                                                {t.transaction_type_id && (
-                                                    <span className="max-w-[40%] truncate rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
-                                                        {t.transaction_type?.name}
-                                                    </span>
-                                                )}
 
-                                                {/* Center: Number */}
-                                                <div className="flex-1 overflow-hidden px-1 text-center">
-                                                    <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 bg-clip-text text-3xl leading-none font-black tracking-tight text-transparent tabular-nums drop-shadow-sm dark:from-slate-200 dark:via-slate-300 dark:to-white">
-                                                        {t.number}
-                                                    </div>
-                                                </div>
-
-                                                {/* Right: Teller chip */}
-                                                {t.teller_id && (
-                                                    <div className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium tracking-wide text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-300">
-                                                        Cntr {t.teller_id}
-                                                    </div>
-                                                )}
+                                        {/* Render per-transaction-type groups as columns */}
+                                        {waitingColumns.length === 0 ? (
+                                            <div className="col-span-full flex h-full items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
+                                                No waiting tickets
                                             </div>
-                                        ))}
+                                        ) : (
+                                            <div
+                                                className="grid h-full gap-3"
+                                                style={{ gridTemplateColumns: `repeat(${Math.max(1, waitingColumns.length)}, minmax(0, 1fr))` }}
+                                            >
+                                                {waitingColumns.map((col) => {
+                                                    // determine how many items to show for this group (distribute overall capacity)
+                                                    const perGroupCapacity = Math.max(
+                                                        3,
+                                                        Math.ceil(waitingCapacity / Math.max(1, waitingColumns.length)),
+                                                    );
+                                                    const displayPriority = col.priority.slice(0, perGroupCapacity);
+                                                    const remaining = perGroupCapacity - displayPriority.length;
+                                                    const displayRegular = col.regular.slice(0, Math.max(0, remaining));
+                                                    const queuedCount = col.priority.length + col.regular.length;
+                                                    return (
+                                                        <div
+                                                            key={`wg-col-${col.name}`}
+                                                            className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
+                                                        >
+                                                            <div className="mb-2 flex items-center justify-between">
+                                                                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                                    {col.name}
+                                                                </div>
+                                                                <div className="text-xs text-slate-500 dark:text-slate-400">{queuedCount} queued</div>
+                                                            </div>
+
+                                                            {/* Two-column inner layout: left = Regular, right = Priority */}
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                                                                        Regular
+                                                                    </div>
+                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                        {displayRegular.map((t) => (
+                                                                            <div
+                                                                                key={`w-reg-${t.id}`}
+                                                                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
+                                                                            >
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <div className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">
+                                                                                        {t.number}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                                    {t.teller_id ? `Cntr ${t.teller_id}` : '—'}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                        {displayRegular.length === 0 && (
+                                                                            <div className="text-xs text-slate-400">—</div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div>
+                                                                    <div className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                                                        Priority
+                                                                    </div>
+                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                        {displayPriority.map((t) => (
+                                                                            <div
+                                                                                key={`w-prio-${t.id}`}
+                                                                                className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
+                                                                            >
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <div className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">
+                                                                                        {t.number}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                                    {t.teller_id ? `Cntr ${t.teller_id}` : '—'}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                        {displayPriority.length === 0 && (
+                                                                            <div className="text-xs text-slate-400">—</div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -399,6 +516,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                     key={`serving-${ci}-${t.id}`}
                                                                     className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-200/60 transition hover:shadow-2xl hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-gradient-to-br dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 dark:ring-slate-800/50 dark:hover:ring-slate-700/70"
                                                                 >
+                                                                    {/* Brand hover glows */}
                                                                     <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
                                                                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
                                                                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
@@ -407,9 +525,17 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                         <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
                                                                             Serving
                                                                         </span>
-                                                                        <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
-                                                                            Teller {teller}
-                                                                        </span>
+
+                                                                        <div className="flex items-center gap-2">
+                                                                            {(t.ispriority === 1 || String(t.ispriority) === '1') && (
+                                                                                <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-semibold tracking-wider text-amber-800 uppercase dark:bg-amber-500/10 dark:text-amber-300">
+                                                                                    PRIORITY
+                                                                                </span>
+                                                                            )}
+                                                                            <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
+                                                                                Teller {teller}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
                                                                     <div className="relative flex flex-col items-center gap-4">
                                                                         <div className="bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-600 bg-clip-text text-6xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-7xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
