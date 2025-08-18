@@ -230,7 +230,7 @@ export default function GuardPage({ transactionTypes = [] }: { transactionTypes?
                                     </div>
                                 </>
                             ) : (
-                                <p className="mt-6 text-center text-slate-400 italic">Please select Regular or Priority first.</p>
+                                <p className="mt-6 text-center text-slate-400 italic">Please select Regular or Priority to proceed to Step 2.</p>
                             )}
                         </form>
                     </CardContent>

@@ -14,8 +14,6 @@ type TellerPageProps = {
 };
 
 export default function TellerPage({ current, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
-
-
     // Single useForm
     const form = useForm({
         teller_id: userTellerNumber ?? tellers[0]?.id ?? '',
@@ -161,28 +159,43 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
                                         Assign Teller
                                     </Button>
                                 </div>
-                            ) : current ? (
-                                <div className="flex flex-col items-center gap-6">
-                                    <div className="bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-6xl font-extrabold tracking-wider text-transparent tabular-nums drop-shadow md:text-7xl">
-                                        {current.number}
-                                    </div>
-                                    <div className="rounded-xl border border-slate-700/60 bg-slate-800/70 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-200">
-                                        {current.transaction_type?.name}
-                                    </div>
-                                    <div className="rounded-full bg-indigo-500/15 px-4 py-1 text-xs font-semibold tracking-wider text-indigo-300 uppercase">
-                                        Now Serving at Teller {userTellerNumber}
-                                    </div>
-                                    <Button
-                                        onClick={handleNext}
-                                        disabled={processing}
-                                        size="lg"
-                                        className="w-full rounded-xl bg-amber-400 text-slate-900 hover:bg-amber-300 focus:ring-4 focus:ring-amber-400/30"
-                                    >
-                                        {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Next
-                                    </Button>
-                                </div>
-                            ) : (
+                            ) :current ? (
+    <div className="flex flex-col items-center gap-6">
+        <div className="bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-6xl font-extrabold tracking-wider text-transparent tabular-nums drop-shadow md:text-7xl">
+            {current.number}
+        </div>
+
+        {/* Transaction Type */}
+        <div className="rounded-xl border border-slate-700/60 bg-slate-800/70 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-200">
+            {current.transaction_type?.name}
+        </div>
+
+        {/* Priority or Regular Badge */}
+        <div
+            className={`rounded-full px-4 py-1 text-xs font-semibold tracking-wider uppercase ${
+                current.ispriority
+                    ? 'bg-rose-500/20 text-rose-400'
+                    : 'bg-emerald-500/20 text-emerald-400'
+            }`}
+        >
+            {current.ispriority ? 'Priority' : 'Regular'}
+        </div>
+
+        <div className="rounded-full bg-indigo-500/15 px-4 py-1 text-xs font-semibold tracking-wider text-indigo-300 uppercase">
+            Now Serving at Teller {userTellerNumber}
+        </div>
+
+        <Button
+            onClick={handleNext}
+            disabled={processing}
+            size="lg"
+            className="w-full rounded-xl bg-amber-400 text-slate-900 hover:bg-amber-300 focus:ring-4 focus:ring-amber-400/30"
+        >
+            {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Next
+        </Button>
+    </div>
+) : (
                                 <div className="flex flex-col items-center gap-5">
                                     <p className="text-sm text-slate-400">No current queue number assigned.</p>
                                     <Button
