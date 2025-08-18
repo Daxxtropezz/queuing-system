@@ -70,40 +70,40 @@ class QueueController extends Controller
     }
 
     // Guard: generate number
-    public function generateNumber(Request $request)
-    {
-        // Log::info($request->all()); 
-        $validated = $request->validate([
-            'transaction_type_id' => 'required|exists:transaction_types,id',
-            'ispriority' => 'required|in:0,1',
+  public function generateNumber(Request $request)
+{
+    $validated = $request->validate([
+        'transaction_type_id' => 'required|exists:transaction_types,id',
+        'ispriority' => 'required|in:0,1',
+    ]);
+
+    $ticket = null;
+
+    DB::transaction(function () use ($validated, &$ticket) {
+        $today = now()->startOfDay();
+
+        // 🔹 Separate counters for Regular (0) and Priority (1)
+        $last = QueueTicket::where('transaction_type_id', $validated['transaction_type_id'])
+            ->where('ispriority', $validated['ispriority']) // 👈 added this line
+            ->whereDate('created_at', $today)
+            ->orderByDesc('number')
+            ->lockForUpdate()
+            ->first();
+
+        $number = $last ? $last->number + 1 : 1;
+
+        $ticket = QueueTicket::create([
+            'number' => $number,
+            'transaction_type_id' => $validated['transaction_type_id'],
+            'status' => 'waiting',
+            'ispriority' => $validated['ispriority'],
         ]);
+    });
 
-        $ticket = null;
-
-        DB::transaction(function () use ($validated, &$ticket) {
-            // 🔹 Reset numbers daily
-            $today = now()->startOfDay();
-
-            $last = QueueTicket::where('transaction_type_id', $validated['transaction_type_id'])
-                ->whereDate('created_at', $today) // 👈 Only look at today's tickets
-                ->orderByDesc('number')
-                ->lockForUpdate()
-                ->first();
-
-            $number = $last ? $last->number + 1 : 1;
-
-            $ticket = QueueTicket::create([
-                'number' => $number,
-                'transaction_type_id' => $validated['transaction_type_id'],
-                'status' => 'waiting',
-                'ispriority' => $validated['ispriority'] ?? 0,
-            ]);
-        });
-
-        return response()->json([
-            'generatedNumber' => $ticket->formatted_number,
-        ]);
-    }
+    return response()->json([
+        'generatedNumber' => $ticket->formatted_number,
+    ]);
+}
 
 
     public function status()
