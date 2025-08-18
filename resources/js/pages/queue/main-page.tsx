@@ -29,10 +29,10 @@ interface Props {
 }
 
 // Lightweight, themed video slot used in the header corners.
-// Build a local playlist from resources/videos and auto-play/auto-next.
+// Build a local playlist from public/videos and auto-play/auto-next.
 function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }) {
-    // Collect local videos from resources/videos (including subfolders). Supported: mp4, webm, ogg
-    const modules = import.meta.glob('/resources/videos/**/*.{mp4,webm,ogg}', { eager: true, as: 'url' }) as Record<string, string>;
+    // Collect local videos from public/videos (including subfolders). Supported: mp4, webm, ogg
+    const modules = import.meta.glob('/public/videos/**/*.{mp4,webm,ogg}', { eager: true, as: 'url' }) as Record<string, string>;
     const sources = useMemo(() => {
         // Sort by path so playback is predictable
         return Object.entries(modules)
@@ -60,7 +60,7 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
                     />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">
-                        {emptyText} <br /> Place videos in resources/videos
+                        {emptyText} <br /> Place videos in public/videos
                     </div>
                 )}
             </div>
