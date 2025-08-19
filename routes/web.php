@@ -17,6 +17,7 @@ use App\Http\Controllers\QueueController;
 use App\Http\Controllers\QueueBoardController;
 use App\Http\Controllers\TellerController;
 use App\Http\Controllers\TransactionTypeController;
+use App\Http\Controllers\VideoController;
 
 // Redirect to login by default
 Route::get('/', function () {
@@ -139,6 +140,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('transaction-types', TransactionTypeController::class);
     Route::resource('teller-numbers', TellerController::class);
+    Route::resource('videos', VideoController::class);
+
 });
 
 Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
