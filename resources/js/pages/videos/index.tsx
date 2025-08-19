@@ -1,4 +1,5 @@
 import VideoModal from '@/components/videos/video-modal';
+import VideoPreviewModal from '@/components/videos/video-preview-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,6 +16,8 @@ export default function Videos() {
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [isLoading, setIsLoading] = useState(false);
+    const [isPreviewModalVisible, setIsPreviewModalVisible] = useState(false);
+
 
     useEffect(() => {
         if (flash.success) {
@@ -106,6 +109,17 @@ export default function Videos() {
         });
     };
 
+    const openPreviewModal = (video) => {
+        setSelectedVideo(video);
+        setIsPreviewModalVisible(true);
+    };
+
+    const closePreviewModal = () => {
+        setIsPreviewModalVisible(false);
+        setSelectedVideo(null);
+    };
+
+
     return (
         <>
             <Head title="Videos" />
@@ -171,7 +185,6 @@ export default function Videos() {
                                                     </p>
                                                 )}
                                             </div>
-
                                         </div>
                                     </div>
 
@@ -195,11 +208,14 @@ export default function Videos() {
                                                             <TableCell className="text-center">{video.title}</TableCell>
                                                             <TableCell className="text-center">{video.description}</TableCell>
                                                             <TableCell className="text-center">
-                                                                <video width="160" controls className="mx-auto rounded">
-                                                                    <source src={`/storage/${video.file_path}`} type="video/mp4" />
-                                                                    Your browser does not support video playback.
-                                                                </video>
+                                                                <span
+                                                                    onClick={() => openPreviewModal(video)}
+                                                                    className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+                                                                >
+                                                                    {video.file_path}
+                                                                </span>
                                                             </TableCell>
+
                                                             <TableCell className="space-x-2 text-center">
                                                                 <Button size="sm" onClick={() => openEditModal(video)}>
                                                                     <SquarePen className="h-4 w-4" />
@@ -221,17 +237,29 @@ export default function Videos() {
 
                                     </div>
                                 </div>
-
                                 {/* Create Modal */}
                                 {isCreateModalVisible && <VideoModal isModalVisible={isCreateModalVisible} onClose={closeCreateModal} />}
+
                                 {/* Edit Modal */}
                                 {isEditModalVisible && (
-                                    <VideoModal video={selectedVideo} isModalVisible={isEditModalVisible} onClose={closeEditModal} />
+                                    <VideoModal
+                                        video={selectedVideo}
+                                        isModalVisible={isEditModalVisible}
+                                        onClose={closeEditModal}
+                                    />
                                 )}
+
                             </div>
                         </div>
                     </main>
-
+                    {/* Preview Modal */}
+                    {isPreviewModalVisible && (
+                        <VideoPreviewModal
+                            video={selectedVideo}
+                            isModalVisible={isPreviewModalVisible}
+                            onClose={closePreviewModal}
+                        />
+                    )}
                     {/* Footer (optional, mirrors main-page) */}
                     <footer className="relative z-10 mt-auto w-full border-t border-slate-200/70 bg-white/80 py-4 text-center text-xs font-medium tracking-wide text-slate-600 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
                         DSWD Queuing System • Videos
