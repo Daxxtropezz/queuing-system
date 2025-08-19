@@ -4,36 +4,44 @@ namespace App\Http\Controllers;
 
 use App\Models\QueueTicket;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class QueueBoardController extends Controller
 {
     public function data(Request $request)
     {
+        // only include tickets created today
+        $today = Carbon::today();
+
         $serving = QueueTicket::with('transactionType:id,name')
             ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'ispriority', 'created_at', 'updated_at')
             ->where('status', 'serving')
+            ->whereDate('created_at', $today)
             ->orderByDesc('updated_at')
             ->get();
 
         $waiting = QueueTicket::with('transactionType:id,name')
             ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'ispriority', 'created_at', 'updated_at')
             ->where('status', 'waiting')
+            ->whereDate('created_at', $today)
             ->orderBy('created_at')
             ->limit(200)
             ->get();
 
-        $data = QueueTicket::with('transactionType')
-            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'ispriority')
+        $data = QueueTicket::with('transactionType:id,name')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'ispriority', 'created_at')
+            ->whereDate('created_at', $today)
             ->get()
             ->map(function ($ticket) {
                 return [
                     'id' => $ticket->id,
                     'number' => $ticket->formatted_number,
-                    'transaction_type' => $ticket->transactionType->name ?? '',
+                    'transaction_type' => ['name' => $ticket->transactionType->name ?? ''],
                     'ispriority' => $ticket->ispriority ?? 0,
                     'status' => $ticket->status,
                     'served_by' => $ticket->served_by,
                     'teller_id' => $ticket->teller_id,
+                    'created_at' => $ticket->created_at?->toIso8601String(),
                 ];
             });
 
