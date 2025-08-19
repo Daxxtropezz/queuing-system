@@ -140,6 +140,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('transaction-types', TransactionTypeController::class);
     Route::resource('videos', VideoController::class);
+    Route::post('videos/{video}', [VideoController::class, 'update'])->name('videos.update');
     Route::resource('tellers', TellerController::class);
 });
 

@@ -11,3 +11,4 @@ class Video extends Model
         'file_path',
     ];
 }
+

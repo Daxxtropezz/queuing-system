@@ -15,10 +15,10 @@ type ModalProps = {
 export default function VideoModal({ isModalVisible, onClose, video }: ModalProps) {
   const isEditMode = !!video;
 
-  const { data, setData, post, put, processing, errors, reset } = useForm({
+  const { data, setData, post, processing, errors, reset } = useForm({
     title: video?.title || '',
     description: video?.description || '',
-    file: null as File | null,
+    file_path: null as File | null,
   });
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function VideoModal({ isModalVisible, onClose, video }: ModalProp
       setData({
         title: video!.title,
         description: video!.description || '',
-        file: null,
+        file_path: null,
       });
     } else {
       reset();
@@ -36,11 +36,26 @@ export default function VideoModal({ isModalVisible, onClose, video }: ModalProp
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isEditMode) {
-      put(route('videos.update', video!.id), { forceFormData: true });
+      // Use POST request with method spoofing for file uploads
+      post(route('videos.update', video!.id), {
+        data: {
+          ...data,
+          _method: 'put',
+        },
+        forceFormData: true,
+        onSuccess: () => {
+          onClose(false);
+        },
+      });
     } else {
-      post(route('videos.store'), { forceFormData: true });
+      // Keep POST for creating
+      post(route('videos.store'), {
+        forceFormData: true,
+        onSuccess: () => {
+          onClose(false);
+        },
+      });
     }
-    onClose(false);
   };
 
   return (
@@ -63,9 +78,9 @@ export default function VideoModal({ isModalVisible, onClose, video }: ModalProp
               {errors.description && <p className="col-span-4 text-red-500 text-sm">{errors.description}</p>}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="file">File</Label>
-              <Input id="file" type="file" accept="video/*" onChange={(e) => setData('file', e.target.files?.[0] ?? null)} className="col-span-3" />
-              {errors.file && <p className="col-span-4 text-red-500 text-sm">{errors.file}</p>}
+              <Label htmlFor="file_path">File</Label>
+              <Input id="file_path" type="file" accept="video/*" onChange={(e) => setData('file_path', e.target.files?.[0] ?? null)} className="col-span-3" />
+              {errors.file_path && <p className="col-span-4 text-red-500 text-sm">{errors.file_path}</p>}
             </div>
           </div>
           <DialogFooter>
