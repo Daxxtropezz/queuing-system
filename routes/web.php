@@ -139,8 +139,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     Route::resource('transaction-types', TransactionTypeController::class);
-    Route::resource('teller-numbers', TellerController::class);
     Route::resource('videos', VideoController::class);
+    Route::resource('tellers', TellerController::class);
 
 });
 

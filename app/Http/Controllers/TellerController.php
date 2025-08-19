@@ -14,7 +14,7 @@ class TellerController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('counter_number', 'like', "%{$search}%");
+                    ->orWhere('counter_number', 'like', "%{$search}%");
             });
         }
 
@@ -43,7 +43,7 @@ class TellerController extends Controller
 
         Teller::create($validated);
 
-        return redirect()->route('teller-numbers.index')->with('success', 'Teller created.');
+        return redirect()->route('tellers.index')->with('success', 'Teller created.');
     }
 
     public function update(Request $request, Teller $teller)
@@ -55,7 +55,7 @@ class TellerController extends Controller
 
         $teller->update($validated);
 
-        return redirect()->route('teller-numbers.index')->with('success', 'Teller updated.');
+        return redirect()->route('tellers.index')->with('success', 'Teller updated.');
     }
 
     public function destroy(Teller $teller)
