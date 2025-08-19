@@ -36,10 +36,10 @@ class VideoController extends Controller
         $validated = $request->validate([
             'title' => 'required|max:255',
             'description' => 'nullable|max:1000',
-            'file' => 'required|mimes:mp4,mov,avi,wmv|max:512000', 
+            'file_path' => 'required|mimes:mp4,mov,avi,wmv|max:512000', 
         ]);
 
-        $path = $request->file('file')->store('videos', 'public');
+        $path = $request->file('file_path')->store('videos', 'public');
 
         Video::create([
             'title' => $validated['title'],
@@ -55,15 +55,15 @@ class VideoController extends Controller
         $validated = $request->validate([
             'title' => 'required|max:255',
             'description' => 'nullable|max:1000',
-            'file' => 'nullable|mimes:mp4,mov,avi,wmv|max:512000',
+            'file_path' => 'nullable|mimes:mp4,mov,avi,wmv|max:512000',
         ]);
 
-        if ($request->hasFile('file')) {
+        if ($request->hasFile('file_path')) {
             // delete old file
             if ($video->file_path && Storage::disk('public')->exists($video->file_path)) {
                 Storage::disk('public')->delete($video->file_path);
             }
-            $path = $request->file('file')->store('videos', 'public');
+            $path = $request->file('file_path')->store('videos', 'public');
             $validated['file_path'] = $path;
         }
 
