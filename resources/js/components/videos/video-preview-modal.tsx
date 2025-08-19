@@ -32,6 +32,7 @@ export default function VideoPreviewModal({ video, isModalVisible, onClose }) {
                 {/* Video */}
                 <div className="flex-1 flex items-center justify-center">
                     <video
+                        autoPlay
                         controls
                         className="max-h-full max-w-full rounded-lg object-contain"
                     >
