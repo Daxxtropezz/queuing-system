@@ -30,10 +30,10 @@ interface Props {
 }
 
 // Lightweight, themed video slot used in the header corners.
-// Build a local playlist from public/videos and auto-play/auto-next.
+// Build a local playlist from storage/app/public/videos and auto-play/auto-next.
 function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }) {
-    // Collect local videos from public/videos (including subfolders). Supported: mp4, webm, ogg
-    const modules = import.meta.glob('/public/videos/**/*.{mp4,webm,ogg}', { eager: true, as: 'url' }) as Record<string, string>;
+    // Collect local videos from storage/app/public/videos (including subfolders). Supported: mp4, webm, ogg
+    const modules = import.meta.glob('/storage/app/public/videos/**/*.{mp4,webm,ogg}', { eager: true, as: 'url' }) as Record<string, string>;
     const sources = useMemo(() => {
         // Sort by path so playback is predictable
         return Object.entries(modules)
@@ -61,7 +61,7 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
                     />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">
-                        {emptyText} <br /> Place videos in public/videos
+                        {emptyText} <br /> Place videos in storage/app/public/videos
                     </div>
                 )}
             </div>
@@ -479,7 +479,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             <header className="flex items-center justify-between">
                                 <h2 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
                                     <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-transparent dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">
-                                        Now Serving
+                                        Serving List
                                     </span>
                                 </h2>
                                 <div className="rounded-full bg-slate-200/70 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
@@ -521,13 +521,18 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                     </div>
                                                                     <div className="relative flex items-center justify-center gap-2 px-5">
                                                                         <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
-                                                                            Serving
+                                                                            Now Serving
                                                                         </span>
 
                                                                         <div className="flex items-center gap-2">
                                                                             {(t.ispriority === 1 || String(t.ispriority) === '1') && (
                                                                                 <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-semibold tracking-wider text-amber-800 uppercase dark:bg-amber-500/10 dark:text-amber-300">
                                                                                     PRIORITY
+                                                                                </span>
+                                                                            )}
+                                                                            {(t.ispriority === 0 || String(t.ispriority) === '0') && (
+                                                                                <span className="rounded-full bg-blue-100 px-3 py-1 text-[10px] font-semibold tracking-wider text-blue-800 uppercase dark:bg-blue-500/10 dark:text-blue-300">
+                                                                                    REGULAR
                                                                                 </span>
                                                                             )}
                                                                         </div>
