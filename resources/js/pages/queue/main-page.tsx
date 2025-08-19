@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import AppLogoIcon from './../../components/app-logo-icon';
 
 // Update QueueTicket type to include ispriority
 type QueueTicket = {
@@ -335,7 +336,10 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             {/* Video */}
                             <div>
                                 <header className="mb-3 flex items-center justify-between">
-                                    <h2 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
+                                    <h2 className="flex items-center text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
+                                        <div className="bg-sidebar-primary-foreground mr-2 flex aspect-square size-8 items-center justify-center rounded-md">
+                                            <AppLogoIcon className="size-7 fill-current text-white dark:text-black" />
+                                        </div>
                                         <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
                                             Department of Social Welfare and Development
                                         </span>
