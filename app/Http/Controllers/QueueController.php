@@ -132,7 +132,9 @@ class QueueController extends Controller
         $user = $request->user();
         $current = QueueTicket::with('transactionType')
             ->where('served_by', $user->id)
-            ->where('status', 'serving')->first();
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
 
         // Pass the user's teller number to the frontend
         return Inertia::render('queue/teller-page', [
@@ -167,59 +169,59 @@ class QueueController extends Controller
     }
 
     public function grabNumber(Request $request)
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        if (is_null($user->teller_id) || is_null($user->transaction_type_id)) {
-            return back()->with('error', 'Please select a teller number and transaction type first.');
-        }
-
-        $current = QueueTicket::where('served_by', $user->id)
-            ->where('status', 'serving')
-            ->first();
-
-        if ($current) {
-            return back()->with('error', 'Already serving a number');
-        }
-
-        // Get last served ticket by this teller
-        $lastServed = QueueTicket::where('served_by', $user->id)
-            ->whereIn('status', ['done', 'serving'])
-            ->orderByDesc('updated_at')
-            ->first();
-
-        $preferredPriority = null;
-        if ($lastServed) {
-            // Alternate
-            $preferredPriority = $lastServed->ispriority == 1 ? 0 : 1;
-        }
-
-        $query = QueueTicket::where('status', 'waiting')
-            ->where('transaction_type_id', $user->transaction_type_id);
-
-        $next = null;
-
-        if (!is_null($preferredPriority)) {
-            $next = (clone $query)->where('ispriority', $preferredPriority)->orderBy('id')->first();
-        }
-
-        // Fallback if none found
-        if (!$next) {
-            $next = $query->orderBy('ispriority', 'desc')->orderBy('id')->first();
-        }
-
-        if ($next) {
-            $next->update([
-                'status' => 'serving',
-                'served_by' => $user->id,
-                'teller_id' => $user->teller_id,
-            ]);
-
-            return back()->with('success', "Now serving: {$next->formatted_number}");
-        }
-
-        return back()->with('error', 'No waiting numbers for your transaction type.');
+    if (is_null($user->teller_id) || is_null($user->transaction_type_id)) {
+        return back()->with('error', 'Please select a teller number and transaction type first.');
     }
+
+    // Close old serving tickets (yesterday or earlier)
+    QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->whereDate('created_at', '<', now()->toDateString())
+        ->update(['status' => 'done']);
+
+    $current = QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->whereDate('created_at', now()->toDateString())
+        ->first();
+
+    if ($current) {
+        return back()->with('error', 'Already serving a number');
+    }
+
+    $lastServed = QueueTicket::where('served_by', $user->id)
+        ->whereIn('status', ['done', 'serving'])
+        ->whereDate('created_at', '>=', now()->toDateString()) 
+        ->orderByDesc('updated_at')
+        ->first();
+
+    $preferredPriority = $lastServed ? ($lastServed->ispriority == 1 ? 0 : 1) : null;
+
+    $query = QueueTicket::where('status', 'waiting')
+        ->where('transaction_type_id', $user->transaction_type_id)
+        ->whereDate('created_at', '>=', now()->toDateString()); // 👈 today only
+
+    $next = null;
+    if (!is_null($preferredPriority)) {
+        $next = (clone $query)->where('ispriority', $preferredPriority)->orderBy('id')->first();
+    }
+    if (!$next) {
+        $next = $query->orderBy('ispriority', 'desc')->orderBy('id')->first();
+    }
+
+    if ($next) {
+        $next->update([
+            'status' => 'serving',
+            'served_by' => $user->id,
+            'teller_id' => $user->teller_id,
+        ]);
+        return back()->with('success', "Now serving: {$next->formatted_number}");
+    }
+
+    return back()->with('error', 'No waiting numbers for your transaction type.');
+}
 
     public function servingIndex()
     {
@@ -244,51 +246,47 @@ class QueueController extends Controller
     }
 
     public function nextNumber(Request $request)
-{
-    $user = $request->user();
+    {
+        $user = $request->user();
 
-    // Mark current ticket as done
-    QueueTicket::where('served_by', $user->id)
-        ->where('status', 'serving')
-        ->update(['status' => 'done']);
+        // Mark current ticket as done (today only)
+        QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now()) // 👈 today only
+            ->update(['status' => 'done']);
 
-    // Get last served ticket by this teller
-    $lastServed = QueueTicket::where('served_by', $user->id)
-        ->whereIn('status', ['done', 'serving'])
-        ->orderByDesc('updated_at')
-        ->first();
+        $lastServed = QueueTicket::where('served_by', $user->id)
+            ->whereIn('status', ['done', 'serving'])
+            ->whereDate('created_at', now()) // 👈 today only
+            ->orderByDesc('updated_at')
+            ->first();
 
-    $preferredPriority = null;
-    if ($lastServed) {
-        // Alternate between Priority (1) and Regular (0)
-        $preferredPriority = $lastServed->ispriority == 1 ? 0 : 1;
+        $preferredPriority = $lastServed ? ($lastServed->ispriority == 1 ? 0 : 1) : null;
+
+        $query = QueueTicket::where('status', 'waiting')
+            ->where('transaction_type_id', $user->transaction_type_id)
+            ->whereDate('created_at', now()); // 👈 today only
+
+        $next = null;
+
+        if (!is_null($preferredPriority)) {
+            $next = (clone $query)->where('ispriority', $preferredPriority)->orderBy('id')->first();
+        }
+
+        if (!$next) {
+            $next = $query->orderBy('ispriority', 'desc')->orderBy('id')->first();
+        }
+
+        if ($next) {
+            $next->update([
+                'status' => 'serving',
+                'served_by' => $user->id,
+                'teller_id' => $user->teller_id,
+            ]);
+
+            return back()->with('success', "Now serving: {$next->formatted_number}");
+        }
+
+        return back()->with('error', 'No waiting numbers for your transaction type.');
     }
-
-    $query = QueueTicket::where('status', 'waiting')
-        ->where('transaction_type_id', $user->transaction_type_id);
-
-    $next = null;
-
-    if (!is_null($preferredPriority)) {
-        $next = (clone $query)->where('ispriority', $preferredPriority)->orderBy('id')->first();
-    }
-
-    // Fallback if no preferred priority found
-    if (!$next) {
-        $next = $query->orderBy('ispriority', 'desc')->orderBy('id')->first();
-    }
-
-    if ($next) {
-        $next->update([
-            'status' => 'serving',
-            'served_by' => $user->id,
-            'teller_id' => $user->teller_id,
-        ]);
-
-        return back()->with('success', "Now serving: {$next->formatted_number}");
-    }
-
-    return back()->with('error', 'No waiting numbers for your transaction type.');
-}
-
 }
