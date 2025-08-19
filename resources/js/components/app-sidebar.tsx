@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Building, ChartArea, CreditCard, Earth, House, ListChecks, Logs, UserCheck, UserRoundCog, Users, Wrench } from 'lucide-react';
+import { Building, ChartArea, CreditCard, Earth, House, ListChecks, Logs, UserCheck, UserRoundCog, Users, Video, Wrench } from 'lucide-react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
@@ -30,16 +30,7 @@ export function AppSidebar() {
             href: '/queue/teller',
             icon: UserCheck,
         },
-        {
-            title: 'Transaction Types',
-            href: '/transaction-types',
-            icon: ListChecks,
-        },
-        {
-            title: 'Teller Management',
-            href: '/teller-numbers',
-            icon: CreditCard,
-        },
+
 
         //  {
         //     title: 'Guard',
@@ -60,25 +51,20 @@ export function AppSidebar() {
                     icon: Users,
                 },
                 {
-                    title: 'Activity Logs',
-                    href: '/',
-                    icon: Logs,
+                    title: 'Transaction Types',
+                    href: '/transaction-types',
+                    icon: ListChecks,
                 },
                 {
-                    title: 'Maintenance',
-                    href: '/maintenance',
-                    icon: Wrench,
+                    title: 'Teller Management',
+                    href: '/teller-numbers',
+                    icon: CreditCard,
                 },
+
                 {
-                    title: 'PSGC',
-                    href: '#',
-                    icon: Earth,
-                    children: [
-                        { title: 'Region', href: '/region', icon: Earth },
-                        { title: 'Province', href: '/province', icon: Earth },
-                        { title: 'City/Municipality', href: '/citymun', icon: Building },
-                        { title: 'Barangay', href: '/barangay', icon: House },
-                    ],
+                    title: 'Videos',
+                    href: '/videos',
+                    icon: Video,
                 },
             ],
         });
