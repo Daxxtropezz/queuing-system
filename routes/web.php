@@ -134,6 +134,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/queue/teller/grab', [QueueController::class, 'grabNumber'])->name('queue.teller.grab');
     Route::post('/queue/teller/next', [QueueController::class, 'nextNumber'])
         ->name('queue.teller.next');
+    Route::post('/queue/teller/override', [QueueController::class, 'overrideNumber'])->name('queue.teller.override');
+
 
     Route::resource('transaction-types', TransactionTypeController::class);
     Route::resource('teller-numbers', TellerController::class);
