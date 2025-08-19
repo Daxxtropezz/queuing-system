@@ -91,13 +91,36 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
         return () => window.clearInterval(id);
     }, []);
 
+    // New refs for TTS / change detection
+    const prevServingIdsRef = useRef<number[]>([]);
+    const initialFetchRef = useRef(true);
+
+    // Speech helper: "Now Serving, regular/priority priority number X"
+    function speakNowServing(ticket: QueueTicket): void {
+        try {
+            if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+                return;
+            }
+            const isPriority = ticket.ispriority === 1 || ticket.ispriority === true || String(ticket.ispriority) === '1';
+            const kind = isPriority ? 'priority' : 'regular';
+            const text = `Now Serving, ${kind} number ${ticket.number}`;
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US';
+            u.rate = 1;
+            // Cancel any in-flight speech to ensure promptness
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(u);
+        } catch (e) {
+            // keep silent on TTS errors
+            console.error('TTS error', e);
+        }
+    }
+
     // Fetching logic is now consolidated and slightly simplified.
     const fetchBoard = async () => {
         try {
             setLoading(true);
             let url: string;
-            // The Ziggy route is a good practice, but the fallback is already there.
-            // Let's make it a bit cleaner.
             try {
                 // @ts-ignore Ziggy route (if registered)
                 url = route('queue.board.data');
@@ -123,9 +146,27 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
             const json: BoardData = await res.json();
 
-            // Map the data to your component state. No need for the extra mapping logic,
-            // as the Laravel controller already returns the correct keys.
-            setServingTickets(json.serving || []);
+            // Detect newly added serving tickets (compare IDs)
+            const newServing: QueueTicket[] = json.serving || [];
+            const newIds = newServing.map((s) => s.id);
+            const prevIds = prevServingIdsRef.current || [];
+            const addedIds = newIds.filter((id) => !prevIds.includes(id));
+
+            // Announce newly added items (skip announcement on first successful fetch)
+            if (!initialFetchRef.current && addedIds.length > 0) {
+                for (const id of addedIds) {
+                    const ticket = newServing.find((t) => t.id === id);
+                    if (ticket) {
+                        speakNowServing(ticket);
+                    }
+                }
+            }
+
+            // Update refs & state
+            prevServingIdsRef.current = newIds;
+            initialFetchRef.current = false;
+
+            setServingTickets(newServing);
             setWaitingTickets(json.waiting || []);
             setLastUpdated(json.generated_at ? new Date(json.generated_at) : new Date());
         } catch (e) {
