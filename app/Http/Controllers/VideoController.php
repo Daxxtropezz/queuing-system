@@ -50,27 +50,30 @@ class VideoController extends Controller
         return redirect()->route('videos.index')->with('success', 'Video uploaded successfully.');
     }
 
-    public function update(Request $request, Video $video)
-    {
-        $validated = $request->validate([
-            'title' => 'required|max:255',
-            'description' => 'nullable|max:1000',
-            'file_path' => 'nullable|mimes:mp4,mov,avi,wmv|max:512000',
-        ]);
+   public function update(Request $request, Video $video)
+{
+    $validated = $request->validate([
+        'title' => 'required|max:255',
+        'description' => 'nullable|max:1000',
+        'file_path' => 'nullable|mimes:mp4,mov,avi,wmv|max:512000',
+    ]);
 
-        if ($request->hasFile('file_path')) {
-            // delete old file
-            if ($video->file_path && Storage::disk('public')->exists($video->file_path)) {
-                Storage::disk('public')->delete($video->file_path);
-            }
-            $path = $request->file('file_path')->store('videos', 'public');
-            $validated['file_path'] = $path;
+    if ($request->hasFile('file_path')) {
+        // delete old file
+        if ($video->file_path && Storage::disk('public')->exists($video->file_path)) {
+            Storage::disk('public')->delete($video->file_path);
         }
-
-        $video->update($validated);
-
-        return redirect()->route('videos.index')->with('success', 'Video updated successfully.');
+        $path = $request->file('file_path')->store('videos', 'public');
+        $validated['file_path'] = $path;
+    } else {
+        unset($validated['file_path']); // ⬅️ don’t overwrite with null
     }
+
+    $video->update($validated);
+
+    return redirect()->route('videos.index')->with('success', 'Video updated successfully.');
+}
+
 
     public function destroy(Video $video)
     {
