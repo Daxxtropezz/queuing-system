@@ -36,7 +36,7 @@ class VideoController extends Controller
         $validated = $request->validate([
             'title' => 'required|max:255',
             'description' => 'nullable|max:1000',
-            'file' => 'required|mimes:mp4,mov,avi,wmv|max:512000', // <-- increase max size to 500MB (512000 KB)
+            'file' => 'required|mimes:mp4,mov,avi,wmv|max:512000', 
         ]);
 
         $path = $request->file('file')->store('videos', 'public');
@@ -55,7 +55,7 @@ class VideoController extends Controller
         $validated = $request->validate([
             'title' => 'required|max:255',
             'description' => 'nullable|max:1000',
-            'file' => 'nullable|mimes:mp4,mov,avi,wmv|max:512000', // <-- increase max size to 500MB (512000 KB)
+            'file' => 'nullable|mimes:mp4,mov,avi,wmv|max:512000',
         ]);
 
         if ($request->hasFile('file')) {
