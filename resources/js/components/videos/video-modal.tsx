@@ -34,29 +34,36 @@ export default function VideoModal({ isModalVisible, onClose, video }: ModalProp
   }, [isModalVisible, video]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isEditMode) {
-      // Use POST request with method spoofing for file uploads
-      post(route('videos.update', video!.id), {
-        data: {
-          ...data,
-          _method: 'put',
-        },
-        forceFormData: true,
-        onSuccess: () => {
-          onClose(false);
-        },
-      });
-    } else {
-      // Keep POST for creating
-      post(route('videos.store'), {
-        forceFormData: true,
-        onSuccess: () => {
-          onClose(false);
-        },
-      });
+  e.preventDefault();
+
+  if (isEditMode) {
+    const formData: any = {
+      title: data.title,
+      description: data.description,
+      _method: 'put',
+    };
+
+    if (data.file_path) {
+      formData.file_path = data.file_path; // only add if a file is selected
     }
-  };
+
+    post(route('videos.update', video!.id), {
+      data: formData,
+      forceFormData: true,
+      onSuccess: () => {
+        onClose(false);
+      },
+    });
+  } else {
+    post(route('videos.store'), {
+      forceFormData: true,
+      onSuccess: () => {
+        onClose(false);
+      },
+    });
+  }
+};
+
 
   return (
     <Dialog open={isModalVisible} onOpenChange={onClose}>
