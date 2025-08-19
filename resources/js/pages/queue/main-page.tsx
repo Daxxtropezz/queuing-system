@@ -101,15 +101,70 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
             if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
                 return;
             }
+
+            // determine priority word
             const isPriority = ticket.ispriority === 1 || ticket.ispriority === true || String(ticket.ispriority) === '1';
             const kind = isPriority ? 'priority' : 'regular';
-            const text = `Now Serving, ${kind} number ${ticket.number}`;
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'en-US';
-            u.rate = 1;
-            // Cancel any in-flight speech to ensure promptness
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(u);
+
+            // get transaction type name robustly (API may provide string or object)
+            const ttName = typeof ticket.transaction_type === 'string' ? ticket.transaction_type : ticket.transaction_type?.name || '';
+
+            const text = `Now Serving, ${kind} ${ttName} number ${ticket.number}`;
+
+            const speakNow = () => {
+                try {
+                    // Cancel any in-flight speech to ensure promptness
+                    window.speechSynthesis.cancel();
+
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.lang = 'en-US';
+                    u.rate = 1;
+                    u.pitch = 1.15; // slightly higher pitch for a female timbre
+
+                    const voices = window.speechSynthesis.getVoices() || [];
+
+                    // Preferred female voice name patterns (common engine names)
+                    const femalePatterns = [
+                        /samantha/i,
+                        /joanna/i,
+                        /amy/i,
+                        /zira/i,
+                        /victoria/i,
+                        /alloy/i,
+                        /arielle/i,
+                        /google uk english female/i,
+                        /google us english/i, // Google US often defaults to female
+                        /microsoft zira/i,
+                        /female/i,
+                    ];
+
+                    let selected =
+                        voices.find((v) => femalePatterns.some((rx) => rx.test(v.name))) ||
+                        voices.find((v) => v.lang && v.lang.toLowerCase().startsWith('en')) ||
+                        voices[0] ||
+                        null;
+
+                    if (selected) {
+                        u.voice = selected;
+                    }
+
+                    window.speechSynthesis.speak(u);
+                } catch (e) {
+                    console.error('TTS speak error', e);
+                }
+            };
+
+            const voices = window.speechSynthesis.getVoices();
+            if (!voices || voices.length === 0) {
+                // voices not loaded yet — wait for the event then speak
+                window.speechSynthesis.onvoiceschanged = () => {
+                    speakNow();
+                    // detach to avoid repeated triggers
+                    window.speechSynthesis.onvoiceschanged = null;
+                };
+            } else {
+                speakNow();
+            }
         } catch (e) {
             // keep silent on TTS errors
             console.error('TTS error', e);
