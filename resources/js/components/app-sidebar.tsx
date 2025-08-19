@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Building, ChartArea, CreditCard, Earth, House, ListChecks, Logs, UserCheck, UserRoundCog, Users, Video, Wrench } from 'lucide-react';
+import { CreditCard, ListChecks, UserCheck, UserRoundCog, Users, Video } from 'lucide-react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
@@ -31,7 +31,6 @@ export function AppSidebar() {
             icon: UserCheck,
         },
 
-
         //  {
         //     title: 'Guard',
         //     href: '/queue/guard',
@@ -57,7 +56,7 @@ export function AppSidebar() {
                 },
                 {
                     title: 'Teller Management',
-                    href: '/teller-numbers',
+                    href: '/tellers',
                     icon: CreditCard,
                 },
 

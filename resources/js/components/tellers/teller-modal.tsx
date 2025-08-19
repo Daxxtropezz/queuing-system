@@ -34,36 +34,36 @@ export default function TellerModal({ isModalVisible, onClose, teller }: ModalPr
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-      if (isEditMode) {
-        put(route('teller-numbers.update', teller!.id), {
-            onSuccess: () => {
-                Swal.fire({
-                    title: 'Updated!',
-                    text: 'Teller updated successfully.',
-                    icon: 'success',
-                    toast: true,
-                    position: 'top-end',
-                    timer: 3000,
-                    showConfirmButton: false,
-                });
-                onClose(false);
-            },
-            onError: (errors) => {
-                // Add an error handler to see what's going wrong
-                Swal.fire({
-                    title: 'Error!',
-                    text: 'An error occurred while updating the teller.',
-                    icon: 'error',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000,
-                });
-                console.error(errors);
-            },
-        });
+        if (isEditMode) {
+            put(route('tellers.update', teller!.id), {
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Updated!',
+                        text: 'Teller updated successfully.',
+                        icon: 'success',
+                        toast: true,
+                        position: 'top-end',
+                        timer: 3000,
+                        showConfirmButton: false,
+                    });
+                    onClose(false);
+                },
+                onError: (errors) => {
+                    // Add an error handler to see what's going wrong
+                    Swal.fire({
+                        title: 'Error!',
+                        text: 'An error occurred while updating the teller.',
+                        icon: 'error',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                    });
+                    console.error(errors);
+                },
+            });
         } else {
-            post(route('teller-numbers.store'), {
+            post(route('tellers.store'), {
                 onSuccess: () => {
                     Swal.fire({
                         title: 'Created!',
@@ -84,9 +84,7 @@ export default function TellerModal({ isModalVisible, onClose, teller }: ModalPr
         <Dialog open={isModalVisible} onOpenChange={onClose}>
             <DialogContent className="max-w-lg border border-slate-200 bg-white/90 ring-1 ring-slate-200/60 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-slate-800/70 dark:bg-slate-900/80 dark:ring-slate-800/50">
                 <DialogHeader>
-                    <DialogTitle className="text-slate-800 dark:text-slate-100">
-                        {isEditMode ? 'Edit Teller' : 'Create Teller'}
-                    </DialogTitle>
+                    <DialogTitle className="text-slate-800 dark:text-slate-100">{isEditMode ? 'Edit Teller' : 'Create Teller'}</DialogTitle>
                     <DialogDescription className="text-slate-600 dark:text-slate-400">
                         {isEditMode ? 'Update the details of the teller.' : 'Fill in the details to create a new teller.'}
                     </DialogDescription>
