@@ -87,7 +87,7 @@ export default function Tellers() {
         }).then((result) => {
             if (result.isConfirmed) {
                 // This is the correct way to call the delete route
-                router.delete(route('teller-numbers.destroy', id), {
+                router.delete(route('tellers.destroy', id), {
                     onSuccess: () => {
                         Swal.fire({
                             title: 'Deleted!',
@@ -112,9 +112,8 @@ export default function Tellers() {
                             timer: 3000,
                         });
                         console.error(errors);
-                    }
+                    },
                 });
-
             }
         });
     };
@@ -202,11 +201,7 @@ export default function Tellers() {
                                                                 <Button size="sm" onClick={() => openEditModal(teller)}>
                                                                     <SquarePen className="h-4 w-4" />
                                                                 </Button>
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="destructive"
-                                                                    onClick={() => confirmDelete(teller.id)}
-                                                                >
+                                                                <Button size="sm" variant="destructive" onClick={() => confirmDelete(teller.id)}>
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
                                                             </TableCell>
@@ -224,9 +219,7 @@ export default function Tellers() {
                                     </div>
                                 </div>
 
-                                {isCreateModalVisible && (
-                                    <TellerModal isModalVisible={isCreateModalVisible} onClose={closeCreateModal} />
-                                )}
+                                {isCreateModalVisible && <TellerModal isModalVisible={isCreateModalVisible} onClose={closeCreateModal} />}
                                 {isEditModalVisible && (
                                     <TellerModal teller={selectedTeller} isModalVisible={isEditModalVisible} onClose={closeEditModal} />
                                 )}

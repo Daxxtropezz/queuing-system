@@ -138,7 +138,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     Route::resource('transaction-types', TransactionTypeController::class);
-    Route::resource('teller-numbers', TellerController::class);
+    Route::resource('tellers', TellerController::class);
 });
 
 Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
