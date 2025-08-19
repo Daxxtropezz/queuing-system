@@ -15,7 +15,7 @@ return new class extends Migration
         $table->id();
         $table->string('title');
         $table->text('description')->nullable();
-        $table->string('file_path'); // stores the local path
+        $table->string('file_path'); 
         $table->timestamps();
     });
     }
