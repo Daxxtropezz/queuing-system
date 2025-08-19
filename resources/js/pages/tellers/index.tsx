@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Search as SearchIcon, SquarePen, Trash2 } from 'lucide-react';
+import { FileWarning, Search as SearchIcon, SquarePen, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 
@@ -209,8 +209,11 @@ export default function Tellers() {
                                                     ))
                                                 ) : (
                                                     <TableRow>
-                                                        <TableCell colSpan={5} className="p-10 text-center">
-                                                            No Tellers Found
+                                                        <TableCell colSpan={4} className="p-10">
+                                                            <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
+                                                                <FileWarning className="mb-2 h-12 w-12 text-slate-400 dark:text-slate-500" />
+                                                                <p className="text-lg font-medium">No Tellers Found</p>
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
