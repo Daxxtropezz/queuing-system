@@ -31,33 +31,121 @@ interface Props {
 
 // Lightweight, themed video slot used in the header corners.
 // Build a local playlist from storage/app/public/videos and auto-play/auto-next.
+// Now: attempt to load playlist from the server (videos table) first; fallback to local files.
 function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }) {
-    // Collect local videos from storage/app/public/videos (including subfolders). Supported: mp4, webm, ogg
-    const modules = import.meta.glob('/storage/app/public/videos/**/*.{mp4,webm,ogg}', { eager: true, as: 'url' }) as Record<string, string>;
-    const sources = useMemo(() => {
-        // Sort by path so playback is predictable
-        return Object.entries(modules)
+    const localModules = import.meta.glob('/storage/app/public/videos/**/*.{mp4,webm,ogg}', { eager: true, as: 'url' }) as Record<string, string>;
+    const localSources = useMemo(() => {
+        return Object.entries(localModules)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([, url]) => url);
     }, []);
+
+    const [playlist, setPlaylist] = useState<string[]>([]);
     const [index, setIndex] = useState(0);
-    const hasVideos = sources.length > 0;
-    const src = hasVideos ? sources[index % sources.length] : null;
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+
+    // Try to fetch playlist from server (expects JSON array of { file_path } or strings).
+    useEffect(() => {
+        let cancelled = false;
+        const tryFetch = async () => {
+            try {
+                let url: string;
+                try {
+                    // @ts-ignore try Ziggy route if available
+                    url = route('videos.playlist');
+                } catch {
+                    url = '/videos/playlist';
+                }
+                const res = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' } });
+                if (!res.ok) throw new Error('playlist fetch failed');
+                const json = await res.json();
+                if (cancelled) return;
+                // Accept arrays of strings or objects with file_path
+                const mapped = (Array.isArray(json) ? json : [])
+                    .map((it: any) => {
+                        if (!it) return '';
+                        if (typeof it === 'string') return it.startsWith('/storage/') ? it : `/storage/${it}`;
+                        if (it.file_path) return it.file_path.startsWith('/storage/') ? it.file_path : `/storage/${it.file_path}`;
+                        return '';
+                    })
+                    .filter(Boolean) as string[];
+                if (mapped.length > 0) {
+                    setPlaylist(mapped);
+                    return;
+                }
+            } catch {
+                // ignore and fall back to local
+            }
+            // fallback to local sources (import.meta.glob)
+            if (!cancelled) {
+                setPlaylist(localSources);
+            }
+        };
+        tryFetch();
+        return () => {
+            cancelled = true;
+        };
+    }, [localSources]);
+
+    // Ensure index is always valid
+    useEffect(() => {
+        if (playlist.length === 0) {
+            setIndex(0);
+            return;
+        }
+        setIndex((i) => Math.min(i, playlist.length - 1));
+    }, [playlist]);
+
+    // Play whenever index changes: unmute & set sensible volume, start playback.
+    useEffect(() => {
+        const v = videoRef.current;
+        if (!v) return;
+        // small timeout to ensure element ready
+        const id = window.setTimeout(async () => {
+            try {
+                v.pause();
+                v.muted = false; // auto-unmute
+                // sensible default volume (will be lowered by TTS helper when needed)
+                v.volume = typeof v.volume === 'number' ? Math.max(0.03, Math.min(0.9, 0.6)) : 0.6;
+                // Try to play; some browsers require user gesture — if blocked, catching prevents crash
+                await v.play();
+            } catch {
+                // autoplay might be blocked — still keep element unmuted and volume set
+            }
+        }, 30);
+        return () => window.clearTimeout(id);
+    }, [index, playlist]);
+
+    // Advance to next on ended (loop through playlist)
+    const handleEnded = () => {
+        if (playlist.length === 0) return;
+        setIndex((i) => (i + 1) % playlist.length);
+    };
+
+    const src = playlist.length > 0 ? playlist[index] : null;
+    const hasVideos = Boolean(src);
 
     return (
         <div className="h-[37.5vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[37.5vh] lg:h-[42.5vh] xl:h-[47.5vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
             <div className="h-full w-full">
-                {src ? (
+                {hasVideos ? (
                     <video
+                        // key ensures src changes re-render the element for some browsers
                         key={src}
+                        ref={videoRef}
                         className="h-full w-full object-cover"
-                        src={src}
+                        src={src ?? undefined}
                         autoPlay
-                        muted
-                        controls
+                        // controls intentionally removed to disable play/pause UI
                         playsInline
-                        onEnded={() => setIndex((i) => (i + 1) % sources.length)}
-                        onError={() => setIndex((i) => (i + 1) % sources.length)}
+                        // prevent picture-in-picture and downloads where supported
+                        controlsList="nodownload noremoteplayback"
+                        disablePictureInPicture
+                        // block context menu to hide native controls on some platforms
+                        onContextMenu={(e) => e.preventDefault()}
+                        onEnded={handleEnded}
+                        // ensure the attribute is present for consistent playback behaviour
+                        // no muted attribute — we auto-unmute programmatically
                     />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">
