@@ -124,12 +124,30 @@ class QueueController extends Controller
             ->where('status', 'serving')
             ->whereDate('created_at', now())
             ->first();
+            
+    $waiting_list = QueueTicket::with('transactionType')
+        ->where('status', 'waiting')
+        ->orderBy('created_at')
+        ->limit(200)
+        ->get()
+        ->map(function ($ticket) {
+            return [
+                'id' => $ticket->id,
+                'number' => $ticket->formatted_number,
+                'transaction_type' => [
+                    'name' => $ticket->transactionType->name ?? '',
+                ],
+                'status' => $ticket->status,
+                'is_priority' => (bool) $ticket->ispriority, // ✅ match your React prop
+            ];
+        });
 
         return Inertia::render('queue/teller-page', [
             'current' => $current,
             'userTellerNumber' => $user->teller_id,
             'transactionTypes' => TransactionType::all(['id', 'name']),
             'tellers' => Teller::all(['id', 'name']),
+            'waiting_list' => $waiting_list,
         ]);
     }
 
