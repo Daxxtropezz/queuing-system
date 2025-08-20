@@ -17,6 +17,8 @@ class QueueTicket extends Model
         'teller_id',
         'status',
         'ispriority',
+        'started_at',
+        'finished_at',
         'served_by',
     ];
 
@@ -27,14 +29,14 @@ class QueueTicket extends Model
 
     protected $appends = ['formatted_number'];
 
-  public function getFormattedNumberAttribute()
-{
-    $type = '';
-    if ($this->relationLoaded('transactionType') && $this->transactionType) {
-        $type = strtoupper(substr($this->transactionType->name, 0, 3));
+    public function getFormattedNumberAttribute()
+    {
+        $type = '';
+        if ($this->relationLoaded('transactionType') && $this->transactionType) {
+            $type = strtoupper(substr($this->transactionType->name, 0, 3));
+        }
+        return sprintf('%s-%03d', $type, $this->number);
     }
-    return sprintf('%s-%03d', $type, $this->number);
-}
 
     public function transactionType()
     {
@@ -44,5 +46,10 @@ class QueueTicket extends Model
     public function teller()
     {
         return $this->belongsTo(Teller::class);
+    }
+
+    public function servedBy()
+    {
+        return $this->belongsTo(User::class, 'served_by');
     }
 }
