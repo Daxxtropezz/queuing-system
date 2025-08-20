@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppLogoIcon from './../../components/app-logo-icon';
 
@@ -432,14 +432,16 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             {/* Video */}
                             <div>
                                 <header className="mb-3 flex items-center justify-between">
-                                    <h2 className="flex items-center text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
-                                        <div className="bg-sidebar-primary-foreground mr-2 flex aspect-square size-8 items-center justify-center rounded-md">
-                                            <AppLogoIcon className="size-7 fill-current text-white dark:text-black" />
-                                        </div>
-                                        <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
-                                            Department of Social Welfare and Development
-                                        </span>
-                                    </h2>
+                                    <Link href="/" prefetch>
+                                        <h2 className="flex items-center text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
+                                            <div className="bg-sidebar-primary-foreground mr-2 flex aspect-square size-8 items-center justify-center rounded-md">
+                                                <AppLogoIcon className="size-7 fill-current text-white dark:text-black" />
+                                            </div>
+                                            <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
+                                                Department of Social Welfare and Development
+                                            </span>
+                                        </h2>
+                                    </Link>
                                 </header>
                                 <VideoSlot emptyText="No video found." />
                             </div>
@@ -625,7 +627,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                         className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
                                                                     >
                                                                         <div className="flex items-center gap-3">
-                                                                            <div className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">
+                                                                            <div className="text-2xl font-black text-slate-800 tabular-nums md:text-3xl dark:text-slate-100">
                                                                                 {t.number}
                                                                             </div>
                                                                         </div>
@@ -649,7 +651,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                         className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
                                                                     >
                                                                         <div className="flex items-center gap-3">
-                                                                            <div className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">
+                                                                            <div className="text-2xl font-black text-amber-700 tabular-nums md:text-3xl dark:text-amber-200">
                                                                                 {t.number}
                                                                             </div>
                                                                         </div>
