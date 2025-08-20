@@ -151,7 +151,7 @@ class QueueController extends Controller
         return redirect()->route('queue.teller');
     }
 
-    public function grabNumber(Request $request)
+ public function grabNumber(Request $request)
 {
     $user = $request->user();
 
@@ -193,11 +193,16 @@ class QueueController extends Controller
         return back()->with('success', "Now serving: {$next->formatted_number}");
     }
 
-    return back()->with([
-        'error' => 'No waiting numbers available for your type and status.',
-        'reset_teller' => true
+    // ❌ Nothing left → reset teller setup
+    $user->update([
+        'teller_id' => null,
+        'transaction_type_id' => null,
+        'ispriority' => 0, // fallback to Regular since NOT NULL
     ]);
+
+    return back()->with('error', 'No waiting numbers available. Please select transaction type and status again.');
 }
+
 
 
     public function servingIndex()
@@ -222,7 +227,7 @@ class QueueController extends Controller
         return response()->json(['data' => $data, 'timestamp' => now()->toIso8601String()]);
     }
 
-   public function nextNumber(Request $request)
+public function nextNumber(Request $request)
 {
     $user = $request->user();
 
@@ -234,9 +239,12 @@ class QueueController extends Controller
     QueueTicket::where('served_by', $user->id)
         ->where('status', 'serving')
         ->whereDate('created_at', now())
-        ->update(['status' => 'done', 'finished_at' => now()]);
+        ->update([
+            'status' => 'done',
+            'finished_at' => now(),
+        ]);
 
-    // ✅ Strict filter: must match teller’s transaction type AND priority
+    // Try to get the next ticket for this teller setup
     $next = QueueTicket::where('status', 'waiting')
         ->where('transaction_type_id', $user->transaction_type_id)
         ->where('ispriority', $user->ispriority)
@@ -255,8 +263,18 @@ class QueueController extends Controller
         return back()->with('success', "Now serving: {$next->formatted_number}");
     }
 
-    return back()->with('error', 'No waiting numbers available for your type and status.');
+    // ❌ Nothing left → reset teller setup
+    $user->update([
+        'teller_id' => null,
+        'transaction_type_id' => null,
+        'ispriority' => 0,
+    ]);
+
+    return back()
+        ->with('reset_teller', true) // 👈 triggers reset on frontend
+        ->with('error', 'No more customers for your current setup. Please select again.');
 }
+
 
    public function overrideNumber(Request $request)
 {
@@ -272,7 +290,7 @@ class QueueController extends Controller
         ->whereDate('created_at', now())
         ->update(['status' => 'no_show', 'finished_at' => now()]);
 
-    // ✅ Strict filter: must match teller’s transaction type AND priority
+    // Try next ticket
     $next = QueueTicket::where('status', 'waiting')
         ->where('transaction_type_id', $user->transaction_type_id)
         ->where('ispriority', $user->ispriority)
@@ -291,7 +309,15 @@ class QueueController extends Controller
         return back()->with('success', "Client skipped. Now serving: {$next->formatted_number}");
     }
 
-    return back()->with('error', 'No waiting numbers available for your type and status.');
+    // ❌ Nothing left → reset setup
+    $user->update([
+        'teller_id' => null,
+        'transaction_type_id' => null,
+        'ispriority' => 0,
+    ]);
+
+    return back()->with('error', 'No more customers for your current setup. Please select again.');
 }
+
 
 }
