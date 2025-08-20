@@ -216,6 +216,7 @@ class QueueController extends Controller
                 'status' => 'serving',
                 'served_by' => $user->id,
                 'teller_id' => $user->teller_id,
+                'started_at' => now(),
             ]);
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
@@ -253,7 +254,7 @@ class QueueController extends Controller
         QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
             ->whereDate('created_at', now()) // 👈 today only
-            ->update(['status' => 'done']);
+            ->update(['status' => 'done','finished_at' => now()]);
 
         $lastServed = QueueTicket::where('served_by', $user->id)
             ->whereIn('status', ['done', 'serving'])
@@ -301,7 +302,7 @@ class QueueController extends Controller
             ->first();
 
         if ($current) {
-            $current->update(['status' => 'no_show']);
+            $current->update(['status' => 'no_show', 'finished_at' => now(),]);
         }
 
         // Immediately grab the next one
