@@ -6,6 +6,14 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { Loader2, User, Clock, CheckCircle, AlertCircle, ArrowRight, Play, UserCheck, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -22,9 +30,16 @@ type TellerPageProps = {
     userTellerNumber?: string;
     transactionTypes?: { id: string; name: string }[];
     tellers?: { id: string; name: string }[];
+    waiting_list: {
+    id: number;
+    number: string;
+    transaction_type: { name: string };
+    status: string;
+    is_priority: boolean;
+  }[];
 };
 
-export default function TellerPage({ current, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
+export default function TellerPage({ current,  waiting_list, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
     const form = useForm({
         teller_id: userTellerNumber ?? tellers[0]?.id ?? '',
         transaction_type_id: transactionTypes[0]?.id ?? '',
@@ -371,6 +386,47 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
                             )}
                         </CardContent>
                     </Card>
+
+                      {/* Waiting List Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Waiting List</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {waiting_list.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ticket #</TableHead>
+                  <TableHead>Transaction</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Priority</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {waiting_list.map((ticket) => (
+                  <TableRow key={ticket.id}>
+                    <TableCell>{ticket.number}</TableCell>
+                    <TableCell>{ticket.transaction_type.name}</TableCell>
+                    <TableCell>{ticket.status}</TableCell>
+                    <TableCell>
+                      {ticket.is_priority ? (
+                        <span className="text-red-600 font-bold">Yes</span>
+                      ) : (
+                        "No"
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p>No customers in waiting list.</p>
+          )}
+        </CardContent>
+      </Card>
+
+                    
 
                     {/* Help text for non-technical users */}
                     <div className="mt-6 rounded-xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
