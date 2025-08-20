@@ -13,10 +13,12 @@ public function up()
         $table->id();
         $table->integer('number');
         $table->foreignId('transaction_type_id')->constrained('transaction_types');
-       $table->foreignId('teller_id')->nullable()->constrained('tellers');
+        $table->foreignId('teller_id')->nullable()->constrained('tellers');
         $table->string('status')->default('waiting');
         $table->foreignId('served_by')->nullable()->constrained('users');
         $table->boolean('ispriority')->default(0);
+        $table->timestamp('started_at')->nullable(); 
+        $table->timestamp('finished_at')->nullable();
         $table->timestamps();
     });
 }

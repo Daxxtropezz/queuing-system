@@ -15,9 +15,11 @@ use App\Http\Controllers\RegionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\QueueController;
 use App\Http\Controllers\QueueBoardController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TellerController;
 use App\Http\Controllers\TransactionTypeController;
 use App\Http\Controllers\VideoController;
+use SebastianBergmann\CodeCoverage\Report\Xml\Report;
 
 // Redirect to login by default
 Route::get('/', function () {
@@ -142,6 +144,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('videos', VideoController::class);
     Route::post('videos/{video}', [VideoController::class, 'update'])->name('videos.update');
     Route::resource('tellers', TellerController::class);
+    Route::resource('reports', ReportController::class);
+    Route::post('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 });
 
 Route::get('/queue', [QueueController::class, 'mainPage'])->name('queue.main');
