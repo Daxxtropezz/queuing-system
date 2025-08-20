@@ -5,8 +5,17 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { Loader2, User, Clock, CheckCircle, AlertCircle, ArrowRight, Play, UserCheck, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type TellerPageProps = {
     current?: any;
@@ -25,6 +34,8 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
 
     const [selectedTeller, setSelectedTeller] = useState<string>(form.data.teller_id);
     const [selectedTransaction, setSelectedTransaction] = useState(form.data.transaction_type_id);
+    const [showNoCustomersDialog, setShowNoCustomersDialog] = useState(false);
+
 
     // Live clock
     const [now, setNow] = useState<Date>(new Date());
@@ -36,20 +47,34 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
     const page = usePage<{ flash?: { error?: string; success?: string; reset_teller?: boolean } }>();
 
     useEffect(() => {
-        if (page.props.flash?.reset_teller) {
-            // Reset teller setup state
-            setSelectedTeller('');
-            setSelectedTransaction('');
-            form.setData('teller_id', '');
-            form.setData('transaction_type_id', '');
+        if (page.props.flash?.confirm_reset) {
+            setShowNoCustomersDialog(true);
         }
-    }, [page.props.flash?.reset_teller]);
+    }, [page.props.flash?.confirm_reset]);
+
+
 
     function handleAssignTeller() {
         form.setData('teller_id', selectedTeller);
         form.setData('transaction_type_id', selectedTransaction);
         form.post(route('queue.teller.assign'), { preserveState: true });
     }
+
+    const handleSelectNew = () => {
+        // reset the teller form
+        setSelectedTeller('');
+        setSelectedTransaction('');
+        form.setData('teller_id', '');
+        form.setData('transaction_type_id', '');
+        form.setData('ispriority', '0');
+
+        setShowNoCustomersDialog(false);
+
+        // optionally trigger a reset request to the server
+        form.post(route("teller.reset"), { preserveState: true });
+    };
+
+
 
     function handleGrab() {
         form.post(route('queue.teller.grab'));
@@ -62,6 +87,7 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
     function handleOverride() {
         form.post(route('queue.teller.override'));
     }
+
 
     const breadcrumbs = [{ title: 'Service Counter', href: '/queue/teller' }];
 
@@ -105,8 +131,8 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
                             )}
 
                             <div className={`flex items-center gap-2 rounded-full px-4 py-2 ${processing
-                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                                 }`}>
                                 <div className={`h-2 w-2 rounded-full ${processing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
                                     }`} />
@@ -364,6 +390,29 @@ export default function TellerPage({ current, userTellerNumber, transactionTypes
                     </div>
                 </main>
             </div>
+
+            <AlertDialog open={showNoCustomersDialog} onOpenChange={setShowNoCustomersDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>No Customers Found</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {page.props.flash?.message ??
+                                "There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?"}
+                        </AlertDialogDescription>
+
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setShowNoCustomersDialog(false)}>
+                            No, Keep Waiting
+                        </AlertDialogCancel>
+                        <AlertDialogAction onClick={handleSelectNew}>
+                            Yes, Select New Transaction
+                        </AlertDialogAction>
+
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
         </AppLayout>
     );
 }

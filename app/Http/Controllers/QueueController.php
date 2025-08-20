@@ -151,57 +151,54 @@ class QueueController extends Controller
         return redirect()->route('queue.teller');
     }
 
- public function grabNumber(Request $request)
-{
-    $user = $request->user();
+    public function grabNumber(Request $request)
+    {
+        $user = $request->user();
 
-    if (is_null($user->teller_id) || is_null($user->transaction_type_id) || is_null($user->ispriority)) {
-        return back()->with('error', 'Please select a teller number, transaction type, and status first.');
+        if (is_null($user->teller_id) || is_null($user->transaction_type_id) || is_null($user->ispriority)) {
+            return back()->with('error', 'Please select a teller number, transaction type, and status first.');
+        }
+
+        // End any expired serving
+        QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', '<', now()->toDateString())
+            ->update(['status' => 'done']);
+
+        // Check if teller already has active
+        $current = QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now()->toDateString())
+            ->first();
+
+        if ($current) {
+            return back()->with('error', 'Already serving a number');
+        }
+
+        // ✅ Strict: must match teller’s transaction type AND priority
+        $next = QueueTicket::where('status', 'waiting')
+            ->where('transaction_type_id', $user->transaction_type_id)
+            ->where('ispriority', $user->ispriority)
+            ->whereDate('created_at', now())
+            ->orderBy('id')
+            ->first();
+
+        if ($next) {
+            $next->update([
+                'status' => 'serving',
+                'served_by' => $user->id,
+                'teller_id' => $user->teller_id,
+                'started_at' => now(),
+            ]);
+            return back()->with('success', "Now serving: {$next->formatted_number}");
+        }
+
+        // ❌ Nothing left → ask first, don’t reset yet
+        return back()
+            ->with('confirm_reset', true)
+            ->with('error', 'No Customers Found')
+            ->with('message', 'There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?');
     }
-
-    // End any expired serving
-    QueueTicket::where('served_by', $user->id)
-        ->where('status', 'serving')
-        ->whereDate('created_at', '<', now()->toDateString())
-        ->update(['status' => 'done']);
-
-    // Check if teller already has active
-    $current = QueueTicket::where('served_by', $user->id)
-        ->where('status', 'serving')
-        ->whereDate('created_at', now()->toDateString())
-        ->first();
-
-    if ($current) {
-        return back()->with('error', 'Already serving a number');
-    }
-
-    // ✅ Strict: must match teller’s transaction type AND priority
-    $next = QueueTicket::where('status', 'waiting')
-        ->where('transaction_type_id', $user->transaction_type_id)
-        ->where('ispriority', $user->ispriority)
-        ->whereDate('created_at', now())
-        ->orderBy('id')
-        ->first();
-
-    if ($next) {
-        $next->update([
-            'status' => 'serving',
-            'served_by' => $user->id,
-            'teller_id' => $user->teller_id,
-            'started_at' => now(),
-        ]);
-        return back()->with('success', "Now serving: {$next->formatted_number}");
-    }
-
-    // ❌ Nothing left → reset teller setup
-    $user->update([
-        'teller_id' => null,
-        'transaction_type_id' => null,
-        'ispriority' => 0, // fallback to Regular since NOT NULL
-    ]);
-
-    return back()->with('error', 'No waiting numbers available. Please select transaction type and status again.');
-}
 
 
 
@@ -227,97 +224,100 @@ class QueueController extends Controller
         return response()->json(['data' => $data, 'timestamp' => now()->toIso8601String()]);
     }
 
-public function nextNumber(Request $request)
-{
-    $user = $request->user();
+    public function nextNumber(Request $request)
+    {
+        $user = $request->user();
 
-    if (is_null($user->teller_id) || is_null($user->transaction_type_id) || is_null($user->ispriority)) {
-        return back()->with('error', 'Please select a teller number, transaction type, and status first.');
+        if (is_null($user->teller_id) || is_null($user->transaction_type_id) || is_null($user->ispriority)) {
+            return back()->with('error', 'Please select a teller number, transaction type, and status first.');
+        }
+
+        // Mark current serving as done
+        QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->update([
+                'status' => 'done',
+                'finished_at' => now(),
+            ]);
+
+        // Try to get the next ticket for this teller setup
+        $next = QueueTicket::where('status', 'waiting')
+            ->where('transaction_type_id', $user->transaction_type_id)
+            ->where('ispriority', $user->ispriority)
+            ->whereDate('created_at', now())
+            ->orderBy('id')
+            ->first();
+
+        if ($next) {
+            $next->update([
+                'status' => 'serving',
+                'served_by' => $user->id,
+                'teller_id' => $user->teller_id,
+                'started_at' => now(),
+            ]);
+
+            return back()->with('success', "Now serving: {$next->formatted_number}");
+        }
+
+        // ❌ Nothing left → reset teller setup
+        return back()
+            ->with('confirm_reset', true)
+            ->with('error', 'No Customers Found')
+            ->with('message', 'There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?');
     }
 
-    // Mark current serving as done
-    QueueTicket::where('served_by', $user->id)
-        ->where('status', 'serving')
-        ->whereDate('created_at', now())
-        ->update([
-            'status' => 'done',
-            'finished_at' => now(),
+
+    public function overrideNumber(Request $request)
+    {
+        $user = $request->user();
+
+        if (is_null($user->teller_id) || is_null($user->transaction_type_id) || is_null($user->ispriority)) {
+            return back()->with('error', 'Please select a teller number, transaction type, and status first.');
+        }
+
+        // Mark current serving as no_show
+        QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->update(['status' => 'no_show', 'finished_at' => now()]);
+
+        // Try next ticket
+        $next = QueueTicket::where('status', 'waiting')
+            ->where('transaction_type_id', $user->transaction_type_id)
+            ->where('ispriority', $user->ispriority)
+            ->whereDate('created_at', now())
+            ->orderBy('id')
+            ->first();
+
+        if ($next) {
+            $next->update([
+                'status' => 'serving',
+                'served_by' => $user->id,
+                'teller_id' => $user->teller_id,
+                'started_at' => now(),
+            ]);
+
+            return back()->with('success', "Now serving: {$next->formatted_number}");
+        }
+
+        // ❌ Nothing left → ask first, don’t reset yet
+        return back()
+            ->with('confirm_reset', true)
+            ->with('error', 'No Customers Found')
+            ->with('message', 'There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?');
+    }
+
+    public function resetTeller(Request $request)
+    {
+        $user = $request->user();
+
+        $user->update([
+            'teller_id' => null,
+            'transaction_type_id' => null,
+            'ispriority' => 0,
         ]);
 
-    // Try to get the next ticket for this teller setup
-    $next = QueueTicket::where('status', 'waiting')
-        ->where('transaction_type_id', $user->transaction_type_id)
-        ->where('ispriority', $user->ispriority)
-        ->whereDate('created_at', now())
-        ->orderBy('id')
-        ->first();
-
-    if ($next) {
-        $next->update([
-            'status' => 'serving',
-            'served_by' => $user->id,
-            'teller_id' => $user->teller_id,
-            'started_at' => now(),
-        ]);
-
-        return back()->with('success', "Now serving: {$next->formatted_number}");
+        return back()->with('success', 'Teller setup has been reset. Please select again.');
     }
-
-    // ❌ Nothing left → reset teller setup
-    $user->update([
-        'teller_id' => null,
-        'transaction_type_id' => null,
-        'ispriority' => 0,
-    ]);
-
-    return back()
-        ->with('reset_teller', true) // 👈 triggers reset on frontend
-        ->with('error', 'No more customers for your current setup. Please select again.');
-}
-
-
-   public function overrideNumber(Request $request)
-{
-    $user = $request->user();
-
-    if (is_null($user->teller_id) || is_null($user->transaction_type_id) || is_null($user->ispriority)) {
-        return back()->with('error', 'Please select a teller number, transaction type, and status first.');
-    }
-
-    // Mark current serving as no_show
-    QueueTicket::where('served_by', $user->id)
-        ->where('status', 'serving')
-        ->whereDate('created_at', now())
-        ->update(['status' => 'no_show', 'finished_at' => now()]);
-
-    // Try next ticket
-    $next = QueueTicket::where('status', 'waiting')
-        ->where('transaction_type_id', $user->transaction_type_id)
-        ->where('ispriority', $user->ispriority)
-        ->whereDate('created_at', now())
-        ->orderBy('id')
-        ->first();
-
-    if ($next) {
-        $next->update([
-            'status' => 'serving',
-            'served_by' => $user->id,
-            'teller_id' => $user->teller_id,
-            'started_at' => now(),
-        ]);
-
-        return back()->with('success', "Client skipped. Now serving: {$next->formatted_number}");
-    }
-
-    // ❌ Nothing left → reset setup
-    $user->update([
-        'teller_id' => null,
-        'transaction_type_id' => null,
-        'ispriority' => 0,
-    ]);
-
-    return back()->with('error', 'No more customers for your current setup. Please select again.');
-}
-
-
 }

@@ -47,7 +47,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user() ? [
                     ...$request->user()->toArray(),
                     'two_factor_enabled' => !empty($request->user()->two_factor_secret),
-                    'roles' => $request->user()->getRoleNames(), 
+                    'roles' => $request->user()->getRoleNames(),
                 ] : null,
             ],
 
@@ -57,9 +57,12 @@ class HandleInertiaRequests extends Middleware
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
-                'message' => fn() => $request->session()->get('message'),
-                'error' => fn() => $request->session()->get('error'),
+                'message'      => fn() => $request->session()->get('message'),
+                'success'      => fn() => $request->session()->get('success'),
+                'error'        => fn() => $request->session()->get('error'),
+                'confirm_reset' => fn () => $request->session()->get('confirm_reset'),
             ],
+
         ];
     }
 }
