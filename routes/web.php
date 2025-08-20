@@ -138,6 +138,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/queue/teller/next', [QueueController::class, 'nextNumber'])
         ->name('queue.teller.next');
     Route::post('/queue/teller/override', [QueueController::class, 'overrideNumber'])->name('queue.teller.override');
+    Route::post('/teller/reset', [QueueController::class, 'resetTeller'])->name('teller.reset');
 
 
     Route::resource('transaction-types', TransactionTypeController::class);
