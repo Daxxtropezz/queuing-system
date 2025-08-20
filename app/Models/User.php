@@ -33,6 +33,7 @@ class User extends Authenticatable
         'is_enabled',
         'teller_id',
         'transaction_type_id',
+        'ispriority',
     ];
 
     protected $appends = ['role_names'];
