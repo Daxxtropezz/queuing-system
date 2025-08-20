@@ -524,7 +524,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                    {t.teller_id ? `Cntr ${t.teller_id}` : '—'}
+                                                                                    {t.teller_id ? `Teller ${t.teller_id}` : '—'}
                                                                                 </div>
                                                                             </div>
                                                                         ))}
@@ -550,7 +550,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                    {t.teller_id ? `Cntr ${t.teller_id}` : '—'}
+                                                                                    {t.teller_id ? `Teller ${t.teller_id}` : '—'}
                                                                                 </div>
                                                                             </div>
                                                                         ))}
@@ -592,65 +592,75 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                     // dynamic columns: one per transaction type in the order received
                                     <div className="grid h-full gap-4" style={{ gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))` }}>
                                         {columns.map((colLabel, ci) => {
-                                            const items = columnLimited[ci] ?? [];
-                                            const total = columnTickets[ci]?.length ?? 0;
+                                            // use the full column tickets (not only limited) so counts are accurate
+                                            const allItems = columnTickets[ci] ?? [];
+                                            const total = allItems.length;
+                                            // decide how many to display per column based on servingRows or capacity
+                                            const perGroupCapacity = Math.max(1, servingRows);
+                                            // split priority vs regular (priority = ispriority === 1)
+                                            const priorityItems = allItems
+                                                .filter((t) => t.ispriority === 1 || String(t.ispriority) === '1')
+                                                .slice(0, perGroupCapacity);
+                                            const regularItems = allItems
+                                                .filter((t) => !(t.ispriority === 1 || String(t.ispriority) === '1'))
+                                                .slice(0, perGroupCapacity);
                                             return (
-                                                <div key={`col-${ci}`} className="flex min-h-0 flex-col gap-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold tracking-wide text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                                                            {colLabel}
-                                                        </span>
-                                                        <span className="text-xs text-slate-500 dark:text-slate-400">{total}</span>
+                                                <div
+                                                    key={`col-${ci}`}
+                                                    className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
+                                                >
+                                                    <div className="mb-2 flex items-center justify-between">
+                                                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{colLabel}</div>
+                                                        <div className="text-xs text-slate-500 dark:text-slate-400">{total} active</div>
                                                     </div>
-                                                    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
-                                                        {items.map((t) => {
-                                                            const teller = t.teller_id ?? '—';
-                                                            return (
-                                                                <div
-                                                                    key={`serving-${ci}-${t.id}`}
-                                                                    className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-200/60 transition hover:shadow-2xl hover:ring-slate-300/70 dark:border-slate-800/70 dark:bg-gradient-to-br dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70 dark:ring-slate-800/50 dark:hover:ring-slate-700/70"
-                                                                >
-                                                                    {/* Brand hover glows */}
-                                                                    <div className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
-                                                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.10),transparent_65%)]" />
-                                                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)] dark:bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.10),transparent_55%)]" />
-                                                                    </div>
-                                                                    <div className="relative flex items-center justify-center gap-2 px-5">
-                                                                        <span className="rounded-full bg-red-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-red-700 uppercase dark:bg-rose-500/15 dark:text-rose-300">
-                                                                            Now Serving
-                                                                        </span>
 
-                                                                        <div className="flex items-center gap-2">
-                                                                            {(t.ispriority === 1 || String(t.ispriority) === '1') && (
-                                                                                <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-semibold tracking-wider text-amber-800 uppercase dark:bg-amber-500/10 dark:text-amber-300">
-                                                                                    PRIORITY
-                                                                                </span>
-                                                                            )}
-                                                                            {(t.ispriority === 0 || String(t.ispriority) === '0') && (
-                                                                                <span className="rounded-full bg-blue-100 px-3 py-1 text-[10px] font-semibold tracking-wider text-blue-800 uppercase dark:bg-blue-500/10 dark:text-blue-300">
-                                                                                    REGULAR
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="relative flex flex-col items-center gap-4">
-                                                                        <div className="bg-gradient-to-br from-yellow-500 via-amber-400 to-yellow-600 bg-clip-text text-6xl font-black tracking-tight text-transparent tabular-nums drop-shadow-sm md:text-7xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
-                                                                            {t.number}
-                                                                        </div>
-                                                                        {/* @ts-ignore */}
-                                                                        {t.transaction_type && (
-                                                                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm font-medium tracking-wide text-slate-700 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-200">
-                                                                                {/* @ts-ignore */}
-                                                                                {t.transaction_type?.name}
+                                                    {/* Two-column inner layout: left = Regular, right = Priority */}
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Regular</div>
+                                                            <div className="grid grid-cols-1 gap-2">
+                                                                {regularItems.map((t) => (
+                                                                    <div
+                                                                        key={`s-reg-${t.id}`}
+                                                                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">
+                                                                                {t.number}
                                                                             </div>
-                                                                        )}
-                                                                        <span className="rounded-full bg-blue-100 px-4 py-1 text-[10px] font-semibold tracking-wider text-blue-700 uppercase dark:bg-indigo-500/15 dark:text-indigo-300">
-                                                                            Teller {teller}
-                                                                        </span>
+                                                                        </div>
+                                                                        <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                            {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                                ))}
+                                                                {regularItems.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <div className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                                                Priority
+                                                            </div>
+                                                            <div className="grid grid-cols-1 gap-2">
+                                                                {priorityItems.map((t) => (
+                                                                    <div
+                                                                        key={`s-prio-${t.id}`}
+                                                                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">
+                                                                                {t.number}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                            {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                                {priorityItems.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
