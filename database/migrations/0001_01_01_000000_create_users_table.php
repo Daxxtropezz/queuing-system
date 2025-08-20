@@ -39,6 +39,7 @@ return new class extends Migration
                 ->on('transaction_types')
                 ->nullOnDelete();
 
+            $table->boolean('ispriority')->default(false);
             $table->rememberToken();
             $table->timestamps();
         });

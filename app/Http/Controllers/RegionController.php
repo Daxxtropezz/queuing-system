@@ -12,7 +12,7 @@ class RegionController extends Controller
 {
     public function index(Request $request)
     {
-        $regionsQuery = Region::query(); // Start with a fresh query builder
+        $regionsQuery = Region::query();
 
         // Handle search
         if ($request->filled('search')) {
