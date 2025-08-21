@@ -108,7 +108,7 @@ export default function TellerPage({ current,  waiting_list, userTellerNumber, t
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Service Counter" />
+            <Head title="Step 2 - Service Counter" />
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-slate-900 dark:from-slate-900 dark:to-slate-800 dark:text-slate-100">
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
                     <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-200/30 blur-3xl dark:bg-blue-600/20" />

@@ -449,79 +449,93 @@ class QueueController extends Controller
         return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
     }
 
-    // Step1: Complete current serving and get next (uses served_by user)
-    public function nextStep1Number(Request $request)
-    {
-        $user = $request->user();
+   // Step1: Complete current serving and get next
+public function nextStep1Number(Request $request)
+{
+    $user = $request->user();
 
-        // Mark current serving as done (if any)
-        $current = QueueTicket::where('served_by', $user->id)
-            ->where('status', 'serving')
-            ->whereDate('created_at', now())
-            ->first();
+    // Current ticket being served by this teller
+    $current = QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->whereDate('created_at', now())
+        ->first();
 
-        $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
+    $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
 
-        if ($current) {
-            $current->update([
-                'status' => 'done',
-                'finished_at' => now(),
-            ]);
-        }
-
-        // Next ticket matching the same priority
-        $next = QueueTicket::where('status', 'waiting')
-            ->where('ispriority', $ispriority)
-            ->whereDate('created_at', now())
-            ->orderBy('id')
-            ->first();
-
-        if ($next) {
-            $next->update([
-                'status' => 'serving',
-                'served_by' => $user->id,
-                'teller_id' => $user->teller_id,
-                'started_at' => now(),
-            ]);
-
-            return back()->with('success', "Now serving: {$next->formatted_number}");
-        }
-
-        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
+    if ($current) {
+        $current->update([
+            'status' => 'done',
+            'finished_at' => now(),
+            'transaction_type_id' => $request->input('transaction_type_id', $current->transaction_type_id),
+            'remarks' => $request->input('remarks', $current->remarks),
+        ]);
     }
 
-    // Step1: Mark current as no_show and get next
-    public function overrideStep1Number(Request $request)
-    {
-        $user = $request->user();
+    // Next ticket matching the same priority
+    $next = QueueTicket::where('status', 'waiting')
+        ->where('ispriority', $ispriority)
+        ->whereDate('created_at', now())
+        ->orderBy('id')
+        ->first();
 
-        $current = QueueTicket::where('served_by', $user->id)
-            ->where('status', 'serving')
-            ->whereDate('created_at', now())
-            ->first();
+    if ($next) {
+        $next->update([
+            'status' => 'serving',
+            'served_by' => $user->id,
+            'teller_id' => $user->teller_id,
+            'started_at' => now(),
+            // optional: prefill transaction type and remarks if you want
+            'transaction_type_id' => $next->transaction_type_id ?? $request->input('transaction_type_id'),
+            'remarks' => $next->remarks ?? '',
+        ]);
 
-        $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
-
-        if ($current) {
-            $current->update(['status' => 'no_show', 'finished_at' => now()]);
-        }
-
-        $next = QueueTicket::where('status', 'waiting')
-            ->where('ispriority', $ispriority)
-            ->whereDate('created_at', now())
-            ->orderBy('id')
-            ->first();
-
-        if ($next) {
-            $next->update([
-                'status' => 'serving',
-                'served_by' => $user->id,
-                'teller_id' => $user->teller_id,
-                'started_at' => now(),
-            ]);
-            return back()->with('success', "Now serving: {$next->formatted_number}");
-        }
-
-        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
+        return back()->with('success', "Now serving: {$next->formatted_number}");
     }
+
+    return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
+}
+
+// Step1: Mark current as no_show and get next
+public function overrideStep1Number(Request $request)
+{
+    $user = $request->user();
+
+    $current = QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->whereDate('created_at', now())
+        ->first();
+
+    $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
+
+    if ($current) {
+        $current->update([
+            'status' => 'no_show',
+            'finished_at' => now(),
+            'transaction_type_id' => $request->input('transaction_type_id', $current->transaction_type_id),
+            'remarks' => $request->input('remarks', $current->remarks),
+        ]);
+    }
+
+    $next = QueueTicket::where('status', 'waiting')
+        ->where('ispriority', $ispriority)
+        ->whereDate('created_at', now())
+        ->orderBy('id')
+        ->first();
+
+    if ($next) {
+        $next->update([
+            'status' => 'serving',
+            'served_by' => $user->id,
+            'teller_id' => $user->teller_id,
+            'started_at' => now(),
+            'transaction_type_id' => $next->transaction_type_id ?? $request->input('transaction_type_id'),
+            'remarks' => $next->remarks ?? '',
+        ]);
+
+        return back()->with('success', "Now serving: {$next->formatted_number}");
+    }
+
+    return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
+}
+
 }

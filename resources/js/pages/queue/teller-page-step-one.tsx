@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useForm, usePage } from "@inertiajs/react";
+import { useForm, usePage, Head } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AppLayout from "@/layouts/app-layout";
@@ -72,6 +72,7 @@ export default function TellerPageStepOne() {
 
     return (
         <AppLayout breadcrumbs={[{ title: "Service Counter", href: "/queue/teller-step1" }]}>
+            <Head title="Step 1 - Service Counter" />
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-slate-900 dark:from-slate-900 dark:to-slate-800 dark:text-slate-100">
                 {/* Header */}
                 <header className="w-full border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-800/90">
@@ -106,6 +107,44 @@ export default function TellerPageStepOne() {
                                 {/* If a ticket is currently being served by this user, show serving UI */}
                                 {current ? (
                                     <div className="flex flex-col items-center gap-6">
+                                        <div className="flex flex-col gap-4 w-full">
+                                            {/* Transaction Type */}
+                                            <div>
+                                                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                    Transaction Type
+                                                </label>
+                                                <Select
+                                                    onValueChange={(val) => form.setData("transaction_type_id", val)}
+                                                    value={form.data.transaction_type_id || ""}
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select transaction type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectGroup>
+                                                            {page.props.transactionTypes.map((type) => (
+                                                                <SelectItem key={type.id} value={type.id.toString()}>
+                                                                    {type.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Remarks */}
+                                            <div>
+                                                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                    Remarks
+                                                </label>
+                                                <textarea
+                                                    value={form.data.remarks || ""}
+                                                    onChange={(e) => form.setData("remarks", e.target.value)}
+                                                    className="w-full rounded-lg border border-slate-300 p-2 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
+                                                    placeholder="Add remarks for this transaction"
+                                                />
+                                            </div>
+                                        </div>
                                         <div className="text-center">
                                             <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
                                             <div className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
