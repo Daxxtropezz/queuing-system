@@ -33,12 +33,10 @@ class QueueTicket extends Model
 
     public function getFormattedNumberAttribute()
     {
-        $type = '';
-        if ($this->relationLoaded('transactionType') && $this->transactionType) {
-            $type = strtoupper(substr($this->transactionType->name, 0, 3));
-        }
-        return sprintf('%s-%03d', $type, $this->number);
+        // Pad the number to 4 digits
+        return str_pad($this->number, 4, '0', STR_PAD_LEFT);
     }
+
 
     public function transactionType()
     {
