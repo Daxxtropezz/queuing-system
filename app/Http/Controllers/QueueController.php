@@ -661,6 +661,4 @@ public function serveNoShow(Request $request)
     return back()->with('success', "Now serving no show: {$ticket->formatted_number}");
 }
 
-        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
-    }
 }
