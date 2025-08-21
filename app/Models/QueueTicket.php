@@ -12,6 +12,7 @@ class QueueTicket extends Model
     protected $table = 'queue_tickets';
 
     protected $fillable = [
+        'step',
         'number',
         'transaction_type_id',
         'teller_id',
@@ -20,6 +21,7 @@ class QueueTicket extends Model
         'started_at',
         'finished_at',
         'served_by',
+        'remarks',
     ];
 
     protected $casts = [
