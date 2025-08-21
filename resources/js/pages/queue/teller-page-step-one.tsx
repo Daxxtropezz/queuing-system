@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useForm, usePage, Head } from "@inertiajs/react";
+import { useForm, usePage, Head, router } from "@inertiajs/react"; // ⬅️ Add `router`
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AppLayout from "@/layouts/app-layout";
@@ -54,6 +54,16 @@ export default function TellerPageStepOne() {
         return () => clearInterval(id);
     }, []);
 
+    // ⬅️ ADD THIS EFFECT FOR AUTO-REFRESH
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            // Re-fetch the data from the server without a full page reload
+            router.reload({ only: ['waiting_list', 'current'] });
+        }, 5000); // Refresh every 5 seconds
+
+        return () => clearInterval(intervalId); // Cleanup on component unmount
+    }, []);
+
     const handleGrab = () => {
         form.setData('ispriority', priority);
         form.post(route("queue.teller.grab.step1"));
@@ -95,159 +105,164 @@ export default function TellerPageStepOne() {
                 </header>
 
                 {/* Main Content */}
-                <main className="mx-auto max-w-3xl px-4 py-8 md:px-6">
-                    <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
-                        <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
-                            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
-                                <Play className="h-5 w-5 text-blue-500" /> Start Serving Customers
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            <div className="flex flex-col gap-6">
-                                {/* If a ticket is currently being served by this user, show serving UI */}
-                                {current ? (
-                                    <div className="flex flex-col items-center gap-6">
-                                        <div className="flex flex-col gap-4 w-full">
-                                            {/* Transaction Type */}
+                <main className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                        {/* Start Serving Customers Card */}
+                        <Card className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                            <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
+                                <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
+                                    <Play className="h-5 w-5 text-blue-500" /> Start Serving Customers
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <div className="flex flex-col gap-6">
+                                    {/* If a ticket is currently being served by this user, show serving UI */}
+                                    {current ? (
+                                        <div className="flex flex-col items-center gap-6">
+                                            <div className="flex flex-col gap-4 w-full">
+                                                {/* Transaction Type */}
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                        Transaction Type
+                                                    </label>
+                                                    <Select
+                                                        onValueChange={(val) => form.setData("transaction_type_id", val)}
+                                                        value={form.data.transaction_type_id || ""}
+                                                    >
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select transaction type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectGroup>
+                                                                {page.props.transactionTypes.map((type) => (
+                                                                    <SelectItem key={type.id} value={type.id.toString()}>
+                                                                        {type.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectGroup>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {/* Remarks */}
+                                                <div>
+                                                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                        Remarks
+                                                    </label>
+                                                    <textarea
+                                                        value={form.data.remarks || ""}
+                                                        onChange={(e) => form.setData("remarks", e.target.value)}
+                                                        className="w-full rounded-lg border border-slate-300 p-2 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
+                                                        placeholder="Add remarks for this transaction"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
+                                                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
+                                                    {current.number}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4 w-full">
+                                                <Button
+                                                    onClick={handleNext}
+                                                    disabled={processing}
+                                                    size="lg"
+                                                    className="flex-1 py-5 text-base font-medium bg-emerald-500 hover:bg-emerald-600 text-white"
+                                                >
+                                                    {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
+                                                    Complete & Next
+                                                </Button>
+
+                                                <Button
+                                                    onClick={handleOverride}
+                                                    disabled={processing}
+                                                    size="lg"
+                                                    variant="outline"
+                                                    className="flex-1 py-5 text-base font-medium border-rose-300 text-rose-600 hover:bg-rose-50"
+                                                >
+                                                    {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <AlertCircle className="mr-2 h-5 w-5" />}
+                                                    No Show
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-6">
+                                            {/* Customer Status */}
                                             <div>
                                                 <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                    Transaction Type
+                                                    Customer Status
                                                 </label>
                                                 <Select
-                                                    onValueChange={(val) => form.setData("transaction_type_id", val)}
-                                                    value={form.data.transaction_type_id || ""}
+                                                    onValueChange={(val) => {
+                                                        setPriority(val);
+                                                        form.setData("ispriority", val);
+                                                    }}
+                                                    value={priority}
                                                 >
                                                     <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Select transaction type" />
+                                                        <SelectValue placeholder="Select status" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectGroup>
-                                                            {page.props.transactionTypes.map((type) => (
-                                                                <SelectItem key={type.id} value={type.id.toString()}>
-                                                                    {type.name}
-                                                                </SelectItem>
-                                                            ))}
+                                                            <SelectItem value="0">Regular</SelectItem>
+                                                            <SelectItem value="1">Priority</SelectItem>
                                                         </SelectGroup>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
 
-                                            {/* Remarks */}
-                                            <div>
-                                                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                    Remarks
-                                                </label>
-                                                <textarea
-                                                    value={form.data.remarks || ""}
-                                                    onChange={(e) => form.setData("remarks", e.target.value)}
-                                                    className="w-full rounded-lg border border-slate-300 p-2 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100"
-                                                    placeholder="Add remarks for this transaction"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
-                                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
-                                                {current.number}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-4 w-full">
                                             <Button
-                                                onClick={handleNext}
+                                                onClick={handleGrab}
                                                 disabled={processing}
                                                 size="lg"
-                                                className="flex-1 py-5 text-base font-medium bg-emerald-500 hover:bg-emerald-600 text-white"
+                                                className="w-full py-6 text-base font-medium"
                                             >
-                                                {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
-                                                Complete & Next
-                                            </Button>
-
-                                            <Button
-                                                onClick={handleOverride}
-                                                disabled={processing}
-                                                size="lg"
-                                                variant="outline"
-                                                className="flex-1 py-5 text-base font-medium border-rose-300 text-rose-600 hover:bg-rose-50"
-                                            >
-                                                {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <AlertCircle className="mr-2 h-5 w-5" />}
-                                                No Show
+                                                {processing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5" />}
+                                                Grab Customer
                                             </Button>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-6">
-                                        {/* Customer Status */}
-                                        <div>
-                                            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                Customer Status
-                                            </label>
-                                            <Select
-                                                onValueChange={(val) => {
-                                                    setPriority(val);
-                                                    form.setData("ispriority", val);
-                                                }}
-                                                value={priority}
-                                            >
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectGroup>
-                                                        <SelectItem value="0">Regular</SelectItem>
-                                                        <SelectItem value="1">Priority</SelectItem>
-                                                    </SelectGroup>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                                        <Button
-                                            onClick={handleGrab}
-                                            disabled={processing}
-                                            size="lg"
-                                            className="w-full py-6 text-base font-medium"
-                                        >
-                                            {processing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5" />}
-                                            Grab Customer
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Waiting List */}
-                    <Card className="mt-6">
-                        <CardHeader>
-                            <CardTitle>Waiting List</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {waiting_list.length > 0 ? (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Ticket #</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Priority</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {waiting_list.map((ticket) => (
-                                            <TableRow key={ticket.id}>
-                                                <TableCell>{ticket.number}</TableCell>
-                                                <TableCell>{ticket.status}</TableCell>
-                                                <TableCell>
-                                                    {ticket.is_priority ? <span className="text-red-600 font-bold">Yes</span> : "No"}
-                                                </TableCell>
+                        {/* Waiting List Card */}
+                        <Card className="flex-1 mt-6 md:mt-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                            <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
+                                <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
+                                    <Clock className="h-5 w-5 text-blue-500" /> Waiting List
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                {waiting_list.length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Ticket #</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Priority</TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            ) : (
-                                <p>No customers in waiting list.</p>
-                            )}
-                        </CardContent>
-                    </Card>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {waiting_list.map((ticket) => (
+                                                <TableRow key={ticket.id}>
+                                                    <TableCell>{ticket.number}</TableCell>
+                                                    <TableCell>{ticket.status}</TableCell>
+                                                    <TableCell>
+                                                        {ticket.is_priority ? <span className="text-red-600 font-bold">Yes</span> : "No"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                ) : (
+                                    <p className="text-center text-slate-500 dark:text-slate-400">No customers in waiting list.</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </main>
             </div>
 
@@ -268,4 +283,3 @@ export default function TellerPageStepOne() {
         </AppLayout>
     );
 }
-
