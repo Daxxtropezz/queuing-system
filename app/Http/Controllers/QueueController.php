@@ -56,6 +56,48 @@ class QueueController extends Controller
         ]);
     }
 
+    public function servingPage2()
+    {
+        $serving = QueueTicket::with('transactionType')
+            ->where('status', 'serving')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $waiting = QueueTicket::with('transactionType')
+            ->where('status', 'waiting')
+            ->orderBy('created_at')
+            ->limit(200)
+            ->get();
+
+        $data = QueueTicket::with('transactionType')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => $ticket->transactionType->name ?? '',
+                    'status' => $ticket->status,
+                    'served_by' => $ticket->served_by,
+                    'teller_id' => $ticket->teller_id,
+                ];
+            });
+
+        $boardData = [
+            'serving' => $serving,
+            'waiting' => $waiting,
+            'data' => $data,
+            'generated_at' => now()->toIso8601String(),
+        ];
+
+        $transactionTypes = TransactionType::orderBy('name')->get(['id', 'name', 'description']);
+
+        return Inertia::render('queue/serving-board', [
+            'boardData' => $boardData,
+            'transactionTypes' => $transactionTypes,
+        ]);
+    }
+
     public function guardPage()
     {
         $transactionTypes = TransactionType::orderBy('name')->get();
@@ -124,23 +166,23 @@ class QueueController extends Controller
             ->where('status', 'serving')
             ->whereDate('created_at', now())
             ->first();
-            
-    $waiting_list = QueueTicket::with('transactionType')
-        ->where('status', 'waiting')
-        ->orderBy('created_at')
-        ->limit(200)
-        ->get()
-        ->map(function ($ticket) {
-            return [
-                'id' => $ticket->id,
-                'number' => $ticket->formatted_number,
-                'transaction_type' => [
-                    'name' => $ticket->transactionType->name ?? '',
-                ],
-                'status' => $ticket->status,
-                'is_priority' => (bool) $ticket->ispriority, // ✅ match your React prop
-            ];
-        });
+
+        $waiting_list = QueueTicket::with('transactionType')
+            ->where('status', 'waiting')
+            ->orderBy('created_at')
+            ->limit(200)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => [
+                        'name' => $ticket->transactionType->name ?? '',
+                    ],
+                    'status' => $ticket->status,
+                    'is_priority' => (bool) $ticket->ispriority, // ✅ match your React prop
+                ];
+            });
 
         return Inertia::render('queue/teller-page', [
             'current' => $current,
@@ -211,13 +253,11 @@ class QueueController extends Controller
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
 
-        // ❌ Nothing left → ask first, don’t reset yet
-        return back()
-            ->with('confirm_reset', true)
-            ->with('error', 'No Customers Found')
-            ->with('message', 'There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?');
+        return back()->with([
+            'error' => 'No waiting numbers available for your type and status.',
+            'reset_teller' => true
+        ]);
     }
-
 
 
     public function servingIndex()
@@ -254,12 +294,9 @@ class QueueController extends Controller
         QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
             ->whereDate('created_at', now())
-            ->update([
-                'status' => 'done',
-                'finished_at' => now(),
-            ]);
+            ->update(['status' => 'done', 'finished_at' => now()]);
 
-        // Try to get the next ticket for this teller setup
+        // ✅ Strict filter: must match teller’s transaction type AND priority
         $next = QueueTicket::where('status', 'waiting')
             ->where('transaction_type_id', $user->transaction_type_id)
             ->where('ispriority', $user->ispriority)
@@ -278,13 +315,8 @@ class QueueController extends Controller
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
 
-        // ❌ Nothing left → reset teller setup
-        return back()
-            ->with('confirm_reset', true)
-            ->with('error', 'No Customers Found')
-            ->with('message', 'There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?');
+        return back()->with('error', 'No waiting numbers available for your type and status.');
     }
-
 
     public function overrideNumber(Request $request)
     {
@@ -300,7 +332,7 @@ class QueueController extends Controller
             ->whereDate('created_at', now())
             ->update(['status' => 'no_show', 'finished_at' => now()]);
 
-        // Try next ticket
+        // ✅ Strict filter: must match teller’s transaction type AND priority
         $next = QueueTicket::where('status', 'waiting')
             ->where('transaction_type_id', $user->transaction_type_id)
             ->where('ispriority', $user->ispriority)
@@ -316,26 +348,9 @@ class QueueController extends Controller
                 'started_at' => now(),
             ]);
 
-            return back()->with('success', "Now serving: {$next->formatted_number}");
+            return back()->with('success', "Client skipped. Now serving: {$next->formatted_number}");
         }
 
-        // ❌ Nothing left → ask first, don’t reset yet
-        return back()
-            ->with('confirm_reset', true)
-            ->with('error', 'No Customers Found')
-            ->with('message', 'There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?');
-    }
-
-    public function resetTeller(Request $request)
-    {
-        $user = $request->user();
-
-        $user->update([
-            'teller_id' => null,
-            'transaction_type_id' => null,
-            'ispriority' => 0,
-        ]);
-
-        return back()->with('success', 'Teller setup has been reset. Please select again.');
+        return back()->with('error', 'No waiting numbers available for your type and status.');
     }
 }
