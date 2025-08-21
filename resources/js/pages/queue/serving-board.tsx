@@ -48,15 +48,15 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
 
     useEffect(() => {
         if (videoRef.current) {
-            // Ensure volume is always set to 20% on new video load
-            videoRef.current.volume = 0.2;
+            // Ensure volume is always set to 40% on new video load
+            videoRef.current.volume = 0.4;
         }
     }, [src]);
 
     const handleUnmute = () => {
         if (videoRef.current) {
             videoRef.current.muted = false;
-            videoRef.current.volume = 0.5; // force again
+            videoRef.current.volume = 0.4; // force again
             videoRef.current.play();
             setMuted(false);
         }
