@@ -33,7 +33,7 @@ export function AppSidebar() {
 
         {
             title: 'Step 2 -Service Counter',
-            href: '/queue/teller',
+            href: '/queue/teller-step2',
             icon: UserCheck,
         },
 
