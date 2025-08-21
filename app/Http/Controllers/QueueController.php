@@ -18,6 +18,8 @@ class QueueController extends Controller
     {
         $serving = QueueTicket::with('transactionType')
             ->where('status', 'serving')
+            ->where('step', 1) // <-- only step 1
+            ->whereNull('transaction_type_id') // <-- only records without a transaction type
             ->orderByDesc('updated_at')
             ->get();
 
@@ -60,6 +62,8 @@ class QueueController extends Controller
     {
         $serving = QueueTicket::with('transactionType')
             ->where('status', 'serving')
+            ->where('step', 1) // <-- only step 1
+            ->whereNull('transaction_type_id') // <-- only records without a transaction type
             ->orderByDesc('updated_at')
             ->get();
 
@@ -657,4 +661,6 @@ public function serveNoShow(Request $request)
     return back()->with('success', "Now serving no show: {$ticket->formatted_number}");
 }
 
+        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
+    }
 }

@@ -415,7 +415,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                 {/* Header (compact toolbar) */}
                 <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 md:px-6">
-                        {/* Step 1 banner (right side) */}
+                        {/* Step 1 banner (left side) */}
                         <div className="flex-shrink-0 px-4">
                             <h1 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl lg:text-3xl dark:text-slate-200">
                                 <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-transparent dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">
@@ -424,7 +424,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             </h1>
                         </div>
 
-                        {/* Left section: time, last update, live */}
+                        {/* Right section: time, last update, live */}
                         <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm">
                             <div className="rounded-full bg-slate-200/70 px-4 py-1 font-mono text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
                                 {now.toLocaleTimeString()}

@@ -23,7 +23,7 @@ use SebastianBergmann\CodeCoverage\Report\Xml\Report;
 
 // Redirect to login by default
 Route::get('/', function () {
-    return redirect()->route('queue.main');
+    return redirect()->route('queue.s1');
 })->name('home');
 
 // Use the custom AuthControllerDjango for login
@@ -162,8 +162,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 });
 
-Route::get('/queue/step-1', [QueueController::class, 'mainPage'])->name('queue.main');
-Route::get('/queue/step-2', [QueueController::class, 'servingPage2'])->name('queue.main');
+Route::get('/queue/step-1', [QueueController::class, 'mainPage'])->name('queue.s1');
+Route::get('/queue/step-2', [QueueController::class, 'servingPage2'])->name('queue.s2');
 Route::get('/queue/guard', [QueueController::class, 'guardPage'])->name('queue.guard');
 Route::get('/queue/guard/status', [QueueController::class, 'status'])->name('queue.guard.status');
 Route::post('/queue/guard/generate', [QueueController::class, 'generateNumber'])->name('queue.guard.generate');
