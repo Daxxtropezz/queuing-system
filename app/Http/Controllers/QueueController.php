@@ -398,6 +398,20 @@ class QueueController extends Controller
                 ];
             })->values();
 
+            $no_show_list = QueueTicket::with('transactionType')
+    ->where('status', 'no_show')
+    ->whereDate('created_at', now())
+    ->orderBy('updated_at', 'desc')
+    ->limit(50)
+    ->get()
+    ->map(function ($ticket) {
+        return [
+            'id' => $ticket->id,
+            'number' => $ticket->formatted_number,
+            'status' => $ticket->status,
+        ];
+    });
+
         return Inertia::render('queue/teller-page-step-one', [
             'userTellerNumber' => $user->teller_id,
             'transactionTypes' => TransactionType::all(['id', 'name']),
@@ -409,6 +423,7 @@ class QueueController extends Controller
                 'transaction_type' => $current->transactionType->name ?? '',
             ] : null,
             'waiting_list' => $waiting_list,
+             'no_show_list' => $no_show_list, 
         ]);
     }
 
@@ -538,6 +553,113 @@ class QueueController extends Controller
 
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
+
+        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
+    }
+
+    public function manualOverrideStep1Number(Request $request)
+{
+    $user = $request->user();
+
+    $request->validate([
+        'number' => 'required|string',
+        'ispriority' => 'required|in:0,1',
+    ]);
+
+    $requestedNumber = (int) preg_replace('/[^0-9]/', '', $request->input('number'));
+    
+    // Convert the ispriority string to a boolean for a more robust check.
+    $ispriorityBool = filter_var($request->input('ispriority'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+    $ticket = QueueTicket::where('number', $requestedNumber)
+        ->where('ispriority', $ispriorityBool)
+        ->whereDate('created_at', now())
+        ->first();
+
+    if (!$ticket) {
+        // ⬅️ Flash message for "not found"
+        return back()->with('no_found', 'Ticket not found for today with the given status/priority.');
+    }
+    
+    // Check if the ticket is already serving or done
+    if ($ticket->status === 'serving' || $ticket->status === 'done') {
+        return back()->with('error', "Ticket is already {$ticket->status}.");
+    }
+
+    // New logic: Check if the ticket is in a "no_show" state and handle that specifically
+    if ($ticket->status === 'no_show') {
+        // You can choose to re-serve the "no_show" ticket
+        // Or you can prevent it and send a different message.
+        // For this example, let's allow re-serving but with a warning message.
+        $currentServing = QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
+
+        if ($currentServing) {
+            $currentServing->update(['status' => 'done', 'finished_at' => now()]);
+        }
+
+        $ticket->update([
+            'status' => 'serving',
+            'served_by' => $user->id,
+            'teller_id' => $user->teller_id,
+            'started_at' => now(),
+        ]);
+        
+        // ⬅️ Flash message for "no show" override
+        return back()->with('no_show', "Successfully re-serving 'No Show' client: {$ticket->formatted_number}");
+
+    }
+
+    // End current if serving
+    $currentServing = QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->whereDate('created_at', now())
+        ->first();
+
+    if ($currentServing) {
+        $currentServing->update(['status' => 'done', 'finished_at' => now()]);
+    }
+
+    // Serve the chosen ticket
+    $ticket->update([
+        'status' => 'serving',
+        'served_by' => $user->id,
+        'teller_id' => $user->teller_id,
+        'started_at' => now(),
+    ]);
+
+    // ⬅️ Flash message for success
+    return back()->with('success', "Now serving client: {$ticket->formatted_number}");
+}
+
+public function serveNoShow(Request $request)
+{
+    $user = $request->user();
+    $ticket = QueueTicket::where('id', $request->id)
+        ->where('status', 'no_show')
+        ->whereDate('created_at', now())
+        ->first();
+
+    if (!$ticket) {
+        return back()->with('error', 'No show ticket not found.');
+    }
+
+    // End any current serving
+    QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->update(['status' => 'done', 'finished_at' => now()]);
+
+    $ticket->update([
+        'status' => 'serving',
+        'served_by' => $user->id,
+        'teller_id' => $user->teller_id,
+        'started_at' => now(),
+    ]);
+
+    return back()->with('success', "Now serving no show: {$ticket->formatted_number}");
+}
 
         return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
     }

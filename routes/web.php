@@ -147,6 +147,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/queue/teller/next-step1', [QueueController::class, 'nextStep1Number'])->name('queue.teller.next.step1');
     Route::post('/queue/teller/override-step1', [QueueController::class, 'overrideStep1Number'])->name('queue.teller.override.step1');
     Route::post('/teller/reset-step1', [QueueController::class, 'resetTellerStep1'])->name('teller.reset.step1');
+    Route::post('/queue/teller/manual-override', [QueueController::class, 'manualOverrideStep1Number'])
+        ->name('queue.teller.step1.manual-override');
+    Route::post('/queue/teller-step1/search-no-show', [QueueController::class, 'searchNoShowTicket'])
+    ->name('queue.teller.step1.search-no-show');
+    Route::post('/teller/serve-no-show', [QueueController::class, 'serveNoShow'])->name('queue.teller.serve-no-show');
 
 
     Route::resource('transaction-types', TransactionTypeController::class);
