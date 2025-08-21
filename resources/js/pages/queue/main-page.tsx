@@ -43,22 +43,53 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
     const [index, setIndex] = useState(0);
     const hasVideos = sources.length > 0;
     const src = hasVideos ? sources[index % sources.length] : null;
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const [muted, setMuted] = useState(false);
+
+    useEffect(() => {
+        if (videoRef.current) {
+            // Ensure volume is always set to 50% on new video load
+            videoRef.current.volume = 0.5;
+        }
+    }, [src]);
+
+    const handleUnmute = () => {
+        if (videoRef.current) {
+            videoRef.current.muted = false;
+            videoRef.current.volume = 0.5; // force again
+            videoRef.current.play();
+            setMuted(false);
+        }
+    };
 
     return (
         <div className="h-[37.5vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[37.5vh] lg:h-[42.5vh] xl:h-[47.5vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
-            <div className="h-full w-full">
+            <div className="relative h-full w-full">
                 {src ? (
-                    <video
-                        key={src}
-                        className="h-full w-full object-cover"
-                        src={src}
-                        autoPlay
-                        muted
-                        controls
-                        playsInline
-                        onEnded={() => setIndex((i) => (i + 1) % sources.length)}
-                        onError={() => setIndex((i) => (i + 1) % sources.length)}
-                    />
+                    <>
+                        <video
+                            ref={videoRef}
+                            key={src}
+                            className="h-full w-full object-cover"
+                            src={src}
+                            autoPlay
+                            muted={muted}
+                            playsInline
+                            onLoadedData={() => {
+                                if (videoRef.current) videoRef.current.volume = 0.5;
+                            }}
+                            onEnded={() => setIndex((i) => (i + 1) % sources.length)}
+                            onError={() => setIndex((i) => (i + 1) % sources.length)}
+                        />
+                        {muted && (
+                            <button
+                                onClick={handleUnmute}
+                                className="absolute right-4 bottom-4 rounded-xl bg-black/60 px-3 py-1 text-sm font-medium text-white shadow-lg backdrop-blur-md hover:bg-black/80"
+                            >
+                                🔊 Unmute
+                            </button>
+                        )}
+                    </>
                 ) : (
                     <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">
                         {emptyText} <br /> Place videos in storage/app/public/videos
