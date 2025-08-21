@@ -92,7 +92,7 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
                     </>
                 ) : (
                     <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">
-                        {emptyText} <br /> Place videos in storage/app/public/videos
+                        {emptyText} <br /> An administrator will be uploading videos, please wait a moment.
                     </div>
                 )}
             </div>
@@ -404,7 +404,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
     return (
         <>
-            <Head title="Now Serving" />
+            <Head title="Step 1" />
             <div className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
                 {/* Decorative radial glows (DSWD colors, light/dark) */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -414,8 +414,18 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
                 {/* Header (compact toolbar) */}
                 <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
-                    <div className="mx-auto flex max-w-7xl items-center justify-center px-4 py-2 md:justify-between md:px-6">
-                        <div className="flex flex-wrap items-center justify-center gap-4 text-xs md:text-sm">
+                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 md:px-6">
+                        {/* Step 1 banner (right side) */}
+                        <div className="flex-shrink-0 px-4">
+                            <h1 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl lg:text-3xl dark:text-slate-200">
+                                <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-transparent dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">
+                                    Step 1
+                                </span>
+                            </h1>
+                        </div>
+
+                        {/* Left section: time, last update, live */}
+                        <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm">
                             <div className="rounded-full bg-slate-200/70 px-4 py-1 font-mono text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
                                 {now.toLocaleTimeString()}
                             </div>
@@ -463,7 +473,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             {/* Video */}
                             <div>
                                 <header className="mb-3 flex items-center justify-between">
-                                    <Link href="/" prefetch>
+                                    <Link href="/tellers" prefetch>
                                         <h2 className="flex items-center text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
                                             <div className="bg-sidebar-primary-foreground mr-2 flex aspect-square size-8 items-center justify-center rounded-md">
                                                 <AppLogoIcon className="size-7 fill-current text-white dark:text-black" />
