@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -35,6 +36,13 @@ class QueueTicket extends Model
     {
         // Pad the number to 4 digits
         return str_pad($this->number, 4, '0', STR_PAD_LEFT);
+    }
+    
+     protected function isPriority(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value, array $attributes) => (bool) $attributes['ispriority'],
+        );
     }
 
 
