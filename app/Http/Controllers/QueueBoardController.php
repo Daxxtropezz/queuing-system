@@ -16,6 +16,8 @@ class QueueBoardController extends Controller
         $serving = QueueTicket::with('transactionType:id,name')
             ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'ispriority', 'created_at', 'updated_at')
             ->where('status', 'serving')
+            ->where('step', 1) // <-- only step 1
+            ->whereNull('transaction_type_id') // <-- only records without a transaction type
             ->whereDate('created_at', $today)
             ->orderByDesc('updated_at')
             ->get();

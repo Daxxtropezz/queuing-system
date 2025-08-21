@@ -13,7 +13,8 @@ type QueueTicket = {
     teller_id?: string;
     updated_at?: string;
     created_at?: string;
-    ispriority?: number | boolean; // <-- added
+    ispriority?: number | boolean;
+    step?: string | number; // <-- added
 };
 
 // Define the structure of the data returned by the API.
@@ -101,7 +102,21 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
 }
 
 export default function MainPage({ boardData, transactionTypes = [] }: Props) {
-    const [servingTickets, setServingTickets] = useState<QueueTicket[]>(boardData.serving || []);
+    // Helper to keep filtering logic consistent (step === '1' and no transaction type)
+    function filterServingTickets(list: QueueTicket[] = []): QueueTicket[] {
+        // Show only tickets that are actively being served by someone (served_by present),
+        // have status 'serving', and are at step '1'.
+        return list.filter((t) => {
+            const stepIsOne = String(t.step) === '1' || t.step === 1;
+            const statusServing = String(t.status || '').toLowerCase() === 'serving';
+            const servedByPresent = t.served_by !== null && t.served_by !== undefined && String(t.served_by).trim() !== '';
+
+            return stepIsOne && statusServing && servedByPresent;
+        });
+    }
+
+    // Apply filter to initial props so initial render matches the fetch behavior
+    const [servingTickets, setServingTickets] = useState<QueueTicket[]>(() => filterServingTickets(boardData.serving || []));
     const [waitingTickets, setWaitingTickets] = useState<QueueTicket[]>(boardData.waiting || []);
     const [loading, setLoading] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(boardData.generated_at ? new Date(boardData.generated_at) : null);
@@ -232,8 +247,20 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
             const json: BoardData = await res.json();
 
+            // DEV: log incoming serving payload to help debug disappearing tickets
+            // Remove or guard these logs in production if desired.
+            // eslint-disable-next-line no-console
+            console.debug('[queue-board] raw serving payload', json.serving);
+
+            // Filter serving tickets to only step === '1' and transaction_type/transaction_type_id is null
+            const rawServing: QueueTicket[] = json.serving || [];
+            const newServing: QueueTicket[] = filterServingTickets(rawServing);
+
+            // DEV: log filtered result
+            // eslint-disable-next-line no-console
+            console.debug('[queue-board] filtered serving', newServing);
+
             // Detect newly added serving tickets (compare IDs)
-            const newServing: QueueTicket[] = json.serving || [];
             const newIds = newServing.map((s) => s.id);
             const prevIds = prevServingIdsRef.current || [];
             const addedIds = newIds.filter((id) => !prevIds.includes(id));
@@ -248,11 +275,11 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                 }
             }
 
-            // Update refs & state
+            // Update refs & state with filtered serving list
             prevServingIdsRef.current = newIds;
             initialFetchRef.current = false;
 
-            setServingTickets(newServing);
+            setServingTickets(newServing); // only filtered serving tickets now
             setWaitingTickets(json.waiting || []);
             setLastUpdated(json.generated_at ? new Date(json.generated_at) : new Date());
         } catch (e) {
@@ -402,6 +429,20 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
     const skeletonCards = Array.from({ length: 4 });
 
+    // New: split serving into regular (left) and priority (right)
+    const leftServing = useMemo(() => {
+        return servingTickets.filter((t) => {
+            const isPriority = t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1';
+            return !isPriority;
+        });
+    }, [servingTickets]);
+
+    const rightServing = useMemo(() => {
+        return servingTickets.filter((t) => {
+            return t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1';
+        });
+    }, [servingTickets]);
+
     return (
         <>
             <Head title="Step 1" />
@@ -415,7 +456,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                 {/* Header (compact toolbar) */}
                 <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 md:px-6">
-                        {/* Step 1 banner (right side) */}
+                        {/* Step 1 banner (left side) */}
                         <div className="flex-shrink-0 px-4">
                             <h1 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl lg:text-3xl dark:text-slate-200">
                                 <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-transparent dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">
@@ -424,7 +465,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             </h1>
                         </div>
 
-                        {/* Left section: time, last update, live */}
+                        {/* Right section: time, last update, live */}
                         <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm">
                             <div className="rounded-full bg-slate-200/70 px-4 py-1 font-mono text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
                                 {now.toLocaleTimeString()}
@@ -627,89 +668,60 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             </header>
 
                             <div ref={servingWrapRef} className="min-h-0 flex-1 overflow-hidden">
-                                {!loading && totalServing === 0 ? (
-                                    <div className="flex h-full items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
-                                        No tickets are being served
-                                    </div>
-                                ) : (
-                                    // dynamic columns: one per transaction type in the order received
-                                    <div className="grid h-full gap-4" style={{ gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))` }}>
-                                        {columns.map((colLabel, ci) => {
-                                            // use the full column tickets (not only limited) so counts are accurate
-                                            const allItems = columnTickets[ci] ?? [];
-                                            const total = allItems.length;
-                                            // decide how many to display per column based on servingRows or capacity
-                                            const perGroupCapacity = Math.max(1, servingRows);
-                                            // split priority vs regular (priority = ispriority === 1)
-                                            const priorityItems = allItems
-                                                .filter((t) => t.ispriority === 1 || String(t.ispriority) === '1')
-                                                .slice(0, perGroupCapacity);
-                                            const regularItems = allItems
-                                                .filter((t) => !(t.ispriority === 1 || String(t.ispriority) === '1'))
-                                                .slice(0, perGroupCapacity);
-                                            return (
+                                {/* Always show two-column Serving layout (empty slots show dashes) */}
+                                <div className="grid h-full grid-cols-2 gap-4">
+                                    {/* Regular (left) */}
+                                    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Regular</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">{leftServing.length} active</div>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {leftServing.slice(0, Math.max(1, Math.floor(servingCapacity / 2))).map((t) => (
                                                 <div
-                                                    key={`col-${ci}`}
-                                                    className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
+                                                    key={`s-reg-${t.id}`}
+                                                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
                                                 >
-                                                    <div className="mb-2 flex items-center justify-between">
-                                                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{colLabel}</div>
-                                                        <div className="text-xs text-slate-500 dark:text-slate-400">{total} active</div>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="text-2xl font-black text-slate-800 tabular-nums md:text-3xl dark:text-slate-100">
+                                                            {t.number}
+                                                        </div>
                                                     </div>
-
-                                                    {/* Two-column inner layout: left = Regular, right = Priority */}
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        <div>
-                                                            <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">Regular</div>
-                                                            <div className="grid grid-cols-1 gap-2">
-                                                                {regularItems.map((t) => (
-                                                                    <div
-                                                                        key={`s-reg-${t.id}`}
-                                                                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
-                                                                    >
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className="text-2xl font-black text-slate-800 tabular-nums md:text-3xl dark:text-slate-100">
-                                                                                {t.number}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                            {t.teller_id ? `Teller ${t.teller_id}` : '—'}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                                {regularItems.length === 0 && <div className="text-xs text-slate-400">—</div>}
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <div className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-                                                                Priority
-                                                            </div>
-                                                            <div className="grid grid-cols-1 gap-2">
-                                                                {priorityItems.map((t) => (
-                                                                    <div
-                                                                        key={`s-prio-${t.id}`}
-                                                                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
-                                                                    >
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className="text-2xl font-black text-amber-700 tabular-nums md:text-3xl dark:text-amber-200">
-                                                                                {t.number}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                            {t.teller_id ? `Teller ${t.teller_id}` : '—'}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                                {priorityItems.length === 0 && <div className="text-xs text-slate-400">—</div>}
-                                                            </div>
-                                                        </div>
+                                                    <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                        {t.teller_id ? `Teller ${t.teller_id}` : '—'}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                            ))}
+                                            {leftServing.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                        </div>
                                     </div>
-                                )}
+
+                                    {/* Priority (right) */}
+                                    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <div className="text-sm font-semibold text-amber-700 dark:text-amber-300">Priority</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">{rightServing.length} active</div>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {rightServing.slice(0, Math.max(1, Math.ceil(servingCapacity / 2))).map((t) => (
+                                                <div
+                                                    key={`s-prio-${t.id}`}
+                                                    className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="text-2xl font-black text-amber-700 tabular-nums md:text-3xl dark:text-amber-200">
+                                                            {t.number}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                        {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {rightServing.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </section>
                     </div>
