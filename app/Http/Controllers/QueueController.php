@@ -109,7 +109,6 @@ class QueueController extends Controller
     public function generateNumber(Request $request)
     {
         $validated = $request->validate([
-            'transaction_type_id' => 'required|exists:transaction_types,id',
             'ispriority' => 'required|in:0,1',
         ]);
 
@@ -118,8 +117,7 @@ class QueueController extends Controller
         DB::transaction(function () use ($validated, &$ticket) {
             $today = now()->startOfDay();
 
-            $last = QueueTicket::where('transaction_type_id', $validated['transaction_type_id'])
-                ->where('ispriority', $validated['ispriority'])
+            $last = QueueTicket::where('ispriority', $validated['ispriority'])
                 ->whereDate('created_at', $today)
                 ->orderByDesc('number')
                 ->lockForUpdate()
@@ -129,7 +127,7 @@ class QueueController extends Controller
 
             $ticket = QueueTicket::create([
                 'number' => $number,
-                'transaction_type_id' => $validated['transaction_type_id'],
+                'transaction_type_id' => null, // ✅ no longer needed
                 'status' => 'waiting',
                 'ispriority' => $validated['ispriority'],
             ]);
@@ -139,6 +137,7 @@ class QueueController extends Controller
             'generatedNumber' => $ticket->formatted_number,
         ]);
     }
+
 
     public function status()
     {
@@ -180,7 +179,7 @@ class QueueController extends Controller
                         'name' => $ticket->transactionType->name ?? '',
                     ],
                     'status' => $ticket->status,
-                    'is_priority' => (bool) $ticket->ispriority, // ✅ match your React prop
+                    'is_priority' => (bool) $ticket->ispriority,
                 ];
             });
 
@@ -352,5 +351,177 @@ class QueueController extends Controller
         }
 
         return back()->with('error', 'No waiting numbers available for your type and status.');
+    }
+
+
+    public function resetTeller(Request $request)
+    {
+        $user = $request->user();
+
+        $user->update([
+            'teller_id' => null,
+            'transaction_type_id' => null,
+            'ispriority' => 0,
+        ]);
+
+        return back()->with('success', 'Teller setup has been reset. Please select again.');
+    }
+
+    // Step1: Teller Page
+    public function tellerStep1Page(Request $request)
+    {
+        $user = $request->user();
+
+        // Current ticket being served by this user (step1 flow)
+        $current = QueueTicket::with('transactionType')
+            ->where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
+
+        $waiting_list = QueueTicket::with('transactionType')
+            ->where('status', 'waiting')
+            ->whereDate('created_at', now())
+            ->orderBy('created_at')
+            ->limit(200)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'status' => $ticket->status,
+                    'is_priority' => (bool) $ticket->ispriority,
+                ];
+            })->values();
+
+        return Inertia::render('queue/teller-page-step-one', [
+            'userTellerNumber' => $user->teller_id,
+            'transactionTypes' => TransactionType::all(['id', 'name']),
+            'tellers' => Teller::all(['id', 'name']),
+            'current' => $current ? [
+                'id' => $current->id,
+                'number' => $current->formatted_number,
+                'ispriority' => $current->ispriority,
+                'transaction_type' => $current->transactionType->name ?? '',
+            ] : null,
+            'waiting_list' => $waiting_list,
+        ]);
+    }
+
+    // Step1: Grab next waiting ticket (no longer requires user->teller_id to be set)
+    public function grabStep1Number(Request $request)
+    {
+        $request->validate([
+            'ispriority' => 'nullable|in:0,1',
+        ]);
+
+        $user = $request->user();
+
+        // Check if teller already has active
+        $current = QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
+
+        if ($current) {
+            return back()->with('error', 'Already serving a number');
+        }
+
+        $ispriority = $request->input('ispriority', 0);
+
+        $next = QueueTicket::where('status', 'waiting')
+            ->where('ispriority', $ispriority)
+            ->whereDate('created_at', now())
+            ->orderBy('id')
+            ->first();
+
+        if ($next) {
+            $next->update([
+                'status' => 'serving',
+                'served_by' => $user->id,
+                'teller_id' => $user->teller_id, // attach teller if available (nullable)
+                'started_at' => now(),
+            ]);
+
+            return back()->with('success', "Now serving: {$next->formatted_number}");
+        }
+
+        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
+    }
+
+    // Step1: Complete current serving and get next (uses served_by user)
+    public function nextStep1Number(Request $request)
+    {
+        $user = $request->user();
+
+        // Mark current serving as done (if any)
+        $current = QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
+
+        $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
+
+        if ($current) {
+            $current->update([
+                'status' => 'done',
+                'finished_at' => now(),
+            ]);
+        }
+
+        // Next ticket matching the same priority
+        $next = QueueTicket::where('status', 'waiting')
+            ->where('ispriority', $ispriority)
+            ->whereDate('created_at', now())
+            ->orderBy('id')
+            ->first();
+
+        if ($next) {
+            $next->update([
+                'status' => 'serving',
+                'served_by' => $user->id,
+                'teller_id' => $user->teller_id,
+                'started_at' => now(),
+            ]);
+
+            return back()->with('success', "Now serving: {$next->formatted_number}");
+        }
+
+        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
+    }
+
+    // Step1: Mark current as no_show and get next
+    public function overrideStep1Number(Request $request)
+    {
+        $user = $request->user();
+
+        $current = QueueTicket::where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
+
+        $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
+
+        if ($current) {
+            $current->update(['status' => 'no_show', 'finished_at' => now()]);
+        }
+
+        $next = QueueTicket::where('status', 'waiting')
+            ->where('ispriority', $ispriority)
+            ->whereDate('created_at', now())
+            ->orderBy('id')
+            ->first();
+
+        if ($next) {
+            $next->update([
+                'status' => 'serving',
+                'served_by' => $user->id,
+                'teller_id' => $user->teller_id,
+                'started_at' => now(),
+            ]);
+            return back()->with('success', "Now serving: {$next->formatted_number}");
+        }
+
+        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
     }
 }

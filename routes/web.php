@@ -140,6 +140,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/queue/teller/override', [QueueController::class, 'overrideNumber'])->name('queue.teller.override');
     Route::post('/teller/reset', [QueueController::class, 'resetTeller'])->name('teller.reset');
 
+    //Step 1 Teller Page
+    Route::get('/queue/teller-step1', [QueueController::class, 'tellerStep1Page'])->name('queue.teller.step1');
+    Route::post('/teller/assign-step1', [QueueController::class, 'assignTellerStep1'])->name('queue.teller.assign.step1');
+    Route::post('/queue/teller/grab-step1', [QueueController::class, 'grabStep1Number'])->name('queue.teller.grab.step1');
+    Route::post('/queue/teller/next-step1', [QueueController::class, 'nextStep1Number'])->name('queue.teller.next.step1');
+    Route::post('/queue/teller/override-step1', [QueueController::class, 'overrideStep1Number'])->name('queue.teller.override.step1');
+    Route::post('/teller/reset-step1', [QueueController::class, 'resetTellerStep1'])->name('teller.reset.step1');
+
 
     Route::resource('transaction-types', TransactionTypeController::class);
     Route::resource('videos', VideoController::class);
