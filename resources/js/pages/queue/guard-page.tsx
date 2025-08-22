@@ -1,13 +1,15 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import axios from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 
 // In GuardPage.tsx
 export default function GuardPage() {
-    const { data, setData, processing, reset } = useForm({
+    const { processing } = useForm({
         ispriority: null,
     });
 
@@ -15,20 +17,27 @@ export default function GuardPage() {
     const [generatedNumber, setGeneratedNumber] = useState('');
     const [priority, setPriority] = useState('');
     const [now, setNow] = useState<Date>(new Date());
+    const [lastClick, setLastClick] = useState<number>(0);
 
     useEffect(() => {
         const interval = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(interval);
     }, []);
 
-    useEffect(() => {
-        if (generatedNumber && priority) {
-            window.print();
-        }
-    }, [generatedNumber, priority]);
-
     async function handleGenerate(value: number) {
         if (processing) return;
+
+        // Prevent spamming (5s cooldown)
+        const nowTime = Date.now();
+        if (nowTime - lastClick < 5000) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Please wait!',
+                text: 'You can only generate a new number every 5 seconds.',
+                confirmButtonColor: '#f59e0b'
+            });
+            return;
+        }
 
         try {
             const { data: response } = await axios.post(route('queue.guard.generate'), {
@@ -40,8 +49,28 @@ export default function GuardPage() {
             setGeneratedNumber(num);
             setPriority(value === 1 ? 'Priority' : 'Regular');
             setDialogOpen(true);
+
+            setLastClick(nowTime);
+
+            // Print immediately after number is generated
+            setTimeout(() => {
+                window.print();
+                // Then show SweetAlert success AFTER printing
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Number Generated!',
+                    text: `Your ${value === 1 ? 'Priority' : 'Regular'} number is ${num}`,
+                    confirmButtonColor: '#3b82f6'
+                });
+            }, 300); // slight delay so dialog renders before print
         } catch (error) {
             console.error(error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: 'Something went wrong while generating your number.',
+                confirmButtonColor: '#ef4444'
+            });
         }
     }
 
@@ -77,24 +106,6 @@ export default function GuardPage() {
 
                 {/* Ticket modal + print layout */}
                 <Dialog open={dialogOpen} onOpenChange={() => setDialogOpen(false)}>
-                    <DialogContent className="max-w-md text-center rounded-3xl bg-slate-900/80 backdrop-blur-md">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold text-amber-300">
-                                Your Number
-                            </DialogTitle>
-                            <div className="mt-4 text-6xl font-bold text-amber-400">
-                                {generatedNumber}
-                            </div>
-                            <div className="mt-2 text-lg">{priority}</div>
-                        </DialogHeader>
-                        <Button
-                            onClick={() => setDialogOpen(false)}
-                            className="mt-6 w-full rounded-2xl bg-amber-500 text-black"
-                        >
-                            OK
-                        </Button>
-                    </DialogContent>
-
                     {/* Print-only ticket */}
                     <div className="print-ticket hidden text-center print:block">
                         <div className="text-sm font-bold">{priority}</div>
@@ -126,4 +137,3 @@ export default function GuardPage() {
         </>
     );
 }
-
