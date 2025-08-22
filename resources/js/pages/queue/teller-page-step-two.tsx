@@ -332,6 +332,26 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
                                                 <span className="text-slate-600 dark:text-slate-400">Teller Station</span>
                                                 <span className="font-medium text-blue-600 dark:text-blue-400">#{userTellerNumber}</span>
                                             </div>
+
+                                            {current.remarks ? (
+                                                <div className="p-4 border-l-4 border-amber-500 bg-amber-50 rounded-lg dark:bg-amber-900/20 dark:border-amber-400 shadow-sm">
+                                                    <div className="flex items-start gap-2">
+                                                        <span className="font-semibold text-amber-700 dark:text-amber-300 min-w-[150px]">
+                                                            Remarks from Step 1:
+                                                        </span>
+                                                        <span className="font-medium text-slate-900 dark:text-slate-100 flex-1">
+                                                            {current.remarks}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="p-4 border-l-4 border-slate-400 bg-slate-100 rounded-lg dark:bg-slate-700 dark:border-slate-500 shadow-sm">
+                                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                                                        <span>No remarks from Step 1</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                         </div>
 
                                         <div className="flex flex-col sm:flex-row gap-3 w-full">
