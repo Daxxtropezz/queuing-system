@@ -17,32 +17,26 @@ export function AppSidebar() {
     };
 
     const isAdmin = auth?.user?.roles?.includes('Administrator');
+    const isTellerStep1 = auth?.user?.roles?.includes('Step1-Teller');
+    const isTellerStep2 = auth?.user?.roles?.includes('Step2-Teller');
 
-    const mainNavItems: NavItem[] = [
-        // {
-        //     title: 'Dashboard',
-        //     href: '/dashboard',
-        //     icon: ChartArea,
-        // },
+    const mainNavItems: NavItem[] = [];
 
-        {
-            title: 'Step 1 - Service Counter',
-            href: '/queue/teller-step1',
+    if (isAdmin || isTellerStep1) {
+        mainNavItems.push({
+            title: "Step 1 - Service Counter",
+            href: "/queue/teller-step1",
             icon: UserCheck,
-        },
+        });
+    }
 
-        {
-            title: 'Step 2 -Service Counter',
-            href: '/queue/teller-step2',
+    if (isAdmin || isTellerStep2) {
+        mainNavItems.push({
+            title: "Step 2 - Service Counter",
+            href: "/queue/teller-step2",
             icon: UserCheck,
-        },
-
-        //  {
-        //     title: 'Guard',
-        //     href: '/queue/guard',
-        //     icon: ChartArea,
-        // },
-    ];
+        });
+    }
 
     if (isAdmin) {
         mainNavItems.push({
