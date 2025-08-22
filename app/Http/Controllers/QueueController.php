@@ -502,6 +502,7 @@ class QueueController extends Controller
             'transaction_type' => [
                 'name' => $current->transactionType->name ?? '',
             ],
+            'remarks' => $current->remarks,
         ] : null,
         'userTellerNumber' => $user->teller_id,
         'transactionTypes' => TransactionType::all(['id', 'name']),
