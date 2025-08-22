@@ -3,6 +3,7 @@ FROM php:8.4-fpm
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
+    git \
     nginx \
     supervisor \
     default-mysql-client \
@@ -40,6 +41,14 @@ WORKDIR /var/www/html
 
 # Copy existing application directory contents
 COPY . .
+
+# Recreate Laravel storage symlink
+RUN php artisan storage:link || true
+
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_NO_INTERACTION=1
+ENV COMPOSER_DISABLE_XDEBUG_WARN=1
+# ENV COMPOSER_DISABLE_NETWORK=1 
 
 # Install PHP dependencies
 RUN composer install --no-interaction --optimize-autoloader --no-dev
