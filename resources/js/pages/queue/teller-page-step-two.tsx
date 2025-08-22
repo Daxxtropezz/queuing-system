@@ -6,12 +6,12 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { Loader2, User, Clock, CheckCircle, AlertCircle, ArrowRight, Play, UserCheck, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "@/components/ui/table";
 import {
     AlertDialog,
@@ -33,15 +33,15 @@ type TellerPageProps = {
     transactionTypes?: { id: string; name: string }[];
     tellers?: { id: string; name: string }[];
     waiting_list: {
-    id: number;
-    number: string;
-    transaction_type: { name: string };
-    status: string;
-    is_priority: boolean;
-  }[];
+        id: number;
+        number: string;
+        transaction_type: { name: string };
+        status: string;
+        is_priority: boolean;
+    }[];
 };
 
-export default function TellerPage({ current,  waiting_list, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
+export default function TellerPage({ current, waiting_list, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
     const form = useForm({
         teller_id: userTellerNumber ?? tellers[0]?.id ?? '',
         transaction_type_id: transactionTypes[0]?.id ?? '',
@@ -73,31 +73,27 @@ export default function TellerPage({ current,  waiting_list, userTellerNumber, t
         form.setData('teller_id', selectedTeller);
         form.setData('transaction_type_id', selectedTransaction);
         form.setData('ispriority', priority);
-        form.post(route('queue.teller.assign'), { preserveState: true });
+        form.post(route('queue.teller.assign.step2'), { preserveState: true });
     }
 
     const handleSelectNew = () => {
-        // reset the teller form
-        setSelectedTeller('');
         setSelectedTransaction('');
         setPriority('0');
-        form.setData('teller_id', '');
         form.setData('transaction_type_id', '');
         form.setData('ispriority', '0');
 
         setShowNoCustomersDialog(false);
 
-        // optionally trigger a reset request to the server
-        form.post(route("teller.reset"), { preserveState: true });
+        form.post(route("queue.teller.reset.step2"), { preserveState: false });
     };
 
     function handleGrab() {
         form.setData('ispriority', priority);
-        form.post(route('queue.teller.grab'));
+        form.post(route('queue.teller.grab.step2'));
     }
 
     function handleNext() {
-        form.post(route('queue.teller.next'), {
+        form.post(route('queue.teller.next.step2'), {
             onSuccess: () => {
                 // Reset priority after completing transaction
                 setPriority('0');
@@ -107,14 +103,18 @@ export default function TellerPage({ current,  waiting_list, userTellerNumber, t
     }
 
     function handleOverride() {
-        form.post(route('queue.teller.override'), {
+        form.post(route('queue.teller.override.step2'), {
             onSuccess: () => {
-                // Reset priority after override
                 setPriority('0');
                 form.setData('ispriority', '0');
             }
         });
     }
+    function handleNoShow() {
+        form.post(route('queue.teller.no-show.step2'));
+    }
+
+
 
     const breadcrumbs = [{ title: 'Service Counter', href: '/queue/teller' }];
 
@@ -188,7 +188,7 @@ export default function TellerPage({ current,  waiting_list, userTellerNumber, t
                                     )}
                                 </CardTitle>
                                 <CardDescription>
-                                    {userTellerNumber 
+                                    {userTellerNumber
                                         ? (current ? "You are currently serving a customer" : "Ready to serve next customer")
                                         : "Select your teller station to begin serving customers"}
                                 </CardDescription>
@@ -196,7 +196,7 @@ export default function TellerPage({ current,  waiting_list, userTellerNumber, t
 
                             <CardContent className="pt-6">
                                 {/* Not assigned to a teller */}
-                                {!userTellerNumber ? (
+                               {!userTellerNumber || !selectedTransaction ? (
                                     <div className="flex flex-col gap-6">
                                         <div className="text-center">
                                             <p className="text-slate-600 dark:text-slate-400">
@@ -364,83 +364,121 @@ export default function TellerPage({ current,  waiting_list, userTellerNumber, t
                                     </div>
                                 ) : (
                                     // Ready to grab next customer
-                                    <Tabs defaultValue="next-customer" className="w-full">
+                                    <Tabs defaultValue={!userTellerNumber ? "setup" : "now-serving"} className="w-full">
                                         <TabsList className="grid w-full grid-cols-2">
-                                            <TabsTrigger value="next-customer">Next Customer</TabsTrigger>
-                                            <TabsTrigger value="change-settings">Settings</TabsTrigger>
+                                            {!userTellerNumber ? (
+                                                <TabsTrigger value="setup">Initial Setup</TabsTrigger>
+                                            ) : (
+                                                <TabsTrigger value="now-serving">Now Serving</TabsTrigger>
+                                            )}
+                                            <TabsTrigger value="manual-override">Manual Override</TabsTrigger>
                                         </TabsList>
-                                        
-                                        <TabsContent value="next-customer" className="space-y-4 pt-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="customer-type" className="text-sm font-medium">
-                                                    Customer Type
-                                                </Label>
+
+                                        {/* Initial Setup */}
+                                        {!userTellerNumber && (
+                                            <TabsContent value="setup" className="space-y-4 pt-4">
+                                                {/* keep your teller + transaction + priority setup form here */}
+                                            </TabsContent>
+                                        )}
+
+                                        {/* Now Serving */}
+                                        {userTellerNumber && (
+                                            <TabsContent value="now-serving" className="space-y-4 pt-4">
+                                                {current ? (
+                                                    // Currently serving
+                                                    <div className="flex flex-col gap-6">
+                                                        <div className="text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
+                                                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
+                                                                {current.number}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col sm:flex-row gap-3">
+                                                            <Button onClick={handleNext} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white">
+                                                                <CheckCircle className="mr-2 h-5 w-5" /> Complete Transaction
+                                                            </Button>
+                                                            <Button onClick={handleOverride} className="flex-1 border-rose-300 text-rose-600 hover:bg-rose-50" variant="outline">
+                                                                <AlertCircle className="mr-2 h-5 w-5" /> Mark as No Show
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    // Ready to grab next customer → NO customer type selection
+                                                    <div className="space-y-4">
+                                                        <Button onClick={handleGrab} className="w-full py-4">
+                                                            <ArrowRight className="mr-2 h-5 w-5" /> Call Next Customer
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </TabsContent>
+                                        )}
+
+                                        {/* Manual Override */}
+                                        <TabsContent value="manual-override" className="space-y-4 pt-4">
+                                            <div>
+                                                <Label className="mb-2 block text-sm font-medium">Transaction Type</Label>
                                                 <Select
-                                                    onValueChange={(value) => {
-                                                        setPriority(value);
-                                                        form.setData('ispriority', value);
+                                                    value={selectedTransaction}
+                                                    onValueChange={(val) => {
+                                                        setSelectedTransaction(val);
+                                                        form.setData("transaction_type_id", val);
                                                     }}
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select transaction type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectGroup>
+                                                            {transactionTypes.map((t) => (
+                                                                <SelectItem key={t.id} value={t.id}>
+                                                                    {t.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div>
+                                                <Label className="mb-2 block text-sm font-medium">Customer Type</Label>
+                                                <Select
                                                     value={priority}
+                                                    onValueChange={(val) => {
+                                                        setPriority(val);
+                                                        form.setData("ispriority", val);
+                                                    }}
                                                 >
                                                     <SelectTrigger className="w-full">
                                                         <SelectValue placeholder="Select customer type" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectGroup>
-                                                            <SelectItem value="0">Regular</SelectItem>
-                                                            <SelectItem value="1">Priority</SelectItem>
-                                                        </SelectGroup>
+                                                        <SelectItem value="0">Regular</SelectItem>
+                                                        <SelectItem value="1">Priority</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
-                                            
+
+                                            <div>
+                                                <Label className="mb-2 block text-sm font-medium">Ticket Number</Label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                                    placeholder="Enter ticket number"
+                                                    onChange={(e) => form.setData("ticket_number", e.target.value)}
+                                                />
+                                            </div>
+
                                             <Button
-                                                onClick={handleGrab}
-                                                disabled={processing}
-                                                size="lg"
-                                                className="w-full py-4 text-base font-medium"
+                                                onClick={handleOverride}
+                                                className="w-full border-rose-300 text-rose-600 hover:bg-rose-50"
+                                                variant="outline"
                                             >
-                                                {processing ? (
-                                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                                ) : (
-                                                    <>
-                                                        <ArrowRight className="mr-2 h-5 w-5" />
-                                                        Call Next Customer
-                                                    </>
-                                                )}
+                                                <AlertCircle className="mr-2 h-5 w-5" /> Override / Serve Specific Ticket
                                             </Button>
                                         </TabsContent>
-                                        
-                                        <TabsContent value="change-settings" className="space-y-4 pt-4">
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <Label htmlFor="transaction-type" className="text-sm font-medium">
-                                                        Transaction Type
-                                                    </Label>
-                                                    <Select
-                                                        onValueChange={(value) => {
-                                                            setSelectedTransaction(value);
-                                                            form.setData('transaction_type_id', value);
-                                                        }}
-                                                        value={selectedTransaction}
-                                                    >
-                                                        <SelectTrigger className="w-full">
-                                                            <SelectValue placeholder="Select transaction type" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectGroup>
-                                                                {transactionTypes.map((t) => (
-                                                                    <SelectItem key={t.id} value={t.id}>
-                                                                        {t.name}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectGroup>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-                                        </TabsContent>
                                     </Tabs>
+
+
                                 )}
                             </CardContent>
                         </Card>
@@ -463,8 +501,7 @@ export default function TellerPage({ current,  waiting_list, userTellerNumber, t
                                                 <TableRow>
                                                     <TableHead>Ticket #</TableHead>
                                                     <TableHead>Transaction</TableHead>
-                                                    <TableHead>Status</TableHead>
-                                                    <TableHead className="text-right">Priority</TableHead>
+                                                    <TableHead >Category</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -472,12 +509,7 @@ export default function TellerPage({ current,  waiting_list, userTellerNumber, t
                                                     <TableRow key={ticket.id} className={ticket.is_priority ? "bg-rose-50 dark:bg-rose-900/20" : ""}>
                                                         <TableCell className="font-medium">{ticket.number}</TableCell>
                                                         <TableCell>{ticket.transaction_type.name}</TableCell>
-                                                        <TableCell>
-                                                            <Badge variant={ticket.status === "waiting" ? "outline" : "secondary"}>
-                                                                {ticket.status}
-                                                            </Badge>
-                                                        </TableCell>
-                                                        <TableCell className="text-right">
+                                                        <TableCell >
                                                             {ticket.is_priority ? (
                                                                 <Badge variant="destructive">Priority</Badge>
                                                             ) : (

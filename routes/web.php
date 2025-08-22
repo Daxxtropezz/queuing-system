@@ -144,6 +144,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/queue/teller-step2/search-no-show', [QueueController::class, 'searchNoShowStep2Ticket'])
         ->name('queue.teller.step2.search-no-show');
     Route::post('/teller/serve-no-show-step2', [QueueController::class, 'serveNoShowStep2'])->name('queue.teller.serve-no-show.step2');
+    Route::post('/queue/teller/no-show-step2', [QueueController::class, 'markNoShowStep2'])
+    ->name('queue.teller.no-show.step2');
+    Route::post('/queue/teller/reset-step2', [QueueController::class, 'resetTellerStep2'])
+    ->name('teller.reset');
+
 
     //Step 1 Teller Page
     Route::get('/queue/teller-step1', [QueueController::class, 'tellerStep1Page'])->name('queue.teller.step1');
