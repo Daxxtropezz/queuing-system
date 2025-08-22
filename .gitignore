@@ -24,3 +24,4 @@ yarn-error.log
 /.zed
 .github
 /public/videos
+/queuing-system.git

@@ -17,21 +17,27 @@ class QueueBoardController extends Controller
         // only include tickets created today
         $today = Carbon::today();
 
-        // Serving: only tickets where status = 'serving' AND step = 1
-        $servingRaw = QueueTicket::with('transactionType:id,name')
+        // allow the caller to request a specific step (defaults to 1)
+        $step = (int) $request->query('step', 1);
+
+        // Serving: tickets where status = 'serving' and match the requested step
+        $servingQuery = QueueTicket::with('transactionType:id,name')
             ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'ispriority', 'step', 'created_at', 'updated_at')
             ->where('status', 'serving')
+            ->where('step', $step)
             ->whereDate('created_at', $today)
-            ->orderByDesc('updated_at')
-            ->get();
+            ->orderByDesc('updated_at');
 
-        // Waiting: keep existing behavior (example: status = 'waiting')
+        $servingRaw = $servingQuery->get();
+
+        // Waiting: for step 1 the queue is 'waiting'; for step 2 the queue is 'ready_step2'
+        $waitingStatus = $step === 2 ? 'ready_step2' : 'waiting';
         $waitingRaw = QueueTicket::with('transactionType:id,name')
             ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id', 'ispriority', 'step', 'created_at', 'updated_at')
-            ->where('status', 'waiting')
+            ->where('status', $waitingStatus)
             ->whereDate('created_at', $today)
             ->orderBy('created_at')
-            ->limit(100)
+            ->limit(200)
             ->get();
 
         $mapTicket = function ($ticket) {
