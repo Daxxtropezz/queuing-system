@@ -108,7 +108,8 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     const [now, setNow] = useState<Date>(new Date());
     const intervalRef = useRef<number | null>(null);
     const [redirectError, setRedirectError] = useState<string | null>(null);
-    const BOARD_ENDPOINT = '/queue/board-data';
+    // Poll the board endpoint for step=2 data
+    const BOARD_ENDPOINT = '/queue/board-data?step=2';
 
     // Fit-to-screen: compute how many cards can be shown in each area.
     const servingWrapRef = useRef<HTMLDivElement | null>(null);
@@ -208,8 +209,8 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
             setLoading(true);
             let url: string;
             try {
-                // @ts-ignore Ziggy route (if registered)
-                url = route('queue.board.data');
+                // @ts-ignore Ziggy route (if registered) — ensure we request step=2
+                url = route('queue.board.data') + '?step=2';
             } catch {
                 url = BOARD_ENDPOINT;
             }

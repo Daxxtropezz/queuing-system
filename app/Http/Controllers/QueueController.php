@@ -164,59 +164,59 @@ class QueueController extends Controller
 
     // Step1: Teller Page
     public function tellerStep1Page(Request $request)
-{
-    $user = $request->user();
+    {
+        $user = $request->user();
 
-    // Current ticket being served by this user (step1 flow)
-    $current = QueueTicket::with('transactionType')
-        ->where('served_by', $user->id)
-        ->where('status', 'serving')
-        ->whereDate('created_at', now())
-        ->first();
+        // Current ticket being served by this user (step1 flow)
+        $current = QueueTicket::with('transactionType')
+            ->where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
 
-    $waiting_list = QueueTicket::with('transactionType')
-        ->where('status', 'waiting')
-        ->whereDate('created_at', now())
-        ->orderBy('created_at')
-        ->limit(200)
-        ->get()
-        ->map(function ($ticket) {
-            return [
-                'id' => $ticket->id,
-                'number' => $ticket->formatted_number,
-                'status' => $ticket->status,
-                'is_priority' => (bool) $ticket->ispriority, // ✅ Consistent naming
-            ];
-        })->values();
+        $waiting_list = QueueTicket::with('transactionType')
+            ->where('status', 'waiting')
+            ->whereDate('created_at', now())
+            ->orderBy('created_at')
+            ->limit(200)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'status' => $ticket->status,
+                    'is_priority' => (bool) $ticket->ispriority, // ✅ Consistent naming
+                ];
+            })->values();
 
-    $no_show_list = QueueTicket::with('transactionType')
-        ->where('status', 'no_show')
-        ->whereDate('created_at', now())
-        ->orderBy('updated_at', 'desc')
-        ->limit(50)
-        ->get()
-        ->map(function ($ticket) {
-            return [
-                'id' => $ticket->id,
-                'number' => $ticket->formatted_number,
-                'status' => $ticket->status,
-            ];
-        });
+        $no_show_list = QueueTicket::with('transactionType')
+            ->where('status', 'no_show')
+            ->whereDate('created_at', now())
+            ->orderBy('updated_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'status' => $ticket->status,
+                ];
+            });
 
-    return Inertia::render('queue/teller-page-step-one', [
-        'userTellerNumber' => $user->teller_id,
-        'transactionTypes' => TransactionType::all(['id', 'name']),
-        'tellers' => Teller::all(['id', 'name']),
-        'current' => $current ? [
-            'id' => $current->id,
-            'number' => $current->formatted_number,
-            'is_priority' => (bool) $current->ispriority, // ✅ Change to is_priority
-            'transaction_type' => $current->transactionType->name ?? '',
-        ] : null,
-        'waiting_list' => $waiting_list,
-        'no_show_list' => $no_show_list,
-    ]);
-}
+        return Inertia::render('queue/teller-page-step-one', [
+            'userTellerNumber' => $user->teller_id,
+            'transactionTypes' => TransactionType::all(['id', 'name']),
+            'tellers' => Teller::all(['id', 'name']),
+            'current' => $current ? [
+                'id' => $current->id,
+                'number' => $current->formatted_number,
+                'is_priority' => (bool) $current->ispriority, // ✅ Change to is_priority
+                'transaction_type' => $current->transactionType->name ?? '',
+            ] : null,
+            'waiting_list' => $waiting_list,
+            'no_show_list' => $no_show_list,
+        ]);
+    }
     // Step1: Grab next waiting ticket (no longer requires user->teller_id to be set)
     public function grabStep1Number(Request $request)
     {
@@ -451,66 +451,66 @@ class QueueController extends Controller
     }
 
     //Step2: Teller Page
-   public function tellerStep2Page(Request $request)
-{
-    $user = $request->user();
-    $current = QueueTicket::with('transactionType')
-        ->where('served_by', $user->id)
-        ->where('status', 'serving')
-        ->whereDate('created_at', now())
-        ->first();
+    public function tellerStep2Page(Request $request)
+    {
+        $user = $request->user();
+        $current = QueueTicket::with('transactionType')
+            ->where('served_by', $user->id)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
 
-    $waiting_list = QueueTicket::with('transactionType')
-        ->where('status', 'ready_step2')
-        ->whereDate('created_at', now())
-        ->orderBy('created_at')
-        ->limit(200)
-        ->get()
-        ->map(function ($ticket) {
-            return [
-                'id' => $ticket->id,
-                'number' => $ticket->formatted_number,
+        $waiting_list = QueueTicket::with('transactionType')
+            ->where('status', 'ready_step2')
+            ->whereDate('created_at', now())
+            ->orderBy('created_at')
+            ->limit(200)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => [
+                        'name' => $ticket->transactionType->name ?? '',
+                    ],
+                    'status' => $ticket->status,
+                    'is_priority' => (bool) $ticket->ispriority,
+                ];
+            });
+
+        $no_show_list = QueueTicket::with('transactionType')
+            ->where('status', 'no_show')
+            ->where('step', 2)
+            ->whereDate('created_at', now())
+            ->orderBy('updated_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => $ticket->transactionType->name ?? '',
+                    'status' => $ticket->status,
+                ];
+            });
+
+        return Inertia::render('queue/teller-page-step-two', [
+            'current' => $current ? [
+                'id' => $current->id,
+                'number' => $current->formatted_number,
+                'is_priority' => (bool) $current->ispriority, // ✅ Add this line
                 'transaction_type' => [
-                    'name' => $ticket->transactionType->name ?? '',
+                    'name' => $current->transactionType->name ?? '',
                 ],
-                'status' => $ticket->status,
-                'is_priority' => (bool) $ticket->ispriority,
-            ];
-        });
-
-    $no_show_list = QueueTicket::with('transactionType')
-        ->where('status', 'no_show')
-        ->where('step', 2)
-        ->whereDate('created_at', now())
-        ->orderBy('updated_at', 'desc')
-        ->limit(50)
-        ->get()
-        ->map(function ($ticket) {
-            return [
-                'id' => $ticket->id,
-                'number' => $ticket->formatted_number,
-                'transaction_type' => $ticket->transactionType->name ?? '',
-                'status' => $ticket->status,
-            ];
-        });
-
-    return Inertia::render('queue/teller-page-step-two', [
-        'current' => $current ? [
-            'id' => $current->id,
-            'number' => $current->formatted_number,
-            'is_priority' => (bool) $current->ispriority, // ✅ Add this line
-            'transaction_type' => [
-                'name' => $current->transactionType->name ?? '',
-            ],
-            'remarks' => $current->remarks,
-        ] : null,
-        'userTellerNumber' => $user->teller_id,
-        'transactionTypes' => TransactionType::all(['id', 'name']),
-        'tellers' => Teller::all(['id', 'name']),
-        'waiting_list' => $waiting_list,
-        'no_show_list' => $no_show_list,
-    ]);
-}
+                'remarks' => $current->remarks,
+            ] : null,
+            'userTellerNumber' => $user->teller_id,
+            'transactionTypes' => TransactionType::all(['id', 'name']),
+            'tellers' => Teller::all(['id', 'name']),
+            'waiting_list' => $waiting_list,
+            'no_show_list' => $no_show_list,
+        ]);
+    }
 
     public function assignTellerStep2(Request $request)
     {
