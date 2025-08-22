@@ -117,9 +117,13 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
     // Apply filter to initial props so initial render matches the fetch behavior
     const [servingTickets, setServingTickets] = useState<QueueTicket[]>(() => filterServingTickets(boardData.serving || []));
+    // Stable display state used by the UI — only updated when we want the visible board to change.
+    const [displayServingTickets, setDisplayServingTickets] = useState<QueueTicket[]>(() => filterServingTickets(boardData.serving || []));
     const [waitingTickets, setWaitingTickets] = useState<QueueTicket[]>(boardData.waiting || []);
     const [loading, setLoading] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(boardData.generated_at ? new Date(boardData.generated_at) : null);
+    // Mutable mirror of lastUpdated for synchronous checks inside fetchBoard
+    const lastGeneratedRef = useRef<Date | null>(boardData.generated_at ? new Date(boardData.generated_at) : null);
     const [now, setNow] = useState<Date>(new Date());
     const intervalRef = useRef<number | null>(null);
     const [redirectError, setRedirectError] = useState<string | null>(null);
@@ -140,6 +144,13 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     // New refs for TTS / change detection
     const prevServingIdsRef = useRef<number[]>([]);
     const initialFetchRef = useRef(true);
+    // Require two consecutive empty fetch responses before clearing the display (avoids flicker)
+    const consecutiveEmptyRef = useRef(0);
+    const EMPTY_CLEAR_THRESHOLD = 2;
+    // Ensure prevServingIdsRef reflects the initial server-rendered display on mount
+    useEffect(() => {
+        prevServingIdsRef.current = displayServingTickets.map((t) => t.id);
+    }, []); // run once on mount
 
     // Speech helper: "Now Serving, regular/priority priority number X"
     function speakNowServing(ticket: QueueTicket): void {
@@ -247,20 +258,16 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
             const json: BoardData = await res.json();
 
-            // DEV: log incoming serving payload to help debug disappearing tickets
-            // Remove or guard these logs in production if desired.
-            // eslint-disable-next-line no-console
-            console.debug('[queue-board] raw serving payload', json.serving);
-
-            // Filter serving tickets to only step === '1' and transaction_type/transaction_type_id is null
-            const rawServing: QueueTicket[] = json.serving || [];
-            const newServing: QueueTicket[] = filterServingTickets(rawServing);
-
-            // DEV: log filtered result
-            // eslint-disable-next-line no-console
-            console.debug('[queue-board] filtered serving', newServing);
+            // Respect server's generated_at to avoid applying stale responses.
+            const serverTs = json.generated_at ? new Date(json.generated_at) : new Date();
+            if (lastGeneratedRef.current && serverTs <= lastGeneratedRef.current) {
+                // Stale response — update waiting list only, keep visible serving board unchanged.
+                setWaitingTickets(json.waiting || []);
+                return;
+            }
 
             // Detect newly added serving tickets (compare IDs)
+            const newServing: QueueTicket[] = json.serving || [];
             const newIds = newServing.map((s) => s.id);
             const prevIds = prevServingIdsRef.current || [];
             const addedIds = newIds.filter((id) => !prevIds.includes(id));
@@ -275,13 +282,42 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                 }
             }
 
-            // Update refs & state with filtered serving list
-            prevServingIdsRef.current = newIds;
-            initialFetchRef.current = false;
+            // Apply serving updates with a consecutive-empty safeguard:
+            // - On non-empty: accept immediately and update timestamp.
+            // - On empty:
+            //    * if first network response: do not clear display (avoid flicker) but accept timestamp.
+            //    * otherwise require EMPTY_CLEAR_THRESHOLD consecutive empties before clearing display.
+            if (newServing.length > 0) {
+                consecutiveEmptyRef.current = 0;
+                prevServingIdsRef.current = newIds;
+                setServingTickets(newServing);
+                setDisplayServingTickets(newServing);
+                initialFetchRef.current = false;
+                lastGeneratedRef.current = serverTs;
+                setLastUpdated(serverTs);
+            } else {
+                if (initialFetchRef.current) {
+                    initialFetchRef.current = false;
+                    setServingTickets([]);
+                    consecutiveEmptyRef.current = 1;
+                    // Accept timestamp to avoid treating this response as "newer" later
+                    lastGeneratedRef.current = serverTs;
+                    setLastUpdated(serverTs);
+                } else {
+                    consecutiveEmptyRef.current = (consecutiveEmptyRef.current || 0) + 1;
+                    if (consecutiveEmptyRef.current >= EMPTY_CLEAR_THRESHOLD) {
+                        prevServingIdsRef.current = [];
+                        setServingTickets([]);
+                        setDisplayServingTickets([]);
+                        consecutiveEmptyRef.current = 0;
+                        lastGeneratedRef.current = serverTs;
+                        setLastUpdated(serverTs);
+                    }
+                }
+            }
 
-            setServingTickets(newServing); // only filtered serving tickets now
+            // Always update waiting (not gated by timestamp)
             setWaitingTickets(json.waiting || []);
-            setLastUpdated(json.generated_at ? new Date(json.generated_at) : new Date());
         } catch (e) {
             console.error('[queue-board] fetch error', e);
         } finally {
@@ -298,6 +334,8 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
             if (intervalRef.current !== null) {
                 window.clearInterval(intervalRef.current);
             }
+            // reset consecutive counter on unmount
+            consecutiveEmptyRef.current = 0;
         };
     }, []); // remove redirectError from deps
 
@@ -429,19 +467,19 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
     const skeletonCards = Array.from({ length: 4 });
 
-    // New: split serving into regular (left) and priority (right)
+    // New: split serving into regular (left) and priority (right) — derive from displayServingTickets
     const leftServing = useMemo(() => {
-        return servingTickets.filter((t) => {
+        return displayServingTickets.filter((t) => {
             const isPriority = t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1';
             return !isPriority;
         });
-    }, [servingTickets]);
+    }, [displayServingTickets]);
 
     const rightServing = useMemo(() => {
-        return servingTickets.filter((t) => {
+        return displayServingTickets.filter((t) => {
             return t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1';
         });
-    }, [servingTickets]);
+    }, [displayServingTickets]);
 
     return (
         <>
@@ -569,15 +607,10 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                 style={{ gridTemplateColumns: `repeat(${Math.max(1, waitingColumns.length)}, minmax(0, 1fr))` }}
                                             >
                                                 {waitingColumns.map((col) => {
-                                                    // determine how many items to show for this group (distribute overall capacity)
-                                                    const perGroupCapacity = Math.max(
-                                                        3,
-                                                        Math.ceil(waitingCapacity / Math.max(1, waitingColumns.length)),
-                                                    );
-                                                    const displayPriority = col.priority.slice(0, perGroupCapacity);
-                                                    const remaining = perGroupCapacity - displayPriority.length;
-                                                    const displayRegular = col.regular.slice(0, Math.max(0, remaining));
-                                                    const queuedCount = col.priority.length + col.regular.length;
+                                                    // show all items; let each column scroll internally
+                                                    const displayPriority = col.priority;
+                                                    const displayRegular = col.regular;
+                                                    const queuedCount = displayPriority.length + displayRegular.length;
                                                     return (
                                                         <div
                                                             key={`wg-col-${col.name}`}
@@ -596,7 +629,10 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                     <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">
                                                                         Regular
                                                                     </div>
-                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                    <div
+                                                                        className="grid grid-cols-1 gap-2 overflow-auto"
+                                                                        style={{ maxHeight: '56vh' }}
+                                                                    >
                                                                         {displayRegular.map((t) => (
                                                                             <div
                                                                                 key={`w-reg-${t.id}`}
@@ -622,7 +658,10 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                     <div className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">
                                                                         Priority
                                                                     </div>
-                                                                    <div className="grid grid-cols-1 gap-2">
+                                                                    <div
+                                                                        className="grid grid-cols-1 gap-2 overflow-auto"
+                                                                        style={{ maxHeight: '56vh' }}
+                                                                    >
                                                                         {displayPriority.map((t) => (
                                                                             <div
                                                                                 key={`w-prio-${t.id}`}
@@ -654,7 +693,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                             </div>
                         </section>
 
-                        {/* Right column: Serving (unchanged layout) */}
+                        {/* Right column: Serving (fixed two columns: Regular | Priority) */}
                         <section className="flex min-h-0 flex-col gap-3 lg:col-span-5">
                             <header className="flex items-center justify-between">
                                 <h2 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200">
@@ -663,65 +702,70 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                     </span>
                                 </h2>
                                 <div className="rounded-full bg-slate-200/70 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
-                                    {servingTickets.length} active
+                                    {displayServingTickets.length} active
                                 </div>
                             </header>
 
                             <div ref={servingWrapRef} className="min-h-0 flex-1 overflow-hidden">
-                                {/* Always show two-column Serving layout (empty slots show dashes) */}
-                                <div className="grid h-full grid-cols-2 gap-4">
-                                    {/* Regular (left) */}
-                                    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-                                        <div className="mb-2 flex items-center justify-between">
-                                            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Regular</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">{leftServing.length} active</div>
-                                        </div>
-                                        <div className="grid grid-cols-1 gap-3">
-                                            {leftServing.slice(0, Math.max(1, Math.floor(servingCapacity / 2))).map((t) => (
-                                                <div
-                                                    key={`s-reg-${t.id}`}
-                                                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="text-2xl font-black text-slate-800 tabular-nums md:text-3xl dark:text-slate-100">
-                                                            {t.number}
+                                {displayServingTickets.length === 0 && !loading ? (
+                                    <div className="h-full rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 dark:text-slate-400">
+                                        No tickets are being served
+                                    </div>
+                                ) : (
+                                    <div className="grid h-full grid-cols-2 gap-4">
+                                        {/* Regular column */}
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
+                                            <div className="mb-2 flex items-center justify-between">
+                                                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Regular</div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">{leftServing.length} active</div>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-3 overflow-auto" style={{ maxHeight: '56vh' }}>
+                                                {leftServing.slice(0, Math.max(1, Math.floor(servingCapacity / 2))).map((t) => (
+                                                    <div
+                                                        key={`s-reg-${t.id}`}
+                                                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-2xl font-black text-slate-800 tabular-nums md:text-3xl dark:text-slate-100">
+                                                                {t.number}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                            {t.teller_id ? `Teller ${t.teller_id}` : '—'}
                                                         </div>
                                                     </div>
-                                                    <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                        {t.teller_id ? `Teller ${t.teller_id}` : '—'}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {leftServing.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                                ))}
+                                                {leftServing.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Priority (right) */}
-                                    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-                                        <div className="mb-2 flex items-center justify-between">
-                                            <div className="text-sm font-semibold text-amber-700 dark:text-amber-300">Priority</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">{rightServing.length} active</div>
-                                        </div>
-                                        <div className="grid grid-cols-1 gap-3">
-                                            {rightServing.slice(0, Math.max(1, Math.ceil(servingCapacity / 2))).map((t) => (
-                                                <div
-                                                    key={`s-prio-${t.id}`}
-                                                    className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="text-2xl font-black text-amber-700 tabular-nums md:text-3xl dark:text-amber-200">
-                                                            {t.number}
+                                        {/* Priority column */}
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
+                                            <div className="mb-2 flex items-center justify-between">
+                                                <div className="text-sm font-semibold text-amber-700 dark:text-amber-300">Priority</div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">{rightServing.length} active</div>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-3 overflow-auto" style={{ maxHeight: '56vh' }}>
+                                                {rightServing.slice(0, Math.max(1, Math.ceil(servingCapacity / 2))).map((t) => (
+                                                    <div
+                                                        key={`s-prio-${t.id}`}
+                                                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-2xl font-black text-amber-700 tabular-nums md:text-3xl dark:text-amber-200">
+                                                                {t.number}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                            {t.teller_id ? `Teller ${t.teller_id}` : '—'}
                                                         </div>
                                                     </div>
-                                                    <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                        {t.teller_id ? `Teller ${t.teller_id}` : '—'}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {rightServing.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                                ))}
+                                                {rightServing.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </section>
                     </div>
