@@ -41,43 +41,43 @@ export default function TellerPageStepOne() {
     const manualOverrideForm = useForm({ number: "", ispriority: "0" });
 
     useEffect(() => {
-    if (page.props.flash?.success) {
-        Swal.fire({
-            toast: true,
-            position: "top-end",
-            icon: "success",
-            title: "Success!",
-            text: page.props.flash.success,
-            showConfirmButton: false,
-            timer: 3000, 
-            timerProgressBar: true,
-        });
-    }
-    if (page.props.flash?.no_show) {
-        Swal.fire({
-            toast: true,
-            position: "top-end",
-            icon: "warning",
-            title: "No Show!",
-            text: page.props.flash.no_show,
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true,
-        });
-    }
-    if (page.props.flash?.no_found) {
-        Swal.fire({
-            toast: true,
-            position: "top-end",
-            icon: "error",
-            title: "Not Found!",
-            text: page.props.flash.no_found,
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true,
-        });
-    }
-}, [page.props.flash]);
+        if (page.props.flash?.success) {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "success",
+                title: "Success!",
+                text: page.props.flash.success,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        }
+        if (page.props.flash?.no_show) {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "warning",
+                title: "No Show!",
+                text: page.props.flash.no_show,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        }
+        if (page.props.flash?.no_found) {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "error",
+                title: "Not Found!",
+                text: page.props.flash.no_found,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        }
+    }, [page.props.flash]);
 
 
     const [now, setNow] = useState(new Date());
@@ -214,8 +214,8 @@ export default function TellerPageStepOne() {
                                     <Play className="h-5 w-5 text-blue-500" /> Customer Service
                                 </CardTitle>
                                 <CardDescription>
-                                    {current 
-                                        ? "You are currently serving a customer" 
+                                    {current
+                                        ? "You are currently serving a customer"
                                         : "Select a customer to serve from the queue"}
                                 </CardDescription>
                             </CardHeader>
@@ -233,7 +233,7 @@ export default function TellerPageStepOne() {
                                                 </Badge>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="space-y-4">
                                             <div>
                                                 <Label htmlFor="transaction-type" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -271,7 +271,7 @@ export default function TellerPageStepOne() {
                                                 />
                                             </div>
                                         </div>
-                                        
+
                                         <div className="flex flex-col sm:flex-row gap-3 w-full">
                                             <Button
                                                 onClick={handleNext}
@@ -300,7 +300,7 @@ export default function TellerPageStepOne() {
                                             <TabsTrigger value="next-customer">Next Customer</TabsTrigger>
                                             <TabsTrigger value="manual-serve">Manual Entry</TabsTrigger>
                                         </TabsList>
-                                        
+
                                         <TabsContent value="next-customer" className="space-y-4 pt-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="customer-type" className="text-sm font-medium">
@@ -324,7 +324,7 @@ export default function TellerPageStepOne() {
                                                     </SelectContent>
                                                 </Select>
                                             </div>
-                                            
+
                                             <Button
                                                 onClick={handleGrab}
                                                 disabled={processing}
@@ -341,7 +341,7 @@ export default function TellerPageStepOne() {
                                                 )}
                                             </Button>
                                         </TabsContent>
-                                        
+
                                         <TabsContent value="manual-serve" className="space-y-4 pt-4">
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
@@ -360,7 +360,7 @@ export default function TellerPageStepOne() {
                                                         />
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div className="space-y-2">
                                                     <Label htmlFor="manual-customer-type" className="text-sm font-medium">
                                                         Customer Type
@@ -381,7 +381,7 @@ export default function TellerPageStepOne() {
                                                     </Select>
                                                 </div>
                                             </div>
-                                            
+
                                             <Button
                                                 onClick={handleManualOverride}
                                                 disabled={processing || manualOverrideNumber.trim() === ""}
@@ -421,7 +421,7 @@ export default function TellerPageStepOne() {
                                                 <TableRow>
                                                     <TableHead>Ticket #</TableHead>
                                                     <TableHead>Status</TableHead>
-                                                    <TableHead className="text-right">Priority</TableHead>
+                                                    <TableHead>Priority</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -429,11 +429,9 @@ export default function TellerPageStepOne() {
                                                     <TableRow key={ticket.id} className={ticket.is_priority ? "bg-rose-50 dark:bg-rose-900/20" : ""}>
                                                         <TableCell className="font-medium">{ticket.number}</TableCell>
                                                         <TableCell>
-                                                            <Badge variant={ticket.status === "waiting" ? "outline" : "secondary"}>
-                                                                {ticket.status}
-                                                            </Badge>
+                                                            {ticket.status}
                                                         </TableCell>
-                                                        <TableCell className="text-right">
+                                                        <TableCell>
                                                             {ticket.is_priority ? (
                                                                 <Badge variant="destructive">Priority</Badge>
                                                             ) : (
