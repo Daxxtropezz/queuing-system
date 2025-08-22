@@ -153,6 +153,7 @@ return [
 
     // Add correct facade aliases to avoid resolving stray strings like "cache".
     'aliases' => [
+        'Str'       => Illuminate\Support\Str::class,
         'App'       => Illuminate\Support\Facades\App::class,
         'Artisan'   => Illuminate\Support\Facades\Artisan::class,
         'Auth'      => Illuminate\Support\Facades\Auth::class,
