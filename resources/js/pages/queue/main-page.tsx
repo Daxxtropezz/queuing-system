@@ -104,14 +104,12 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
 export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     // Helper to keep filtering logic consistent (step === '1' and no transaction type)
     function filterServingTickets(list: QueueTicket[] = []): QueueTicket[] {
-        // Show only tickets that are actively being served by someone (served_by present),
-        // have status 'serving', and are at step '1'.
+        // Show tickets that are at step '1' and have status 'serving'.
+        // Do NOT require served_by to be present — server may not populate that field.
         return list.filter((t) => {
             const stepIsOne = String(t.step) === '1' || t.step === 1;
             const statusServing = String(t.status || '').toLowerCase() === 'serving';
-            const servedByPresent = t.served_by !== null && t.served_by !== undefined && String(t.served_by).trim() !== '';
-
-            return stepIsOne && statusServing && servedByPresent;
+            return stepIsOne && statusServing;
         });
     }
 
@@ -144,9 +142,9 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     // New refs for TTS / change detection
     const prevServingIdsRef = useRef<number[]>([]);
     const initialFetchRef = useRef(true);
-    // Require two consecutive empty fetch responses before clearing the display (avoids flicker)
+    // Require consecutive empty fetch responses before clearing the display (avoids flicker)
     const consecutiveEmptyRef = useRef(0);
-    const EMPTY_CLEAR_THRESHOLD = 2;
+    const EMPTY_CLEAR_THRESHOLD = 3; // raise threshold to avoid transient clears
     // Ensure prevServingIdsRef reflects the initial server-rendered display on mount
     useEffect(() => {
         prevServingIdsRef.current = displayServingTickets.map((t) => t.id);
@@ -258,19 +256,27 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
 
             const json: BoardData = await res.json();
 
-            // Respect server's generated_at to avoid applying stale responses.
-            const serverTs = json.generated_at ? new Date(json.generated_at) : new Date();
-            if (lastGeneratedRef.current && serverTs <= lastGeneratedRef.current) {
-                // Stale response — update waiting list only, keep visible serving board unchanged.
-                setWaitingTickets(json.waiting || []);
-                return;
-            }
-
-            // Detect newly added serving tickets (compare IDs)
-            const newServing: QueueTicket[] = json.serving || [];
+            // Compute filtered serving list immediately so we can compare content changes
+            const rawServing: QueueTicket[] = json.serving || [];
+            const newServing: QueueTicket[] = filterServingTickets(rawServing);
             const newIds = newServing.map((s) => s.id);
             const prevIds = prevServingIdsRef.current || [];
             const addedIds = newIds.filter((id) => !prevIds.includes(id));
+
+            // Respect server's generated_at to avoid applying stale responses.
+            // Allow applying updates when the serving IDs changed even if generated_at did not advance.
+            const serverTs = json.generated_at ? new Date(json.generated_at) : new Date();
+            const idsEqual = (a: number[], b: number[]): boolean => {
+                if (a.length !== b.length) return false;
+                const s = new Set(a);
+                return b.every((x) => s.has(x));
+            };
+
+            if (lastGeneratedRef.current && serverTs <= lastGeneratedRef.current && idsEqual(newIds, prevIds)) {
+                // Nothing changed (timestamp not newer and IDs identical) — update waiting only.
+                setWaitingTickets(json.waiting || []);
+                return;
+            }
 
             // Announce newly added items (skip announcement on first successful fetch)
             if (!initialFetchRef.current && addedIds.length > 0) {

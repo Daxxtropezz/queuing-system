@@ -19,13 +19,13 @@ class QueueController extends Controller
         $serving = QueueTicket::with('transactionType')
             ->where('status', 'serving')
             ->where('step', 1) // <-- only step 1
-            ->whereNull('transaction_type_id') // <-- only records without a transaction type
             ->orderByDesc('updated_at')
             ->get();
 
         $waiting = QueueTicket::with('transactionType')
             ->where('status', 'waiting')
             ->orderBy('created_at')
+            ->where('step', 1) // <-- only step 1
             ->limit(200)
             ->get();
 
@@ -62,13 +62,14 @@ class QueueController extends Controller
     {
         $serving = QueueTicket::with('transactionType')
             ->where('status', 'serving')
-            ->where('step', 1) // <-- only step 1
+            ->where('step', 2) // <-- only step 2
             ->whereNull('transaction_type_id') // <-- only records without a transaction type
             ->orderByDesc('updated_at')
             ->get();
 
         $waiting = QueueTicket::with('transactionType')
             ->where('status', 'waiting')
+            ->where('step', 2) // <-- only step 2
             ->orderBy('created_at')
             ->limit(200)
             ->get();

@@ -37,11 +37,11 @@ class QueueTicket extends Model
         // Pad the number to 4 digits
         return str_pad($this->number, 4, '0', STR_PAD_LEFT);
     }
-    
-     protected function isPriority(): Attribute
+
+    protected function isPriority(): Attribute
     {
         return Attribute::make(
-            get: fn (mixed $value, array $attributes) => (bool) $attributes['ispriority'],
+            get: fn(mixed $value, array $attributes) => (bool) $attributes['ispriority'],
         );
     }
 
