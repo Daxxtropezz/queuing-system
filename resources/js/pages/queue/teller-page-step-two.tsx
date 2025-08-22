@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Loader2, User, Clock, CheckCircle, AlertCircle, ArrowRight, Play, UserCheck, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
@@ -61,7 +61,7 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
         return () => window.clearInterval(id);
     }, []);
 
-    const page = usePage<{ flash?: { error?: string; success?: string; reset_teller?: boolean } }>();
+    const page = usePage<{ flash?: { error?: string; success?: string; confirm_reset?: boolean } }>();
 
     useEffect(() => {
         if (page.props.flash?.confirm_reset) {
@@ -77,14 +77,21 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
     }
 
     const handleSelectNew = () => {
-        setSelectedTransaction('');
-        setPriority('0');
-        form.setData('transaction_type_id', '');
-        form.setData('ispriority', '0');
-
         setShowNoCustomersDialog(false);
 
-        form.post(route("queue.teller.reset.step2"), { preserveState: false });
+        form.post(route("queue.teller.reset.step2"), {
+            preserveState: false,
+            onSuccess: () => {
+                // Reset frontend state
+                setSelectedTransaction('');
+                setPriority('0');
+                form.setData('transaction_type_id', '');
+                form.setData('ispriority', '0');
+
+                // Reload to get fresh props from backend
+                router.reload({ only: ['userTellerNumber', 'current', 'waiting_list'] });
+            }
+        });
     };
 
     function handleGrab() {
@@ -196,7 +203,7 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
 
                             <CardContent className="pt-6">
                                 {/* Not assigned to a teller */}
-                               {!userTellerNumber || !selectedTransaction ? (
+                                {!userTellerNumber ? (
                                     <div className="flex flex-col gap-6">
                                         <div className="text-center">
                                             <p className="text-slate-600 dark:text-slate-400">
