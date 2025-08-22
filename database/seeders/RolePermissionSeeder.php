@@ -14,8 +14,8 @@ class RolePermissionSeeder extends Seeder
     public function run(): void
     {
         $roles = [
-            'Teller',
-            'Guard',
+            'Step1-Teller',
+            'Step2-Teller',
             'Administrator',
             'Guest'
         ];
