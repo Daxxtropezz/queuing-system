@@ -13,16 +13,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -120,6 +112,29 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
     function handleNoShow() {
         form.post(route('queue.teller.no-show.step2'));
     }
+
+    useEffect(() => {
+    if (page.props.flash?.confirm_reset) {
+        Swal.fire({
+            title: "No Customers Found",
+            text: page.props.flash?.message ?? 
+                  "There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?",
+            icon: "info",
+            showCancelButton: true,
+            confirmButtonText: "Yes, Select New Transaction",
+            cancelButtonText: "No, Keep Waiting",
+            reverseButtons: true,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                handleSelectNew();
+            }
+        });
+
+        // Clear flash by reloading the page's Inertia props (preserve state)
+        router.reload({ only: ['flash'], preserveState: true });
+    }
+}, [page.props.flash?.confirm_reset]);
+
 
 
 
@@ -576,26 +591,6 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
                     </div>
                 </main>
             </div>
-
-            <AlertDialog open={showNoCustomersDialog} onOpenChange={setShowNoCustomersDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>No Customers Found</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {page.props.flash?.message ??
-                                "There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?"}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setShowNoCustomersDialog(false)}>
-                            No, Keep Waiting
-                        </AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSelectNew}>
-                            Yes, Select New Transaction
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </AppLayout>
     );
 }
