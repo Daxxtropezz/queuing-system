@@ -17,7 +17,7 @@ export default function GuardPage() {
     const [generatedNumber, setGeneratedNumber] = useState('');
     const [priority, setPriority] = useState('');
     const [now, setNow] = useState<Date>(new Date());
-    const [lastClick, setLastClick] = useState<number>(0);
+    const [cooldown, setCooldown] = useState(false);
 
     useEffect(() => {
         const interval = setInterval(() => setNow(new Date()), 1000);
@@ -25,11 +25,7 @@ export default function GuardPage() {
     }, []);
 
     async function handleGenerate(value: number) {
-        if (processing) return;
-
-        // Prevent spamming (5s cooldown)
-        const nowTime = Date.now();
-        if (nowTime - lastClick < 5000) {
+        if (processing || cooldown) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Please wait!',
@@ -38,6 +34,8 @@ export default function GuardPage() {
             });
             return;
         }
+
+        setCooldown(true); // 🚫 immediately lock buttons
 
         try {
             const { data: response } = await axios.post(route('queue.guard.generate'), {
@@ -50,19 +48,16 @@ export default function GuardPage() {
             setPriority(value === 1 ? 'Priority' : 'Regular');
             setDialogOpen(true);
 
-            setLastClick(nowTime);
-
-            // Print immediately after number is generated
+            // Print immediately
             setTimeout(() => {
                 window.print();
-                // Then show SweetAlert success AFTER printing
                 Swal.fire({
                     icon: 'success',
                     title: 'Number Generated!',
                     text: `Your ${value === 1 ? 'Priority' : 'Regular'} number is ${num}`,
                     confirmButtonColor: '#3b82f6'
                 });
-            }, 300); // slight delay so dialog renders before print
+            }, 300);
         } catch (error) {
             console.error(error);
             Swal.fire({
@@ -71,6 +66,9 @@ export default function GuardPage() {
                 text: 'Something went wrong while generating your number.',
                 confirmButtonColor: '#ef4444'
             });
+        } finally {
+            // ⏳ Release after 5s
+            setTimeout(() => setCooldown(false), 5000);
         }
     }
 
@@ -88,7 +86,8 @@ export default function GuardPage() {
                         <Button
                             type="button"
                             size="lg"
-                            className="h-20 rounded-2xl text-xl font-bold bg-blue-500 hover:bg-blue-400"
+                            disabled={cooldown}
+                            className="h-20 rounded-2xl text-xl font-bold bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={() => handleGenerate(0)}
                         >
                             Regular
@@ -96,7 +95,8 @@ export default function GuardPage() {
                         <Button
                             type="button"
                             size="lg"
-                            className="h-20 rounded-2xl text-xl font-bold bg-amber-400 text-black hover:bg-amber-300"
+                            disabled={cooldown}
+                            className="h-20 rounded-2xl text-xl font-bold bg-amber-400 text-black hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={() => handleGenerate(1)}
                         >
                             Priority
@@ -106,6 +106,7 @@ export default function GuardPage() {
 
                 {/* Ticket modal + print layout */}
                 <Dialog open={dialogOpen} onOpenChange={() => setDialogOpen(false)}>
+
                     {/* Print-only ticket */}
                     <div className="print-ticket hidden text-center print:block">
                         <div className="text-sm font-bold">{priority}</div>
