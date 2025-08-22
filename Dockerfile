@@ -62,6 +62,12 @@ RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
 RUN chmod -R 775 /var/www/html/storage
 RUN chmod -R 775 /var/www/html/bootstrap/cache
 
+# Copy Supervisor config
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy custom Nginx config
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+
 # Expose port 9000 for PHP-FPM and 80 for Nginx
 EXPOSE 9000
 EXPOSE 80
