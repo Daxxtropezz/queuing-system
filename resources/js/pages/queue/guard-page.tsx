@@ -89,7 +89,7 @@ export default function GuardPage() {
                 <Card className="w-full max-w-md p-6 rounded-3xl bg-slate-800/70 text-center shadow-lg">
                     <CardHeader>
                         <CardTitle className="text-3xl font-bold text-amber-400">
-                            Choose Queue Type
+                            Choose Client Type
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-6">

@@ -281,7 +281,7 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
 
                                             <div>
                                                 <Label htmlFor="customer-type" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                    Customer Type
+                                                    Client Type
                                                 </Label>
                                                 <Select
                                                     onValueChange={(value) => {
