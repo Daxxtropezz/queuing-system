@@ -304,7 +304,7 @@ export default function TellerPageStepOne() {
                                         <TabsContent value="next-customer" className="space-y-4 pt-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="customer-type" className="text-sm font-medium">
-                                                    Customer Type
+                                                    Client Type
                                                 </Label>
                                                 <Select
                                                     onValueChange={(val) => {
@@ -349,11 +349,10 @@ export default function TellerPageStepOne() {
                                                         Ticket Number
                                                     </Label>
                                                     <div className="flex items-center">
-                                                        <Ticket className="h-4 w-4 mr-2 text-slate-500" />
                                                         <Input
                                                             id="ticket-number"
                                                             type="text"
-                                                            placeholder="Enter ticket number (e.g., A-001)"
+                                                            placeholder="Enter ticket number (e.g., 0001)"
                                                             value={manualOverrideNumber}
                                                             onChange={(e) => setManualOverrideNumber(e.target.value)}
                                                             className="w-full"
@@ -363,7 +362,7 @@ export default function TellerPageStepOne() {
 
                                                 <div className="space-y-2">
                                                     <Label htmlFor="manual-customer-type" className="text-sm font-medium">
-                                                        Customer Type
+                                                        Client Type
                                                     </Label>
                                                     <Select
                                                         onValueChange={(val) => manualOverrideForm.setData("ispriority", val)}
