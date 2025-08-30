@@ -18,14 +18,14 @@ class QueueController extends Controller
     {
         $serving = QueueTicket::with('transactionType')
             ->where('status', 'serving')
-            ->where('step', 1) // <-- only step 1
+            ->where('step', 1) 
             ->orderByDesc('updated_at')
             ->get();
 
         $waiting = QueueTicket::with('transactionType')
             ->where('status', 'waiting')
             ->orderBy('created_at')
-            ->where('step', 1) // <-- only step 1
+            ->where('step', 1) 
             ->limit(200)
             ->get();
 
@@ -62,8 +62,8 @@ class QueueController extends Controller
     {
         $serving = QueueTicket::with('transactionType')
             ->where('status', 'serving')
-            ->where('step', 2) // <-- only step 2
-            ->whereNull('transaction_type_id') // <-- only records without a transaction type
+            ->where('step', 2) 
+            ->whereNull('transaction_type_id')
             ->orderByDesc('updated_at')
             ->get();
 
@@ -171,6 +171,7 @@ class QueueController extends Controller
         $current = QueueTicket::with('transactionType')
             ->where('served_by', $user->id)
             ->where('status', 'serving')
+            ->where('step', 1)
             ->whereDate('created_at', now())
             ->first();
 
@@ -229,6 +230,7 @@ class QueueController extends Controller
         // Check if teller already has active
         $current = QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
+            ->where('step', 1)
             ->whereDate('created_at', now())
             ->first();
 
@@ -265,6 +267,7 @@ class QueueController extends Controller
         // Current ticket being served by this teller
         $current = QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
+            ->where('step', 1)
             ->whereDate('created_at', now())
             ->first();
 
