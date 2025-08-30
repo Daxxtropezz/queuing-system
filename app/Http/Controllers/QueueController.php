@@ -18,14 +18,14 @@ class QueueController extends Controller
     {
         $serving = QueueTicket::with('transactionType')
             ->where('status', 'serving')
-            ->where('step', 1) 
+            ->where('step', 1)
             ->orderByDesc('updated_at')
             ->get();
 
         $waiting = QueueTicket::with('transactionType')
             ->where('status', 'waiting')
             ->orderBy('created_at')
-            ->where('step', 1) 
+            ->where('step', 1)
             ->limit(200)
             ->get();
 
@@ -62,7 +62,7 @@ class QueueController extends Controller
     {
         $serving = QueueTicket::with('transactionType')
             ->where('status', 'serving')
-            ->where('step', 2) 
+            ->where('step', 2)
             ->whereNull('transaction_type_id')
             ->orderByDesc('updated_at')
             ->get();
@@ -574,9 +574,7 @@ class QueueController extends Controller
         }
 
         return back()->with([
-            'error' => 'No waiting numbers available for your type and status.',
             'confirm_reset' => true,
-            true
         ]);
     }
 
@@ -640,7 +638,6 @@ class QueueController extends Controller
         }
 
         return back()->with([
-            'error' => 'No waiting numbers available for your type and status.',
             'confirm_reset' => true,
         ]);
     }
@@ -683,10 +680,57 @@ class QueueController extends Controller
         }
 
         return back()->with([
-            'error' => 'No waiting numbers available for your type and status.',
             'confirm_reset' => true,
         ]);
     }
+
+   public function manualOverrideStep2Number(Request $request)
+{
+    $user = $request->user();
+
+    $request->validate([
+        'number' => 'required|string',
+    ]);
+
+    $requestedNumber = (int) preg_replace('/[^0-9]/', '', $request->input('number'));
+
+    // For Step 2, look for no_show tickets
+    $ticket = QueueTicket::where('number', $requestedNumber)
+        ->whereDate('created_at', now())
+        ->where('status', 'no_show')
+        ->first();
+
+    if (!$ticket) {
+        return back()->with('no_found', 'No show ticket not found for today.');
+    }
+
+    // Check if user has teller and transaction type assigned
+    if (is_null($user->teller_id) || is_null($user->transaction_type_id)) {
+        return back()->with('error', 'Please select a teller number and transaction type first.');
+    }
+
+    // End any current serving
+    $currentServing = QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->where('step', 2)
+        ->whereDate('created_at', now())
+        ->first();
+
+    if ($currentServing) {
+        $currentServing->update(['status' => 'done', 'finished_at' => now()]);
+    }
+
+    // Serve the chosen no_show ticket in Step 2
+    $ticket->update([
+        'status' => 'serving',
+        'step' => 2,
+        'served_by' => $user->id,
+        'teller_id' => $user->teller_id,
+        'started_at' => now(),
+    ]);
+
+    return back()->with('success', "Now serving no show client in Step 2: {$ticket->formatted_number}");
+}
 
     public function markNoShowStep2(Request $request)
     {

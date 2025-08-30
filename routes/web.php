@@ -152,7 +152,8 @@ Route::middleware(['auth', 'verified', 'role:Step2-Teller|Administrator'])->grou
     Route::post('/queue/teller/next-step2', [QueueController::class, 'nextStep2Number'])->name('queue.teller.next.step2');
     Route::post('/queue/teller/override-step2', [QueueController::class, 'overrideStep2Number'])->name('queue.teller.override.step2');
     Route::post('/teller/reset-step2', [QueueController::class, 'resetTellerStep2'])->name('queue.teller.reset.step2');
-    Route::post('/queue/teller/manual-override-step2', [QueueController::class, 'manualOverrideStep2Number'])->name('queue.teller.step2.manual-override');
+    Route::post('/queue/teller/step2/manual-override', [QueueController::class, 'manualOverrideStep2Number'])
+    ->name('queue.teller.step2.manual-override');
     Route::post('/queue/teller-step2/search-no-show', [QueueController::class, 'searchNoShowStep2Ticket'])->name('queue.teller.step2.search-no-show');
     Route::post('/teller/serve-no-show-step2', [QueueController::class, 'serveNoShowStep2'])->name('queue.teller.serve-no-show.step2');
     Route::post('/queue/teller/no-show-step2', [QueueController::class, 'markNoShowStep2'])->name('queue.teller.no-show.step2');
