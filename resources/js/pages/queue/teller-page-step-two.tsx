@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { Loader2, User, Clock, CheckCircle, AlertCircle, ArrowRight, Play, UserCheck, Users } from 'lucide-react';
+import { Loader2, User, Clock, CheckCircle, AlertCircle, ArrowRight, Play, UserCheck, Users, UserCog } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
     Table,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,6 +46,9 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
     const [selectedTransaction, setSelectedTransaction] = useState(form.data.transaction_type_id);
     const [showNoCustomersDialog, setShowNoCustomersDialog] = useState(false);
     const [priority, setPriority] = useState(form.data.ispriority);
+    const [servingTab, setServingTab] = useState("current-customer");
+    const [manualOverrideNumber, setManualOverrideNumber] = useState("");
+    const [showSetupForm, setShowSetupForm] = useState(false);
 
     // Live clock
     const [now, setNow] = useState<Date>(new Date());
@@ -53,38 +57,65 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
         return () => window.clearInterval(id);
     }, []);
 
-    const page = usePage<{ flash?: { error?: string; success?: string; confirm_reset?: boolean } }>();
+    const page = usePage<{ flash?: { error?: string; success?: string; confirm_reset?: boolean; message?: string } }>();
 
-    useEffect(() => {
-        if (page.props.flash?.confirm_reset) {
-            setShowNoCustomersDialog(true);
-        }
-    }, [page.props.flash?.confirm_reset]);
+   useEffect(() => {
+    if (page.props.flash?.confirm_reset) {
+        setShowNoCustomersDialog(true);
+    }
+}, [page.props.flash]);
+
+useEffect(() => {
+    if (page.props.flash?.confirm_reset) {
+        Swal.fire({
+            title: "No Customers Found",
+            text: page.props.flash?.message ?? 
+                  "There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?",
+            icon: "info",
+            showCancelButton: true,
+            confirmButtonText: "Yes, Select New Transaction",
+            cancelButtonText: "No, Keep Waiting",
+            reverseButtons: true,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                handleSelectNew();
+            } else {
+                // User chose to keep waiting, just clear the flash
+                router.reload({ only: ['flash'], preserveState: true });
+            }
+        });
+    }
+}, [page.props.flash]);
 
     function handleAssignTeller() {
         form.setData('teller_id', selectedTeller);
         form.setData('transaction_type_id', selectedTransaction);
         form.setData('ispriority', priority);
-        form.post(route('queue.teller.assign.step2'), { preserveState: true });
+        form.post(route('queue.teller.assign.step2'), { 
+            preserveState: true,
+            onSuccess: () => {
+                setShowSetupForm(false); // Hide setup form after successful assignment
+            }
+        });
     }
 
     const handleSelectNew = () => {
         setShowNoCustomersDialog(false);
+        setShowSetupForm(true); // Show the setup form
 
         form.post(route("queue.teller.reset.step2"), {
             preserveState: false,
             onSuccess: () => {
-                // Reset frontend state
-                setSelectedTransaction('');
-                setPriority('0');
+                // Don't reset the selected values here, keep them for the setup form
                 form.setData('transaction_type_id', '');
                 form.setData('ispriority', '0');
-
+                
                 // Reload to get fresh props from backend
                 router.reload({ only: ['userTellerNumber', 'current', 'waiting_list'] });
             }
         });
     };
+
 
     function handleGrab() {
         form.setData('ispriority', priority);
@@ -109,36 +140,116 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
             }
         });
     }
+
+    const manualOverrideForm = useForm({ number: "" });
+
+    const handleManualOverride = () => {
+        if (manualOverrideForm.data.number.trim() === "") {
+            Swal.fire({
+                icon: "warning",
+                title: "Input Required",
+                text: "Please enter a ticket number for the manual override.",
+            });
+            return;
+        }
+
+        // Validate 4-digit number
+        const numberRegex = /^\d{4}$/;
+        if (!numberRegex.test(manualOverrideForm.data.number)) {
+            Swal.fire({
+                icon: "error",
+                title: "Invalid Format",
+                text: "Please enter a 4-digit ticket number (e.g., 0001).",
+            });
+            return;
+        }
+
+        manualOverrideForm.post(route("queue.teller.step2.manual-override"), {
+            onSuccess: () => {
+                Swal.fire({
+                    toast: true,
+                    position: "top-end",
+                    icon: "success",
+                    title: `Customer Already Served`,
+                    text: `Ticket #${manualOverrideForm.data.number} has been already served.`,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
+                manualOverrideForm.reset();
+            },
+            onError: (errors) => {
+                if (errors.number) {
+                    Swal.fire({
+                        toast: true,
+                        position: "top-end",
+                        icon: "error",
+                        title: "Not Found",
+                        text: `Ticket #${manualOverrideForm.data.number} is not found or not in the No Show list.`,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                    });
+                } else {
+                    Swal.fire({
+                        toast: true,
+                        position: "top-end",
+                        icon: "error",
+                        title: "Error",
+                        text: "Something went wrong while serving this customer.",
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                    });
+                }
+            },
+        });
+    };
+
     function handleNoShow() {
         form.post(route('queue.teller.no-show.step2'));
     }
 
     useEffect(() => {
-    if (page.props.flash?.confirm_reset) {
-        Swal.fire({
-            title: "No Customers Found",
-            text: page.props.flash?.message ?? 
-                  "There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?",
-            icon: "info",
-            showCancelButton: true,
-            confirmButtonText: "Yes, Select New Transaction",
-            cancelButtonText: "No, Keep Waiting",
-            reverseButtons: true,
-        }).then((result) => {
-            if (result.isConfirmed) {
-                handleSelectNew();
-            }
-        });
+        if (page.props.flash?.success) {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "success",
+                title: "Success!",
+                text: page.props.flash.success,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        }
+        if (page.props.flash?.no_found) {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "error",
+                title: "Not Found!",
+                text: page.props.flash.no_found,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        }
+        if (page.props.flash?.error) {
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "error",
+                title: "Error!",
+                text: page.props.flash.error,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        }
+    }, [page.props.flash]);
 
-        // Clear flash by reloading the page's Inertia props (preserve state)
-        router.reload({ only: ['flash'], preserveState: true });
-    }
-}, [page.props.flash?.confirm_reset]);
-
-
-
-
-    const breadcrumbs = [{ title: 'Service Counter', href: '/queue/teller' }];
+    const breadcrumbs = [{ title: 'Service Counter', href: '/queue/teller-step2' }];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -197,7 +308,7 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
                         <Card className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
                             <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
                                 <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
-                                    {userTellerNumber ? (
+                                    {(userTellerNumber && !showSetupForm) ? (
                                         <>
                                             <User className="h-5 w-5 text-blue-500" />
                                             Currently Serving
@@ -210,15 +321,15 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
                                     )}
                                 </CardTitle>
                                 <CardDescription>
-                                    {userTellerNumber
+                                    {(userTellerNumber && !showSetupForm)
                                         ? (current ? "You are currently serving a customer" : "Ready to serve next customer")
                                         : "Select your teller station to begin serving customers"}
                                 </CardDescription>
                             </CardHeader>
 
                             <CardContent className="pt-6">
-                                {/* Not assigned to a teller */}
-                                {!userTellerNumber ? (
+                                {/* Show setup form when no teller is assigned OR when showSetupForm is true */}
+                                {!userTellerNumber || showSetupForm ? (
                                     <div className="flex flex-col gap-6">
                                         <div className="text-center">
                                             <p className="text-slate-600 dark:text-slate-400">
@@ -317,93 +428,149 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
                                             ) : (
                                                 <>
                                                     <Play className="mr-2 h-5 w-5" />
-                                                    Start Serving
+                                                    {showSetupForm ? "Update Selection" : "Start Serving"}
                                                 </>
                                             )}
                                         </Button>
                                     </div>
                                 ) : current ? (
                                     // Currently serving a customer
-                                    <div className="flex flex-col gap-6">
-                                        <div className="text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
-                                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
-                                                {current.number}
-                                            </div>
-                                            <div className="mt-2">
-                                                <Badge variant={current.is_priority ? "destructive" : "secondary"}>
-                                                    {current.is_priority ? "Priority" : "Regular"}
-                                                </Badge>
-                                            </div>
-                                        </div>
+                                    <Tabs value={servingTab} onValueChange={setServingTab} className="w-full">
+                                        <TabsList className="grid w-full grid-cols-2 mb-4">
+                                            <TabsTrigger value="current-customer">Current Customer</TabsTrigger>
+                                            <TabsTrigger value="manual-serve-current">Manual Entry</TabsTrigger>
+                                        </TabsList>
 
-                                        <div className="w-full space-y-3">
-                                            <div className="flex justify-between items-center p-3 bg-slate-100 rounded-lg dark:bg-slate-700">
-                                                <span className="text-slate-600 dark:text-slate-400">Transaction Type</span>
-                                                <span className="font-medium">{current.transaction_type?.name}</span>
-                                            </div>
-
-                                            <div className="flex justify-between items-center p-3 bg-slate-100 rounded-lg dark:bg-slate-700">
-                                                <span className="text-slate-600 dark:text-slate-400">Teller Station</span>
-                                                <span className="font-medium text-blue-600 dark:text-blue-400">#{userTellerNumber}</span>
-                                            </div>
-
-                                            {current.remarks ? (
-                                                <div className="p-4 border-l-4 border-amber-500 bg-amber-50 rounded-lg dark:bg-amber-900/20 dark:border-amber-400 shadow-sm">
-                                                    <div className="flex items-start gap-2">
-                                                        <span className="font-semibold text-amber-700 dark:text-amber-300 min-w-[150px]">
-                                                            Remarks from Step 1:
-                                                        </span>
-                                                        <span className="font-medium text-slate-900 dark:text-slate-100 flex-1">
-                                                            {current.remarks}
-                                                        </span>
-                                                    </div>
+                                        <TabsContent value="current-customer" className="space-y-6">
+                                            <div className="text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
+                                                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
+                                                    {current.number}
                                                 </div>
-                                            ) : (
-                                                <div className="p-4 border-l-4 border-slate-400 bg-slate-100 rounded-lg dark:bg-slate-700 dark:border-slate-500 shadow-sm">
-                                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                                        <span>No remarks from Step 1</span>
-                                                    </div>
+                                                <div className="mt-2">
+                                                    <Badge variant={current.is_priority ? "destructive" : "secondary"}>
+                                                        {current.is_priority ? "Priority" : "Regular"}
+                                                    </Badge>
                                                 </div>
-                                            )}
+                                            </div>
 
-                                        </div>
+                                            <div className="w-full space-y-3">
+                                                <div className="flex justify-between items-center p-3 bg-slate-100 rounded-lg dark:bg-slate-700">
+                                                    <span className="text-slate-600 dark:text-slate-400">Transaction Type</span>
+                                                    <span className="font-medium">{current.transaction_type?.name}</span>
+                                                </div>
 
-                                        <div className="flex flex-col sm:flex-row gap-3 w-full">
-                                            <Button
-                                                onClick={handleNext}
-                                                disabled={processing}
-                                                size="lg"
-                                                className="flex-1 py-5 text-base font-medium bg-emerald-500 hover:bg-emerald-600 text-white"
-                                            >
-                                                {processing ? (
-                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                <div className="flex justify-between items-center p-3 bg-slate-100 rounded-lg dark:bg-slate-700">
+                                                    <span className="text-slate-600 dark:text-slate-400">Teller Station</span>
+                                                    <span className="font-medium text-blue-600 dark:text-blue-400">#{userTellerNumber}</span>
+                                                </div>
+
+                                                {current.remarks ? (
+                                                    <div className="p-4 border-l-4 border-amber-500 bg-amber-50 rounded-lg dark:bg-amber-900/20 dark:border-amber-400 shadow-sm">
+                                                        <div className="flex items-start gap-2">
+                                                            <span className="font-semibold text-amber-700 dark:text-amber-300 min-w-[150px]">
+                                                                Remarks from Step 1:
+                                                            </span>
+                                                            <span className="font-medium text-slate-900 dark:text-slate-100 flex-1">
+                                                                {current.remarks}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 ) : (
-                                                    <>
-                                                        <CheckCircle className="mr-2 h-5 w-5" />
-                                                        Complete Transaction
-                                                    </>
+                                                    <div className="p-4 border-l-4 border-slate-400 bg-slate-100 rounded-lg dark:bg-slate-700 dark:border-slate-500 shadow-sm">
+                                                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                                                            <span>No remarks from Step 1</span>
+                                                        </div>
+                                                    </div>
                                                 )}
-                                            </Button>
+                                            </div>
 
+                                            <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                                <Button
+                                                    onClick={handleNext}
+                                                    disabled={processing}
+                                                    size="lg"
+                                                    className="flex-1 py-5 text-base font-medium bg-emerald-500 hover:bg-emerald-600 text-white"
+                                                >
+                                                    {processing ? (
+                                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <CheckCircle className="mr-2 h-5 w-5" />
+                                                            Complete Transaction
+                                                        </>
+                                                    )}
+                                                </Button>
+
+                                                <Button
+                                                    onClick={handleOverride}
+                                                    disabled={processing}
+                                                    size="lg"
+                                                    variant="outline"
+                                                    className="flex-1 py-5 text-base font-medium border-rose-300 text-rose-600 hover:bg-rose-50"
+                                                >
+                                                    {processing ? (
+                                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <AlertCircle className="mr-2 h-5 w-5" />
+                                                            Mark as No Show
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </TabsContent>
+
+                                        <TabsContent value="manual-serve-current" className="space-y-4">
+                                            <div className="text-center p-4">
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                                                    Manually serve a customer who is not in the waiting list
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="ticket-number-step2" className="text-sm font-medium">
+                                                        Ticket Number
+                                                    </Label>
+                                                    <div className="flex items-center">
+                                                        <Input
+                                                            id="manual-ticket-number"
+                                                            type="text"
+                                                            placeholder="Enter 4-digit ticket number (e.g., 0001)"
+                                                            // CORRECTED: Bind to the form state
+                                                            value={manualOverrideForm.data.number}
+                                                            onChange={(e) => manualOverrideForm.setData("number", e.target.value)}
+                                                            className="w-full"
+                                                            maxLength={4}
+                                                            pattern="[0-9]{4}"
+                                                        />
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                        Must be a 4-digit number
+                                                    </p>
+                                                </div>
+                                            </div>
                                             <Button
-                                                onClick={handleOverride}
-                                                disabled={processing}
+                                                onClick={handleManualOverride}
+                                                // CORRECTED: Check the form state
+                                                disabled={processing || manualOverrideForm.data.number.trim() === ""}
                                                 size="lg"
                                                 variant="outline"
-                                                className="flex-1 py-5 text-base font-medium border-rose-300 text-rose-600 hover:bg-rose-50"
+                                                className="w-full py-4 text-base font-medium"
                                             >
+
                                                 {processing ? (
-                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                                 ) : (
                                                     <>
-                                                        <AlertCircle className="mr-2 h-5 w-5" />
-                                                        Mark as No Show
+                                                        <UserCog className="mr-2 h-5 w-5" />
+                                                        Serve This Customer
                                                     </>
                                                 )}
                                             </Button>
-                                        </div>
-                                    </div>
+                                        </TabsContent>
+                                    </Tabs>
                                 ) : (
                                     // Ready to grab next customer
                                     <Tabs defaultValue={!userTellerNumber ? "setup" : "now-serving"} className="w-full">
@@ -413,7 +580,7 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
                                             ) : (
                                                 <TabsTrigger value="now-serving">Now Serving</TabsTrigger>
                                             )}
-                                            <TabsTrigger value="manual-override">Manual Override</TabsTrigger>
+                                            <TabsTrigger value="manual-override">Manual Entry</TabsTrigger>
                                         </TabsList>
 
                                         {/* Initial Setup */}
@@ -455,72 +622,56 @@ export default function TellerPage({ current, waiting_list, userTellerNumber, tr
                                             </TabsContent>
                                         )}
 
-                                        {/* Manual Override */}
+                                        {/* Manual Override - UPDATED TO MATCH MANUAL ENTRY */}
                                         <TabsContent value="manual-override" className="space-y-4 pt-4">
-                                            <div>
-                                                <Label className="mb-2 block text-sm font-medium">Transaction Type</Label>
-                                                <Select
-                                                    value={selectedTransaction}
-                                                    onValueChange={(val) => {
-                                                        setSelectedTransaction(val);
-                                                        form.setData("transaction_type_id", val);
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Select transaction type" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectGroup>
-                                                            {transactionTypes.map((t) => (
-                                                                <SelectItem key={t.id} value={t.id}>
-                                                                    {t.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectGroup>
-                                                    </SelectContent>
-                                                </Select>
+                                            <div className="text-center p-4">
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                                                    Manually serve a customer who is not in the waiting list
+                                                </p>
                                             </div>
 
-                                            <div>
-                                                <Label className="mb-2 block text-sm font-medium">Customer Type</Label>
-                                                <Select
-                                                    value={priority}
-                                                    onValueChange={(val) => {
-                                                        setPriority(val);
-                                                        form.setData("ispriority", val);
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Select customer type" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="0">Regular</SelectItem>
-                                                        <SelectItem value="1">Priority</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="manual-ticket-number" className="text-sm font-medium">
+                                                        Ticket Number
+                                                    </Label>
+                                                    <div className="flex items-center">
+                                                        <Input
+                                                            id="manual-ticket-number"
+                                                            type="text"
+                                                            placeholder="Enter 4-digit ticket number (e.g., 0001)"
+                                                            // CORRECTED: Bind to the form state
+                                                            value={manualOverrideForm.data.number}
+                                                            onChange={(e) => manualOverrideForm.setData("number", e.target.value)}
+                                                            className="w-full"
+                                                            maxLength={4}
+                                                            pattern="[0-9]{4}"
+                                                        />
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                        Must be a 4-digit number
+                                                    </p>
+                                                </div>
                                             </div>
-
-                                            <div>
-                                                <Label className="mb-2 block text-sm font-medium">Ticket Number</Label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                                                    placeholder="Enter ticket number"
-                                                    onChange={(e) => form.setData("ticket_number", e.target.value)}
-                                                />
-                                            </div>
-
                                             <Button
-                                                onClick={handleOverride}
-                                                className="w-full border-rose-300 text-rose-600 hover:bg-rose-50"
+                                                onClick={handleManualOverride}
+                                                // CORRECTED: Check the form state
+                                                disabled={processing || manualOverrideForm.data.number.trim() === ""}
+                                                size="lg"
                                                 variant="outline"
+                                                className="w-full py-4 text-base font-medium"
                                             >
-                                                <AlertCircle className="mr-2 h-5 w-5" /> Override / Serve Specific Ticket
+                                                {processing ? (
+                                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <UserCog className="mr-2 h-5 w-5" />
+                                                        Serve This Customer
+                                                    </>
+                                                )}
                                             </Button>
                                         </TabsContent>
                                     </Tabs>
-
-
                                 )}
                             </CardContent>
                         </Card>
