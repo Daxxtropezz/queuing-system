@@ -52,20 +52,30 @@ export default function GuardPage() {
             setTimeout(() => {
                 window.print();
                 Swal.fire({
+                    toast: true,
+                    position: 'top-end',
                     icon: 'success',
                     title: 'Number Generated!',
                     text: `Your ${value === 1 ? 'Priority' : 'Regular'} number is ${num}`,
-                    confirmButtonColor: '#3b82f6'
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
                 });
+
             }, 300);
         } catch (error) {
             console.error(error);
             Swal.fire({
+                toast: true,
+                position: 'top-end',
                 icon: 'error',
                 title: 'Oops...',
                 text: 'Something went wrong while generating your number.',
-                confirmButtonColor: '#ef4444'
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
             });
+
         } finally {
             // ⏳ Release after 5s
             setTimeout(() => setCooldown(false), 5000);
@@ -112,7 +122,7 @@ export default function GuardPage() {
                         <div className="text-sm font-bold">{priority}</div>
                         <div className="text-5xl font-bold">{generatedNumber}</div>
                         <div className="text-xs text-gray-600">
-                            {now.toLocaleDateString()} {now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                            {now.toLocaleDateString()} {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                     </div>
                 </Dialog>
