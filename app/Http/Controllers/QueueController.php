@@ -248,7 +248,6 @@ class QueueController extends Controller
             $next->update([
                 'status' => 'serving',
                 'served_by' => $user->id,
-                'teller_id' => $user->teller_id, // attach teller if available (nullable)
                 'started_at' => now(),
             ]);
 
@@ -291,9 +290,7 @@ class QueueController extends Controller
             $next->update([
                 'status' => 'serving',
                 'served_by' => $user->id,
-                'teller_id' => $user->teller_id,
                 'started_at' => now(),
-                // optional: prefill transaction type and remarks if you want
                 'transaction_type_id' => $next->transaction_type_id ?? $request->input('transaction_type_id'),
                 'remarks' => $next->remarks ?? '',
             ]);
@@ -335,7 +332,6 @@ class QueueController extends Controller
             $next->update([
                 'status' => 'serving',
                 'served_by' => $user->id,
-                'teller_id' => $user->teller_id,
                 'started_at' => now(),
                 'transaction_type_id' => $next->transaction_type_id ?? $request->input('transaction_type_id'),
                 'remarks' => $next->remarks ?? '',
@@ -393,7 +389,6 @@ class QueueController extends Controller
             $ticket->update([
                 'status' => 'serving',
                 'served_by' => $user->id,
-                'teller_id' => $user->teller_id,
                 'started_at' => now(),
             ]);
 
@@ -415,7 +410,6 @@ class QueueController extends Controller
         $ticket->update([
             'status' => 'serving',
             'served_by' => $user->id,
-            'teller_id' => $user->teller_id,
             'started_at' => now(),
         ]);
 
@@ -443,7 +437,6 @@ class QueueController extends Controller
         $ticket->update([
             'status' => 'serving',
             'served_by' => $user->id,
-            'teller_id' => $user->teller_id,
             'started_at' => now(),
         ]);
 
@@ -456,6 +449,7 @@ class QueueController extends Controller
         $user = $request->user();
         $current = QueueTicket::with('transactionType')
             ->where('served_by', $user->id)
+            ->where('step', 2)
             ->where('status', 'serving')
             ->whereDate('created_at', now())
             ->first();
@@ -541,12 +535,14 @@ class QueueController extends Controller
         // End any expired serving
         QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
+            ->where('step', 2)
             ->whereDate('created_at', '<', now()->toDateString())
             ->update(['status' => 'done']);
 
         // Check if teller already has active
         $current = QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
+            ->where('step', 2)
             ->whereDate('created_at', now()->toDateString())
             ->first();
 
@@ -555,7 +551,7 @@ class QueueController extends Controller
         }
 
         // ✅ Strict: must match teller’s transaction type AND priority
-        $next = QueueTicket::where('status', 'ready_step2') // ✅ from Step 1 completed
+        $next = QueueTicket::where('status', 'ready_step2')
             ->where('transaction_type_id', $user->transaction_type_id)
             ->where('ispriority', $user->ispriority)
             ->whereDate('created_at', now())
@@ -566,6 +562,7 @@ class QueueController extends Controller
         if ($next) {
             $next->update([
                 'status' => 'serving',
+                'step' => 2,
                 'served_by' => $user->id,
                 'teller_id' => $user->teller_id,
                 'started_at' => now(),
@@ -614,6 +611,7 @@ class QueueController extends Controller
         // Mark current serving as done
         QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
+            ->where('step', 2)
             ->whereDate('created_at', now())
             ->update(['status' => 'done', 'finished_at' => now()]);
 
@@ -629,6 +627,7 @@ class QueueController extends Controller
         if ($next) {
             $next->update([
                 'status' => 'serving',
+                'step' => 2,
                 'served_by' => $user->id,
                 'teller_id' => $user->teller_id,
                 'started_at' => now(),
