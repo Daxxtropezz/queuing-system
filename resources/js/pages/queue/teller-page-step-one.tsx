@@ -39,7 +39,7 @@ export default function TellerPageStepOne() {
     const waiting_list = page.props.waiting_list ?? [];
 
     const [manualOverrideNumber, setManualOverrideNumber] = useState("");
-    const manualOverrideForm = useForm({ number: "", ispriority: "0" });
+    const manualOverrideForm = useForm({ number: "" });
 
     useEffect(() => {
         if (page.props.flash?.success) {
@@ -149,34 +149,53 @@ export default function TellerPageStepOne() {
         });
     };
 
-    const handleManualOverride = () => {
-        if (manualOverrideNumber.trim() === "") {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Input Required',
-                text: 'Please enter a ticket number for the manual override.',
-            });
-            return;
-        }
-
-        manualOverrideForm.setData("number", manualOverrideNumber);
-        manualOverrideForm.post(route("queue.teller.step1.manual-override"), {
-            onSuccess: () => {
-                setManualOverrideNumber("");
-                setTimeout(() => {
-                    if (page.props.flash?.no_found) {
-                        Swal.fire({ icon: 'error', title: 'Not Found', text: page.props.flash.no_found });
-                    } else if (page.props.flash?.no_show) {
-                        Swal.fire({ icon: 'warning', title: 'No Show', text: page.props.flash.no_show });
-                    } else if (page.props.flash?.success) {
-                        Swal.fire({ icon: 'success', title: 'Success', text: page.props.flash.success });
-                    } else if (page.props.flash?.error) {
-                        Swal.fire({ icon: 'error', title: 'Error', text: page.props.flash.error });
-                    }
-                }, 150);
-            },
+  const handleManualOverride = () => {
+    // If there's a current client, require transaction type
+    if (current && !form.data.transaction_type_id) {
+        Swal.fire({
+            icon: "warning",
+            title: "Transaction Type Required",
+            text: "Please select a transaction type for the current client before serving another one.",
         });
-    };
+        return;
+    }
+
+    if (manualOverrideNumber.trim() === "") {
+        Swal.fire({
+            icon: "warning",
+            title: "Input Required",
+            text: "Please enter a ticket number for the manual override.",
+        });
+        return;
+    }
+
+    manualOverrideForm.setData("number", manualOverrideNumber);
+    
+    manualOverrideForm.post(route("queue.teller.step1.manual-override"), {
+        onSuccess: () => {
+            setManualOverrideNumber("");
+            // Use a small delay to ensure flash messages are available
+            setTimeout(() => {
+                if (page.props.flash?.no_found) {
+                    Swal.fire({ icon: "error", title: "Not Found", text: page.props.flash.no_found });
+                } else if (page.props.flash?.no_show) {
+                    Swal.fire({ icon: "warning", title: "No Show", text: page.props.flash.no_show });
+                } else if (page.props.flash?.success) {
+                    Swal.fire({ icon: "success", title: "Success", text: page.props.flash.success });
+                } else if (page.props.flash?.error) {
+                    Swal.fire({ icon: "error", title: "Error", text: page.props.flash.error });
+                }
+            }, 150);
+        },
+        onError: (errors) => {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: errors.message || "An error occurred while serving the client.",
+            });
+        },
+    });
+};
 
     const handleSelectNew = () => {
         form.setData("ispriority", "0");
@@ -329,27 +348,8 @@ export default function TellerPageStepOne() {
                                                         />
                                                     </div>
                                                 </div>
-
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="manual-customer-type-current" className="text-sm font-medium">
-                                                        Client Type
-                                                    </Label>
-                                                    <Select
-                                                        onValueChange={(val) => manualOverrideForm.setData("ispriority", val)}
-                                                        value={manualOverrideForm.data.ispriority || "0"}
-                                                    >
-                                                        <SelectTrigger className="w-full">
-                                                            <SelectValue placeholder="Select client type" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectGroup>
-                                                                <SelectItem value="0">Regular</SelectItem>
-                                                                <SelectItem value="1">Priority</SelectItem>
-                                                            </SelectGroup>
-                                                        </SelectContent>
-                                                    </Select>
                                                 </div>
-                                            </div>
+
 
                                             <Button
                                                 onClick={handleManualOverride}
@@ -433,26 +433,6 @@ export default function TellerPageStepOne() {
                                                             className="w-full"
                                                         />
                                                     </div>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="manual-customer-type" className="text-sm font-medium">
-                                                        Client Type
-                                                    </Label>
-                                                    <Select
-                                                        onValueChange={(val) => manualOverrideForm.setData("ispriority", val)}
-                                                        value={manualOverrideForm.data.ispriority || "0"}
-                                                    >
-                                                        <SelectTrigger className="w-full">
-                                                            <SelectValue placeholder="Select customer type" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectGroup>
-                                                                <SelectItem value="0">Regular</SelectItem>
-                                                                <SelectItem value="1">Priority</SelectItem>
-                                                            </SelectGroup>
-                                                        </SelectContent>
-                                                    </Select>
                                                 </div>
                                             </div>
 
