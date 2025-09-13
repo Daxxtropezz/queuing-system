@@ -32,9 +32,16 @@ type TellerPageProps = {
         status: string;
         is_priority: boolean;
     }[];
+    no_show_list: {
+        id: number;
+        number: string;
+        transaction_type: { name: string };
+        status: string;
+        is_priority: boolean;
+    }[];
 };
 
-export default function TellerPage({ current, waiting_list, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
+export default function TellerPage({ current, waiting_list, no_show_list, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
     const form = useForm({
         teller_id: userTellerNumber ?? tellers[0]?.id ?? '',
         transaction_type_id: transactionTypes[0]?.id ?? '',
@@ -676,52 +683,107 @@ useEffect(() => {
                             </CardContent>
                         </Card>
 
-                        {/* Waiting List Card */}
-                        <Card className="flex-1 mt-6 md:mt-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
-                            <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
-                                <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
-                                    <Clock className="h-5 w-5 text-blue-500" /> Waiting Queue
-                                </CardTitle>
-                                <CardDescription>
-                                    {waiting_list.length} customer(s) waiting
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="pt-6">
-                                {waiting_list.length > 0 ? (
-                                    <div className="rounded-md border border-slate-200 dark:border-slate-700">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Ticket #</TableHead>
-                                                    <TableHead>Transaction</TableHead>
-                                                    <TableHead >Category</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {waiting_list.map((ticket) => (
-                                                    <TableRow key={ticket.id} className={ticket.is_priority ? "bg-rose-50 dark:bg-rose-900/20" : ""}>
-                                                        <TableCell className="font-medium">{ticket.number}</TableCell>
-                                                        <TableCell>{ticket.transaction_type.name}</TableCell>
-                                                        <TableCell >
-                                                            {ticket.is_priority ? (
-                                                                <Badge variant="destructive">Priority</Badge>
-                                                            ) : (
-                                                                <Badge variant="outline">Regular</Badge>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                        <p>No customers in the waiting queue</p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                       {/* Queue Card with Waiting & No Show */}
+<Card className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+    <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
+        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
+            <Users className="h-5 w-5 text-indigo-500" /> Customer Queue
+        </CardTitle>
+        <CardDescription>
+            Manage Waiting and No Show customers
+        </CardDescription>
+    </CardHeader>
+    <CardContent className="pt-6">
+        <Tabs defaultValue="waiting" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="waiting">
+                    Waiting ({waiting_list.length})
+                </TabsTrigger>
+                <TabsTrigger value="no_show">
+                    No Show ({no_show_list.length})
+                </TabsTrigger>
+            </TabsList>
+
+            {/* Waiting List */}
+            <TabsContent value="waiting">
+                {waiting_list.length > 0 ? (
+                    <div className="rounded-md border border-slate-200 dark:border-slate-700">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Ticket #</TableHead>
+                                    <TableHead>Transaction</TableHead>
+                                    <TableHead>Category</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {waiting_list.map((ticket) => (
+                                    <TableRow key={ticket.id}>
+                                        <TableCell className="font-medium">{ticket.number}</TableCell>
+                                        <TableCell>{ticket.transaction_type.name}</TableCell>
+                                        <TableCell>
+                                            {ticket.is_priority ? (
+                                                <Badge variant="destructive">Priority</Badge>
+                                            ) : (
+                                                <Badge variant="outline">Regular</Badge>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No customers waiting</p>
+                    </div>
+                )}
+            </TabsContent>
+
+            {/* No Show List */}
+            <TabsContent value="no_show">
+                {no_show_list.length > 0 ? (
+                    <div className="rounded-md border border-slate-200 dark:border-slate-700">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Ticket #</TableHead>
+                                    <TableHead>Transaction</TableHead>
+                                    <TableHead>Category</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {no_show_list.map((ticket) => (
+                                    <TableRow
+                                        key={ticket.id}
+                                        className="bg-amber-50 dark:bg-amber-900/20"
+                                    >
+                                        <TableCell className="font-medium">{ticket.number}</TableCell>
+                                        <TableCell>{ticket.transaction_type.name}</TableCell>
+                                        <TableCell>
+                                            {ticket.is_priority ? (
+                                                <Badge variant="destructive">Priority</Badge>
+                                            ) : (
+                                                <Badge variant="outline">Regular</Badge>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No customers in No Show</p>
+                    </div>
+                )}
+            </TabsContent>
+        </Tabs>
+    </CardContent>
+</Card>
+
                     </div>
 
                     {/* Help text for non-technical users */}
