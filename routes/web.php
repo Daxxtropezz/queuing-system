@@ -142,6 +142,8 @@ Route::middleware(['auth', 'verified', 'role:Step1-Teller|Administrator'])->grou
     Route::post('/queue/teller/manual-override', [QueueController::class, 'manualOverrideStep1Number'])->name('queue.teller.step1.manual-override');
     Route::post('/queue/teller-step1/search-no-show', [QueueController::class, 'searchNoShowTicket'])->name('queue.teller.step1.search-no-show');
     Route::post('/teller/serve-no-show', [QueueController::class, 'serveNoShow'])->name('queue.teller.serve-no-show');
+    Route::post('/queue/teller/set-transaction-type', [QueueController::class, 'setTransactionType'])
+    ->name('queue.teller.setTransactionType');
 });
 
 // Step 2 Teller Page (restricted to Step2-Teller role)

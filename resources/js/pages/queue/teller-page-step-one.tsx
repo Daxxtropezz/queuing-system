@@ -96,18 +96,18 @@ export default function TellerPageStepOne() {
     }, []);
 
     useEffect(() => {
-    if (page.props.flash?.no_found) {
-        Swal.fire({ icon: "error", title: "Not Found", text: page.props.flash.no_found });
-    } else if (page.props.flash?.no_show) {
-        Swal.fire({ icon: "warning", title: "No Show", text: page.props.flash.no_show });
-    } else if (page.props.flash?.success) {
-        Swal.fire({ icon: "success", title: "Success", text: page.props.flash.success });
-    } else if (page.props.flash?.error) {
-        Swal.fire({ icon: "error", title: "Error", text: page.props.flash.error });
-    } else if (page.props.flash?.message) {
-        Swal.fire({ icon: "info", title: "Notice", text: page.props.flash.message });
-    }
-}, [page.props.flash]);
+        if (page.props.flash?.no_found) {
+            Swal.fire({ icon: "error", title: "Not Found", text: page.props.flash.no_found });
+        } else if (page.props.flash?.no_show) {
+            Swal.fire({ icon: "warning", title: "No Show", text: page.props.flash.no_show });
+        } else if (page.props.flash?.success) {
+            Swal.fire({ icon: "success", title: "Success", text: page.props.flash.success });
+        } else if (page.props.flash?.error) {
+            Swal.fire({ icon: "error", title: "Error", text: page.props.flash.error });
+        } else if (page.props.flash?.message) {
+            Swal.fire({ icon: "info", title: "Notice", text: page.props.flash.message });
+        }
+    }, [page.props.flash]);
 
 
     const handleGrab = () => {
@@ -268,9 +268,21 @@ export default function TellerPageStepOne() {
                                                     </Label>
 
                                                     <Select
-                                                        onValueChange={(val) => form.setData("transaction_type_id", val)}
+                                                        onValueChange={(val) => {
+                                                            form.setData("transaction_type_id", val);
+
+                                                            // Auto-save transaction type to DB immediately
+                                                            if (current?.id) {
+                                                                router.post(
+                                                                    route("queue.teller.setTransactionType"),
+                                                                    { transaction_type_id: val, ticket_id: current.id },
+                                                                    { preserveState: true }
+                                                                );
+                                                            }
+                                                        }}
                                                         value={form.data.transaction_type_id || ""}
                                                     >
+
                                                         <SelectTrigger className="w-full">
                                                             <SelectValue placeholder="Select transaction type" />
                                                         </SelectTrigger>
@@ -553,6 +565,7 @@ export default function TellerPageStepOne() {
                                                         <TableRow>
                                                             <TableHead>Ticket #</TableHead>
                                                             <TableHead>Status</TableHead>
+                                                            <TableHead>Priority</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
@@ -564,9 +577,17 @@ export default function TellerPageStepOne() {
                                                                         No Show
                                                                     </Badge>
                                                                 </TableCell>
+                                                                <TableCell>
+                                                                    {ticket.is_priority ? (
+                                                                        <Badge variant="destructive">Priority</Badge>
+                                                                    ) : (
+                                                                        <Badge variant="outline">Regular</Badge>
+                                                                    )}
+                                                                </TableCell>
                                                             </TableRow>
                                                         ))}
                                                     </TableBody>
+
                                                 </Table>
                                             </div>
                                         ) : (
