@@ -39,7 +39,8 @@ export default function TellerPageStepOne() {
     const waiting_list = page.props.waiting_list ?? [];
 
     const [manualOverrideNumber, setManualOverrideNumber] = useState("");
-    const manualOverrideForm = useForm({ number: "" });
+    const manualOverrideForm = useForm({ number: "", ispriority: "0" });
+
 
     useEffect(() => {
         if (page.props.flash?.success) {
@@ -93,6 +94,21 @@ export default function TellerPageStepOne() {
         }, 5000);
         return () => clearInterval(intervalId);
     }, []);
+
+    useEffect(() => {
+    if (page.props.flash?.no_found) {
+        Swal.fire({ icon: "error", title: "Not Found", text: page.props.flash.no_found });
+    } else if (page.props.flash?.no_show) {
+        Swal.fire({ icon: "warning", title: "No Show", text: page.props.flash.no_show });
+    } else if (page.props.flash?.success) {
+        Swal.fire({ icon: "success", title: "Success", text: page.props.flash.success });
+    } else if (page.props.flash?.error) {
+        Swal.fire({ icon: "error", title: "Error", text: page.props.flash.error });
+    } else if (page.props.flash?.message) {
+        Swal.fire({ icon: "info", title: "Notice", text: page.props.flash.message });
+    }
+}, [page.props.flash]);
+
 
     const handleGrab = () => {
         form.setData('ispriority', priority);
@@ -149,53 +165,35 @@ export default function TellerPageStepOne() {
         });
     };
 
-  const handleManualOverride = () => {
-    // If there's a current client, require transaction type
-    if (current && !form.data.transaction_type_id) {
-        Swal.fire({
-            icon: "warning",
-            title: "Transaction Type Required",
-            text: "Please select a transaction type for the current client before serving another one.",
-        });
-        return;
-    }
-
-    if (manualOverrideNumber.trim() === "") {
-        Swal.fire({
-            icon: "warning",
-            title: "Input Required",
-            text: "Please enter a ticket number for the manual override.",
-        });
-        return;
-    }
-
-    manualOverrideForm.setData("number", manualOverrideNumber);
-    
-    manualOverrideForm.post(route("queue.teller.step1.manual-override"), {
-        onSuccess: () => {
-            setManualOverrideNumber("");
-            // Use a small delay to ensure flash messages are available
-            setTimeout(() => {
-                if (page.props.flash?.no_found) {
-                    Swal.fire({ icon: "error", title: "Not Found", text: page.props.flash.no_found });
-                } else if (page.props.flash?.no_show) {
-                    Swal.fire({ icon: "warning", title: "No Show", text: page.props.flash.no_show });
-                } else if (page.props.flash?.success) {
-                    Swal.fire({ icon: "success", title: "Success", text: page.props.flash.success });
-                } else if (page.props.flash?.error) {
-                    Swal.fire({ icon: "error", title: "Error", text: page.props.flash.error });
-                }
-            }, 150);
-        },
-        onError: (errors) => {
+    const handleManualOverride = () => {
+        // If there's a current client, require transaction type
+        if (current && !form.data.transaction_type_id) {
             Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: errors.message || "An error occurred while serving the client.",
+                icon: "warning",
+                title: "Transaction Type Required",
+                text: "Please select a transaction type for the current client before serving another one.",
             });
-        },
-    });
-};
+            return;
+        }
+
+        if (manualOverrideNumber.trim() === "") {
+            Swal.fire({
+                icon: "warning",
+                title: "Input Required",
+                text: "Please enter a ticket number for the manual override.",
+            });
+            return;
+        }
+
+        manualOverrideForm.setData("number", manualOverrideNumber);
+
+        manualOverrideForm.post(route("queue.teller.step1.manual-override"), {
+            onSuccess: () => {
+                setManualOverrideNumber("");
+                // Use a small delay to ensure flash messages are available
+            },
+        });
+    };
 
     const handleSelectNew = () => {
         form.setData("ispriority", "0");
@@ -335,6 +333,24 @@ export default function TellerPageStepOne() {
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="ticket-number-current" className="text-sm font-medium">
+                                                        Customer Type
+                                                    </Label>
+                                                    <Select
+                                                        onValueChange={(val) => manualOverrideForm.setData("ispriority", val)}
+                                                        value={manualOverrideForm.data.ispriority || "0"}
+                                                    >
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select client type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectGroup>
+                                                                <SelectItem value="0">Regular</SelectItem>
+                                                                <SelectItem value="1">Priority</SelectItem>
+                                                            </SelectGroup>
+                                                        </SelectContent>
+                                                    </Select>
+
+                                                    <Label htmlFor="ticket-number-current" className="text-sm font-medium">
                                                         Ticket Number
                                                     </Label>
                                                     <div className="flex items-center">
@@ -348,7 +364,7 @@ export default function TellerPageStepOne() {
                                                         />
                                                     </div>
                                                 </div>
-                                                </div>
+                                            </div>
 
 
                                             <Button
@@ -420,6 +436,23 @@ export default function TellerPageStepOne() {
                                         <TabsContent value="manual-serve" className="space-y-4 pt-4">
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
+                                                    <Label htmlFor="ticket-number-current" className="text-sm font-medium">
+                                                        Customer Type
+                                                    </Label>
+                                                    <Select
+                                                        onValueChange={(val) => manualOverrideForm.setData("ispriority", val)}
+                                                        value={manualOverrideForm.data.ispriority || "0"}
+                                                    >
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select client type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectGroup>
+                                                                <SelectItem value="0">Regular</SelectItem>
+                                                                <SelectItem value="1">Priority</SelectItem>
+                                                            </SelectGroup>
+                                                        </SelectContent>
+                                                    </Select>
                                                     <Label htmlFor="ticket-number" className="text-sm font-medium">
                                                         Ticket Number
                                                     </Label>
@@ -461,50 +494,92 @@ export default function TellerPageStepOne() {
                         <Card className="flex-1 mt-6 md:mt-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
                             <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
                                 <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
-                                    <Clock className="h-5 w-5 text-blue-500" /> Waiting Lists
+                                    <Clock className="h-5 w-5 text-blue-500" /> Client Queue
                                 </CardTitle>
                                 <CardDescription>
-                                    {waiting_list.length} client(s) waiting
+                                    {waiting_list.length} waiting • {page.props.no_show_list?.length ?? 0} no show
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="pt-6">
-                                {waiting_list.length > 0 ? (
-                                    <div className="rounded-md border border-slate-200 dark:border-slate-700">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Ticket #</TableHead>
-                                                    <TableHead>Status</TableHead>
-                                                    <TableHead>Priority</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {waiting_list.map((ticket) => (
-                                                    <TableRow key={ticket.id} className={ticket.is_priority ? "bg-rose-50 dark:bg-rose-900/20" : ""}>
-                                                        <TableCell className="font-medium">{ticket.number}</TableCell>
-                                                        <TableCell>
-                                                            {ticket.status}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {ticket.is_priority ? (
-                                                                <Badge variant="destructive">Priority</Badge>
-                                                            ) : (
-                                                                <Badge variant="outline">Regular</Badge>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                        <p>No client in the waiting queue</p>
-                                    </div>
-                                )}
+                                <Tabs defaultValue="waiting" className="w-full">
+                                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                                        <TabsTrigger value="waiting">Waiting</TabsTrigger>
+                                        <TabsTrigger value="no-show">No Show</TabsTrigger>
+                                    </TabsList>
+
+                                    {/* Waiting List */}
+                                    <TabsContent value="waiting">
+                                        {waiting_list.length > 0 ? (
+                                            <div className="rounded-md border border-slate-200 dark:border-slate-700">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Ticket #</TableHead>
+                                                            <TableHead>Status</TableHead>
+                                                            <TableHead>Priority</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {waiting_list.map((ticket) => (
+                                                            <TableRow key={ticket.id} className={ticket.is_priority ? "bg-rose-50 dark:bg-rose-900/20" : ""}>
+                                                                <TableCell className="font-medium">{ticket.number}</TableCell>
+                                                                <TableCell>{ticket.status}</TableCell>
+                                                                <TableCell>
+                                                                    {ticket.is_priority ? (
+                                                                        <Badge variant="destructive">Priority</Badge>
+                                                                    ) : (
+                                                                        <Badge variant="outline">Regular</Badge>
+                                                                    )}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                                                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                                <p>No client in the waiting queue</p>
+                                            </div>
+                                        )}
+                                    </TabsContent>
+
+                                    {/* No Show List */}
+                                    <TabsContent value="no-show">
+                                        {page.props.no_show_list && page.props.no_show_list.length > 0 ? (
+                                            <div className="rounded-md border border-slate-200 dark:border-slate-700">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Ticket #</TableHead>
+                                                            <TableHead>Status</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {page.props.no_show_list.map((ticket) => (
+                                                            <TableRow key={ticket.id} className="bg-amber-50 dark:bg-amber-900/20">
+                                                                <TableCell className="font-medium">{ticket.number}</TableCell>
+                                                                <TableCell>
+                                                                    <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                                                        No Show
+                                                                    </Badge>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                                                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                                <p>No client marked as no show</p>
+                                            </div>
+                                        )}
+                                    </TabsContent>
+                                </Tabs>
                             </CardContent>
                         </Card>
+
                     </div>
                 </main>
             </div>

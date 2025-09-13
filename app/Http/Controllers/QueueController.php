@@ -347,84 +347,60 @@ class QueueController extends Controller
         return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
     }
 
-    public function manualOverrideStep1Number(Request $request)
-    {
-        $user = $request->user();
+   public function manualOverrideStep1Number(Request $request)
+{
+    $user = $request->user();
 
-        $request->validate([
-            'number' => 'required|string',
-            // Remove ispriority validation
-        ]);
+    $request->validate([
+        'number' => 'required|string',
+        'ispriority' => 'required|in:0,1',
+    ]);
 
-        $requestedNumber = (int) preg_replace('/[^0-9]/', '', $request->input('number'));
-        // Remove ispriority logic
+    $requestedNumber = (int) preg_replace('/[^0-9]/', '', $request->input('number'));
+   $ispriority = (int) $request->input('ispriority', 0);
 
-        $ticket = QueueTicket::where('number', $requestedNumber)
-            ->where('step', 1)
-            ->whereDate('created_at', today())
-            ->first();
+$ticket = QueueTicket::where('number', $requestedNumber)
+    ->where('ispriority', $ispriority)
+    ->where('step', 1)
+    ->whereDate('created_at', today())
+    ->first();
 
-        if (!$ticket) {
-            return back()->with('error', 'Ticket not found for today with the given number.');
-        }
 
-        // Already serving or done
-        if (in_array($ticket->status, ['serving', 'ready_step2'])) {
-            return back()->with('error', "Ticket {$ticket->formatted_number} is already {$ticket->status}.");
-        }
-
-        // Handle "no_show" tickets
-        if ($ticket->status === 'no_show') {
-            $currentServing = QueueTicket::where('served_by', $user->id)
-                ->where('status', 'serving')
-                ->where('step', 1)
-                ->whereDate('created_at', today())
-                ->first();
-
-            if ($currentServing) {
-                $currentServing->update([
-                    'status' => 'ready_step2',
-                    'finished_at' => now(),
-                ]);
-            }
-
-            $ticket->update([
-                'status' => 'serving',
-                'served_by' => $user->id,
-                'started_at' => now(),
-            ]);
-
-            return back()->with('warning', "Re-serving 'No Show' client: {$ticket->formatted_number}");
-        }
-
-        // If user is already serving another client
-        $currentServing = QueueTicket::where('served_by', $user->id)
-            ->where('status', 'serving')
-            ->where('step', 1)
-            ->whereDate('created_at', today())
-            ->first();
-
-        if ($currentServing) {
-            if (!$currentServing->transaction_type_id) {
-                return back()->with('error', "Please select a transaction type for the current client ({$currentServing->formatted_number}) before serving another one.");
-            }
-
-            // Mark as finished (ready for step 2)
-            $currentServing->update([
-                'status' => 'ready_step2',
-                'finished_at' => now(),
-            ]);
-        }
-
-        // Serve the new ticket
-        $ticket->update([
-            'status' => 'serving',
-            'served_by' => $user->id,
-            'started_at' => now(),
-        ]);
-
-        return back()->with('success', "Now serving client: {$ticket->formatted_number}");
+    if (!$ticket) {
+        return back()->with('error', 'Ticket not found for today with the given number and type.');
     }
+
+    if (in_array($ticket->status, ['serving', 'ready_step2'])) {
+        return back()->with('error', "Ticket {$ticket->formatted_number} is already {$ticket->status}.");
+    }
+
+    // End current serving
+    $currentServing = QueueTicket::where('served_by', $user->id)
+        ->where('status', 'serving')
+        ->where('step', 1)
+        ->whereDate('created_at', today())
+        ->first();
+
+    if ($currentServing) {
+        if (!$currentServing->transaction_type_id) {
+            return back()->with('error', "Please select a transaction type for the current client ({$currentServing->formatted_number}) before serving another one.");
+        }
+
+        $currentServing->update([
+            'status' => 'ready_step2',
+            'finished_at' => now(),
+        ]);
+    }
+
+    $ticket->update([
+        'status' => 'serving',
+        'served_by' => $user->id,
+        'started_at' => now(),
+    ]);
+
+    return back()->with('success', "Now serving client: {$ticket->formatted_number}");
+}
+
 
 
     public function serveNoShow(Request $request)
