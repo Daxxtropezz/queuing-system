@@ -26,7 +26,7 @@ interface BoardData {
 // Update the props to match the data structure from your Laravel controller.
 interface Props {
     boardData: BoardData;
-    transactionTypes?: Array<{ id: number; name: string; description?: string; [key: string]: any }>;
+    transactionTypes?: Array<{ id: number; name: string; description?: string;[key: string]: any }>;
 }
 
 // Lightweight, themed video slot used in the header corners.
@@ -529,15 +529,22 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                 style={{ gridTemplateColumns: `repeat(${Math.max(1, waitingColumns.length)}, minmax(0, 1fr))` }}
                                             >
                                                 {waitingColumns.map((col) => {
-                                                    // determine how many items to show for this group (distribute overall capacity)
                                                     const perGroupCapacity = Math.max(
                                                         3,
-                                                        Math.ceil(waitingCapacity / Math.max(1, waitingColumns.length)),
+                                                        Math.ceil(waitingCapacity / Math.max(1, waitingColumns.length))
                                                     );
-                                                    const displayPriority = col.priority.slice(0, perGroupCapacity);
-                                                    const remaining = perGroupCapacity - displayPriority.length;
-                                                    const displayRegular = col.regular.slice(0, Math.max(0, remaining));
+
+                                                    // Concatenate priority first, then regular
+                                                    const allTickets = [
+                                                        ...col.priority.filter((t) => [1, true, '1', 'true'].includes(t.ispriority)),
+                                                        ...col.regular,
+                                                    ].slice(0, perGroupCapacity);
+
+                                                    const displayPriority = allTickets.filter((t) => [1, true, '1', 'true'].includes(t.ispriority));
+                                                    const displayRegular = allTickets.filter((t) => ![1, true, '1', 'true'].includes(t.ispriority));
+
                                                     const queuedCount = col.priority.length + col.regular.length;
+
                                                     return (
                                                         <div
                                                             key={`wg-col-${col.name}`}
@@ -547,60 +554,58 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                 <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                                                                     {col.name}
                                                                 </div>
-                                                                <div className="text-xs text-slate-500 dark:text-slate-400">{queuedCount} queued</div>
+                                                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                                                    {queuedCount} queued
+                                                                </div>
                                                             </div>
 
                                                             {/* Two-column inner layout: left = Regular, right = Priority */}
                                                             <div className="grid grid-cols-2 gap-3">
+                                                                {/* Regular */}
                                                                 <div>
                                                                     <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">
                                                                         Regular
                                                                     </div>
                                                                     <div className="grid grid-cols-1 gap-2">
-                                                                        {displayRegular.map((t) => (
-                                                                            <div
-                                                                                key={`w-reg-${t.id}`}
-                                                                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
-                                                                            >
-                                                                                <div className="flex items-center gap-3">
+                                                                        {displayRegular.length
+                                                                            ? displayRegular.map((t) => (
+                                                                                <div
+                                                                                    key={`w-reg-${t.id}`}
+                                                                                    className="flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
+                                                                                >
                                                                                     <div className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">
                                                                                         {t.number}
                                                                                     </div>
+                                                                                    <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                                        {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                                    </div>
                                                                                 </div>
-                                                                                <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                    {t.teller_id ? `Teller ${t.teller_id}` : '—'}
-                                                                                </div>
-                                                                            </div>
-                                                                        ))}
-                                                                        {displayRegular.length === 0 && (
-                                                                            <div className="text-xs text-slate-400">—</div>
-                                                                        )}
+                                                                            ))
+                                                                            : <div className="text-xs text-slate-400">—</div>}
                                                                     </div>
                                                                 </div>
 
+                                                                {/* Priority */}
                                                                 <div>
                                                                     <div className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">
                                                                         Priority
                                                                     </div>
                                                                     <div className="grid grid-cols-1 gap-2">
-                                                                        {displayPriority.map((t) => (
-                                                                            <div
-                                                                                key={`w-prio-${t.id}`}
-                                                                                className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
-                                                                            >
-                                                                                <div className="flex items-center gap-3">
+                                                                        {displayPriority.length
+                                                                            ? displayPriority.map((t) => (
+                                                                                <div
+                                                                                    key={`w-prio-${t.id}`}
+                                                                                    className="flex flex-col items-center gap-1 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
+                                                                                >
                                                                                     <div className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">
                                                                                         {t.number}
                                                                                     </div>
+                                                                                    <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                                        {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                                    </div>
                                                                                 </div>
-                                                                                <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                    {t.teller_id ? `Teller ${t.teller_id}` : '—'}
-                                                                                </div>
-                                                                            </div>
-                                                                        ))}
-                                                                        {displayPriority.length === 0 && (
-                                                                            <div className="text-xs text-slate-400">—</div>
-                                                                        )}
+                                                                            ))
+                                                                            : <div className="text-xs text-slate-400">—</div>}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -609,6 +614,8 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                 })}
                                             </div>
                                         )}
+
+
                                     </div>
                                 </div>
                             </div>
@@ -642,12 +649,16 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                             // decide how many to display per column based on servingRows or capacity
                                             const perGroupCapacity = Math.max(1, servingRows);
                                             // split priority vs regular (priority = ispriority === 1)
-                                            const priorityItems = allItems
-                                                .filter((t) => t.ispriority === 1 || String(t.ispriority) === '1')
-                                                .slice(0, perGroupCapacity);
-                                            const regularItems = allItems
-                                                .filter((t) => !(t.ispriority === 1 || String(t.ispriority) === '1'))
-                                                .slice(0, perGroupCapacity);
+                                            const priorityTickets = allItems.filter((t) => t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1');
+                                            const regularTickets = allItems.filter((t) => !(t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1'));
+
+                                            // Combine with priority first, then regular, then slice
+                                            const sortedTickets = [...priorityTickets, ...regularTickets].slice(0, perGroupCapacity);
+
+                                            // Then split again for display
+                                            const priorityItems = sortedTickets.filter((t) => t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1');
+                                            const regularItems = sortedTickets.filter((t) => !(t.ispriority === 1 || t.ispriority === true || String(t.ispriority) === '1'));
+
                                             return (
                                                 <div
                                                     key={`col-${ci}`}
@@ -668,15 +679,17 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                         key={`s-reg-${t.id}`}
                                                                         className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
                                                                     >
-                                                                        <div className="flex items-center gap-3">
+                                                                        <div className="flex flex-col items-center gap-1">
                                                                             <div className="text-2xl font-black text-slate-800 tabular-nums md:text-3xl dark:text-slate-100">
                                                                                 {t.number}
                                                                             </div>
-                                                                        </div>
-                                                                        <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                            {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                            <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                                {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
+
+
                                                                 ))}
                                                                 {regularItems.length === 0 && <div className="text-xs text-slate-400">—</div>}
                                                             </div>
@@ -692,15 +705,16 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                         key={`s-prio-${t.id}`}
                                                                         className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
                                                                     >
-                                                                        <div className="flex items-center gap-3">
+                                                                        <div className="flex flex-col items-center gap-1">
                                                                             <div className="text-2xl font-black text-amber-700 tabular-nums md:text-3xl dark:text-amber-200">
                                                                                 {t.number}
                                                                             </div>
-                                                                        </div>
-                                                                        <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                            {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                            <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                                {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
+
                                                                 ))}
                                                                 {priorityItems.length === 0 && <div className="text-xs text-slate-400">—</div>}
                                                             </div>
