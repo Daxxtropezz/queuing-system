@@ -26,6 +26,8 @@ export default function GuardPage() {
 
     // Build a self-contained print document sized 80mm x 210mm, ticket at top-left
     function buildTicketHtml(type: string, number: string, datetime: string): string {
+        // Use public URL for logo
+        const logoDSWD = '/img/dswd-ticket-logo.png';
         return `<!DOCTYPE html>
 <html>
 <head>
@@ -42,6 +44,12 @@ export default function GuardPage() {
     font-family: Arial, sans-serif; color: #000; text-align: center;
     background: #fff;
   }
+  .logo {
+    width: 60mm;
+    height: auto;
+    margin: 0 auto 2mm auto;
+    display: block;
+  }
   .type { font-weight: 700; font-size: 6mm; line-height: 1.1; }
   .number { font-weight: 800; font-size: 16mm; line-height: 1; }
   .datetime { font-size: 5mm; color: #333; line-height: 1.1; }
@@ -49,6 +57,7 @@ export default function GuardPage() {
 </head>
 <body>
   <div class="ticket">
+    <img src="${logoDSWD}" alt="DSWD Logo" class="logo" />
     <div class="type">${type}</div>
     <div class="number">${number}</div>
     <div class="datetime">${datetime}</div>
@@ -77,14 +86,35 @@ export default function GuardPage() {
         doc.write(html);
         doc.close();
 
-        // Give the iframe a moment to render before printing
-        setTimeout(() => {
-            frame.contentWindow?.focus();
-            frame.contentWindow?.print();
-            setTimeout(() => {
-                frame.parentNode && frame.parentNode.removeChild(frame);
-            }, 1000);
-        }, 300);
+        // Wait for the logo image to load before printing
+        const tryPrint = () => {
+            const img = doc.querySelector('.logo') as HTMLImageElement | null;
+            if (img && img.complete) {
+                frame.contentWindow?.focus();
+                frame.contentWindow?.print();
+                setTimeout(() => {
+                    frame.parentNode && frame.parentNode.removeChild(frame);
+                }, 1000);
+            } else if (img) {
+                img.onload = () => {
+                    frame.contentWindow?.focus();
+                    frame.contentWindow?.print();
+                    setTimeout(() => {
+                        frame.parentNode && frame.parentNode.removeChild(frame);
+                    }, 1000);
+                };
+            } else {
+                // fallback: print after 500ms if image not found
+                setTimeout(() => {
+                    frame.contentWindow?.focus();
+                    frame.contentWindow?.print();
+                    setTimeout(() => {
+                        frame.parentNode && frame.parentNode.removeChild(frame);
+                    }, 1000);
+                }, 500);
+            }
+        };
+        setTimeout(tryPrint, 300);
     }
 
     async function handleGenerate(value: number) {
@@ -115,7 +145,11 @@ export default function GuardPage() {
 
             // Print immediately via isolated iframe (prevents blank/extra pages)
             setTimeout(() => {
-                const datetime = `${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                const nowDate = new Date();
+                const monthNames = ["Jan.", "Feb.", "Mar.", "Apr.", "May.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
+                const formattedDate = `${monthNames[nowDate.getMonth()]} ${nowDate.getDate()}, ${nowDate.getFullYear()}`;
+                const formattedTime = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const datetime = `${formattedDate} ${formattedTime}`;
                 const html = buildTicketHtml(typeLabel, num, datetime);
                 printViaIframe(html);
 
