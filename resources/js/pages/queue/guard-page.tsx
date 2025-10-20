@@ -24,6 +24,69 @@ export default function GuardPage() {
         return () => clearInterval(interval);
     }, []);
 
+    // Build a self-contained print document sized 80mm x 210mm, ticket at top-left
+    function buildTicketHtml(type: string, number: string, datetime: string): string {
+        return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ticket</title>
+<style>
+  @page { size: 80mm 210mm; margin: 0; }
+  html, body { width: 80mm; height: 210mm; margin: 0; padding: 0; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ticket {
+    position: absolute; top: 0; left: 0;
+    width: 80mm; height: 30mm; padding: 2mm; box-sizing: border-box;
+    display: block;
+    font-family: Arial, sans-serif; color: #000; text-align: center;
+    background: #fff;
+  }
+  .type { font-weight: 700; font-size: 6mm; line-height: 1.1; }
+  .number { font-weight: 800; font-size: 16mm; line-height: 1; }
+  .datetime { font-size: 5mm; color: #333; line-height: 1.1; }
+</style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="type">${type}</div>
+    <div class="number">${number}</div>
+    <div class="datetime">${datetime}</div>
+  </div>
+</body>
+</html>`;
+    }
+
+    // Print via hidden iframe to avoid page CSS conflicting with print layout
+    function printViaIframe(html: string): void {
+        const frame = document.createElement('iframe');
+        frame.style.position = 'fixed';
+        frame.style.right = '0';
+        frame.style.bottom = '0';
+        frame.style.width = '0';
+        frame.style.height = '0';
+        frame.style.border = '0';
+        document.body.appendChild(frame);
+
+        const doc = frame.contentDocument || frame.contentWindow?.document;
+        if (!doc) {
+            window.print();
+            return;
+        }
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        // Give the iframe a moment to render before printing
+        setTimeout(() => {
+            frame.contentWindow?.focus();
+            frame.contentWindow?.print();
+            setTimeout(() => {
+                frame.parentNode && frame.parentNode.removeChild(frame);
+            }, 1000);
+        }, 300);
+    }
+
     async function handleGenerate(value: number) {
         if (processing || cooldown) {
             Swal.fire({
@@ -44,19 +107,24 @@ export default function GuardPage() {
 
             let num = response.generatedNumber.toString().replace(/[^0-9]/g, '');
             num = num.padStart(4, '0');
+            const typeLabel = value === 1 ? 'Priority' : 'Regular';
+
             setGeneratedNumber(num);
-            setPriority(value === 1 ? 'Priority' : 'Regular');
+            setPriority(typeLabel);
             setDialogOpen(true);
 
-            // Print immediately
+            // Print immediately via isolated iframe (prevents blank/extra pages)
             setTimeout(() => {
-                window.print();
+                const datetime = `${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                const html = buildTicketHtml(typeLabel, num, datetime);
+                printViaIframe(html);
+
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
                     icon: 'success',
                     title: 'Number Generated!',
-                    text: `Your ${value === 1 ? 'Priority' : 'Regular'} number is ${num}`,
+                    text: `Your ${typeLabel} number is ${num}`,
                     showConfirmButton: false,
                     timer: 3000,
                     timerProgressBar: true
@@ -117,30 +185,21 @@ export default function GuardPage() {
                 {/* Ticket modal + print layout */}
                 <Dialog open={dialogOpen} onOpenChange={() => setDialogOpen(false)}>
 
-                    {/* Print-only ticket */}
+                    {/* Print-only ticket (kept for on-screen preview if needed) */}
                     <div className="print-ticket hidden text-center print:block">
-                        <div className="text-sm font-bold">{priority}</div>
-                        <div className="text-5xl font-bold">{generatedNumber}</div>
-                        <div className="text-xs text-gray-600">
+                        <div className="type font-bold">{priority}</div>
+                        <div className="number font-bold">{generatedNumber}</div>
+                        <div className="datetime">
                             {now.toLocaleDateString()} {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                     </div>
                 </Dialog>
 
+                {/* Keep minimal print CSS in the page to avoid interfering with iframe-based printing */}
                 <style>
                     {`
                       @media print {
-                        body * { visibility: hidden; }
-                        .print-ticket, .print-ticket * { visibility: visible; }
-                        .print-ticket {
-                          position: absolute;
-                          top: 0;
-                          left: 0;
-                          width: 100%;
-                          padding: 10px;
-                          font-family: Arial, sans-serif;
-                          color: #000;
-                        }
+                        @page { size: 80mm 60mm; margin: 0; }
                       }
                     `}
                 </style>
