@@ -8,22 +8,33 @@ use Illuminate\Support\Facades\Storage;
 
 class VideoController extends Controller
 {
-    public function index(Request $request)
+   public function index(Request $request)
     {
         $query = Video::query();
+
+        // 1. Get per_page from request, default to 10
+        $perPage = $request->input('per_page', 10);
+        $perPage = min(100, max(1, (int) $perPage));
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        $videos = $query->latest()->paginate(10)->withQueryString();
+        $videos = $query->latest()
+            // 2. Use the dynamic $perPage variable for pagination
+            ->paginate($perPage)
+            ->withQueryString();
 
         return inertia('videos/index', [
             'videos' => $videos,
-            'filters' => ['search' => $search],
+            'filters' => [
+                'search' => $search,
+                // 3. Pass per_page back for the UI
+                'per_page' => $perPage,
+            ],
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),
