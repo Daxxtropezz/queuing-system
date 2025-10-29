@@ -49,7 +49,6 @@ export default function TellerModal({ isModalVisible, onClose, teller }: ModalPr
                     onClose(false);
                 },
                 onError: (errors) => {
-                    // Add an error handler to see what's going wrong
                     Swal.fire({
                         title: 'Error!',
                         text: 'An error occurred while updating the teller.',
@@ -80,20 +79,22 @@ export default function TellerModal({ isModalVisible, onClose, teller }: ModalPr
         }
     };
 
+     const isSubmitDisabled = !data.name.trim() || processing;
+
     return (
         <Dialog open={isModalVisible} onOpenChange={onClose}>
             <DialogContent className="max-w-lg border border-slate-200 bg-white/90 ring-1 ring-slate-200/60 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-slate-800/70 dark:bg-slate-900/80 dark:ring-slate-800/50">
                 <DialogHeader>
                     <DialogTitle className="text-slate-800 dark:text-slate-100">{isEditMode ? 'Edit Teller' : 'Create Teller'}</DialogTitle>
                     <DialogDescription className="text-slate-600 dark:text-slate-400">
-                        {isEditMode ? 'Update the details of the teller.' : 'Fill in the details to create a new teller.'}
+                        {isEditMode ? 'Update the details of the teller.' : 'Fill in the details to create a new teller. Fields marked with (*) are required.'}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-slate-700 dark:text-slate-300">
-                                Name
+                                Name <span className="text-red-500">*</span>
                             </Label>
                             <Input
                                 id="name"
@@ -119,7 +120,7 @@ export default function TellerModal({ isModalVisible, onClose, teller }: ModalPr
                     <DialogFooter className="border-t border-slate-200 pt-4 dark:border-slate-800">
                         <Button
                             type="submit"
-                            disabled={processing}
+                            disabled={isSubmitDisabled}
                             className="focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:outline-none"
                         >
                             {isEditMode ? 'Update' : 'Create'}
