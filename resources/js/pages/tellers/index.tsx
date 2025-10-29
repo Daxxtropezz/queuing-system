@@ -7,12 +7,17 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { FileWarning, Search as SearchIcon, SquarePen, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
+// 🔑 IMPORT NEW COMPONENTS
+import LoadingOverlay from '@/components/loading-overlay'; 
+import Pagination from '@/components/pagination'; 
 
 export default function Tellers() {
+    // Extract pagination metadata, filters, and flash messages
     const { tellers, flash, filters = {} } = usePage().props;
     const [isCreateModalVisible, setIsCreateModal] = useState(false);
     const [isEditModalVisible, setIsEditModal] = useState(false);
     const [selectedTeller, setSelectedTeller] = useState(null);
+    // Use filters.search as the initial value for the input
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -41,22 +46,60 @@ export default function Tellers() {
         }
     }, [flash]);
 
+    // 1. UPDATED: Only update local state, remove automatic search
     const onSearchInputChange = (e) => {
-        const value = e.target.value;
-        setSearchQuery(value);
-        if (value.length >= 3 || value.length === 0) {
+        setSearchQuery(e.target.value);
+    };
+
+    // 2. NEW: Function to execute the search when the button is clicked or Enter is hit
+    const handleSearch = (e) => {
+        e.preventDefault(); // Prevents page reload if wrapped in a form
+        
+        const finalQuery = searchQuery.trim();
+        const minLength = 3;
+
+        // Allow search if query is empty (to reset) or meets the minimum length
+        if (finalQuery.length === 0 || finalQuery.length >= minLength) {
             setIsLoading(true);
             router.get(
                 route('tellers.index'),
-                { search: value },
+                { 
+                    search: finalQuery, 
+                    // Preserve current per_page setting
+                    per_page: filters.per_page 
+                }, 
                 {
                     preserveState: true,
                     replace: true,
                     onFinish: () => setIsLoading(false),
                 },
             );
+        } else {
+            Swal.fire({
+                title: 'Search Too Short',
+                text: `Please enter at least ${minLength} characters to search.`,
+                icon: 'info',
+                toast: true,
+                position: 'top-end',
+                timer: 4000,
+                showConfirmButton: false,
+            });
         }
     };
+    
+    // NEW: Function to handle page and per_page changes from the Pagination component
+    const handlePaginationChange = (page, perPage) => {
+        setIsLoading(true);
+        router.get(
+            route('tellers.index'),
+            { ...filters, page: page, per_page: perPage },
+            { 
+                preserveState: true, 
+                replace: true, 
+                onFinish: () => setIsLoading(false) 
+            }
+        );
+    }
 
     const openCreateModal = () => setIsCreateModal(true);
     const closeCreateModal = () => {
@@ -86,7 +129,8 @@ export default function Tellers() {
             confirmButtonText: 'Yes, delete it!',
         }).then((result) => {
             if (result.isConfirmed) {
-                // This is the correct way to call the delete route
+                // Set loading state on delete initiation
+                setIsLoading(true);
                 router.delete(route('tellers.destroy', id), {
                     onSuccess: () => {
                         Swal.fire({
@@ -98,25 +142,25 @@ export default function Tellers() {
                             showConfirmButton: false,
                             timer: 3000,
                         });
-                        // Reloading the page after a successful delete
-                        router.reload({ only: ['tellers'] });
                     },
                     onError: (errors) => {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'An error occurred while deleting the teller.',
-                            icon: 'error',
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 3000,
-                        });
                         console.error(errors);
                     },
+                    // Ensure loading state is reset after any result
+                    onFinish: () => setIsLoading(false),
                 });
             }
         });
     };
+    
+    // NEW: Extract pagination metadata from the tellers prop
+    const paginationProps = {
+        current_page: tellers.current_page,
+        last_page: tellers.last_page,
+        total: tellers.total,
+        per_page: tellers.per_page,
+    };
+
 
     return (
         <>
@@ -153,7 +197,9 @@ export default function Tellers() {
                                                 Create Teller
                                             </Button>
                                         </h2>
-                                        <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
+                                        
+                                        {/* 3. WRAP SEARCH INPUT AND BUTTON IN A FORM AND ADD BUTTON */}
+                                        <form onSubmit={handleSearch} className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
                                             <div className="relative w-full sm:w-72">
                                                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
                                                     <SearchIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
@@ -166,42 +212,61 @@ export default function Tellers() {
                                                     className="w-full rounded-md border border-slate-300 bg-white py-2 pr-3 pl-8 text-sm text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-600"
                                                     disabled={isLoading}
                                                 />
-                                                {searchQuery.length > 0 && searchQuery.length < 3 && (
+                                                {searchQuery.length > 0 && searchQuery.trim().length < 3 && (
                                                     <p className="mt-1 text-xs text-rose-500 dark:text-rose-400">
-                                                        Type at least 3 characters to search
+                                                        Type at least 3 characters or click search
                                                     </p>
                                                 )}
                                                 {filters?.search && (
                                                     <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                                        Showing results for "{filters.search}"
+                                                        Showing results for **"{filters.search}"**
                                                     </p>
                                                 )}
                                             </div>
-                                        </div>
+                                            <Button 
+                                                type="submit" 
+                                                disabled={isLoading}
+                                                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
+                                            >
+                                                <SearchIcon className="h-4 w-4 mr-1" />
+                                                Search
+                                            </Button>
+                                        </form>
                                     </div>
 
                                     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
                                         <Table className="w-full">
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-16 text-center">#</TableHead>
-                                                    <TableHead className="text-center">Name</TableHead>
-                                                    <TableHead className="text-center">Description</TableHead>
-                                                    <TableHead className="text-center">Actions</TableHead>
+                                            <TableHeader className="bg-slate-50 dark:bg-slate-900/60">
+                                                <TableRow className="hover:bg-transparent">
+                                                    <TableHead className="w-16 text-center text-slate-600 dark:text-slate-300">#</TableHead>
+                                                    <TableHead className="text-center text-slate-600 dark:text-slate-300">Name</TableHead>
+                                                    <TableHead className="text-center text-slate-600 dark:text-slate-300">Description</TableHead>
+                                                    <TableHead className="text-center text-slate-600 dark:text-slate-300">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {tellers?.data?.length > 0 ? (
                                                     tellers.data.map((teller, index) => (
-                                                        <TableRow key={teller.id}>
-                                                            <TableCell className="text-center">{index + 1}</TableCell>
-                                                            <TableCell className="text-center">{teller.name}</TableCell>
-                                                            <TableCell className="text-center">{teller.description}</TableCell>
+                                                        <TableRow 
+                                                            key={teller.id}
+                                                            className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
+                                                        >
+                                                            <TableCell className="text-center text-slate-700 dark:text-slate-200">
+                                                                {/* Calculate actual index based on current_page and per_page */}
+                                                                {(tellers.current_page - 1) * tellers.per_page + index + 1}
+                                                            </TableCell>
+                                                            <TableCell className="text-center text-slate-700 dark:text-slate-200">{teller.name}</TableCell>
+                                                            <TableCell className="text-center text-slate-600 dark:text-slate-300">{teller.description}</TableCell>
                                                             <TableCell className="space-x-2 text-center">
-                                                                <Button size="sm" onClick={() => openEditModal(teller)}>
+                                                                <Button size="sm" onClick={() => openEditModal(teller)} disabled={isLoading}>
                                                                     <SquarePen className="h-4 w-4" />
                                                                 </Button>
-                                                                <Button size="sm" variant="destructive" onClick={() => confirmDelete(teller.id)}>
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    variant="destructive" 
+                                                                    onClick={() => confirmDelete(teller.id)}
+                                                                    disabled={isLoading}
+                                                                >
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
                                                             </TableCell>
@@ -212,13 +277,24 @@ export default function Tellers() {
                                                         <TableCell colSpan={4} className="p-10">
                                                             <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
                                                                 <FileWarning className="mb-2 h-12 w-12 text-slate-400 dark:text-slate-500" />
-                                                                <p className="text-lg font-medium">No Tellers Found</p>
+                                                               <p className="text-xl font-semibold">No Records Found</p>
+                                                                <p className="text-muted-foreground"> "No results match your filters. Try adjusting your search criteria."</p>
                                                             </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
                                             </TableBody>
                                         </Table>
+                                        
+                                        {/* 4. PAGINATION COMPONENT */}
+                                        <Pagination
+                                            pagination={paginationProps}
+                                            filters={filters}
+                                            baseUrl={route('tellers.index')}
+                                            isLoading={isLoading}
+                                            onPageChange={(page) => handlePaginationChange(page, filters.per_page)}
+                                            onPerPageChange={(perPage) => handlePaginationChange(tellers.current_page, perPage)}
+                                        />
                                     </div>
                                 </div>
 
@@ -234,6 +310,12 @@ export default function Tellers() {
                         DSWD Queuing System • Tellers
                     </footer>
                 </div>
+                {/* 5. LOADING OVERLAY */}
+                <LoadingOverlay 
+                    visible={isLoading} 
+                    title="Please wait..." 
+                    message="Fetching data from the server."
+                />
             </AppLayout>
         </>
     );
