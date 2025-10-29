@@ -7,9 +7,15 @@ use Illuminate\Http\Request;
 
 class TransactionTypeController extends Controller
 {
-    public function index(Request $request)
+   public function index(Request $request)
     {
         $query = TransactionType::query();
+
+        // 1. Get per_page from request, default to 10
+        $perPage = $request->input('per_page', 10);
+        
+        // Ensure perPage is a reasonable number, e.g., max 100 for safety
+        $perPage = min(100, max(1, (int) $perPage));
 
         // Apply search filter if present
         if ($search = $request->input('search')) {
@@ -20,13 +26,16 @@ class TransactionTypeController extends Controller
         }
 
         $types = $query->orderBy('name')
-            ->paginate(10)
+            // 2. Use the dynamic $perPage variable for pagination
+            ->paginate($perPage) 
             ->withQueryString();
 
         return inertia('transaction-types/index', [
             'types' => $types,
             'filters' => [
-                'search' => $search, // send back current filter for the UI
+                'search' => $search, 
+                // 3. Pass per_page back to the frontend filters object
+                'per_page' => $perPage, 
             ],
             'flash' => [
                 'success' => session('success'),

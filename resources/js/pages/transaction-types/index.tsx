@@ -7,12 +7,15 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { FileWarning, Search as SearchIcon, SquarePen, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
+import LoadingOverlay from '@/components/loading-overlay';
+import Pagination from '@/components/pagination';
 
 export default function TransactionTypes() {
     const { types, flash, filters = {} } = usePage().props;
     const [isCreateModalVisible, setIsCreateModal] = useState(false);
     const [isEditModalVisible, setIsEditModal] = useState(false);
     const [selectedType, setSelectedType] = useState(null);
+    // Use a separate state for the input value vs the applied filter
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -41,22 +44,58 @@ export default function TransactionTypes() {
         }
     }, [flash]);
 
+    // 1. UPDATED: This now only updates the local state (input value)
     const onSearchInputChange = (e) => {
-        const value = e.target.value;
-        setSearchQuery(value);
-        if (value.length >= 3 || value.length === 0) {
+        setSearchQuery(e.target.value);
+    };
+
+    // 2. NEW: Function to execute the search when the button is clicked or form is submitted
+    const handleSearch = (e) => {
+        e.preventDefault(); // Prevent default form submission
+        
+        // Only allow search if query is empty (to reset) or meets the 3 character minimum
+        const finalQuery = searchQuery.trim();
+        
+        if (finalQuery.length === 0 || finalQuery.length >= 3) {
             setIsLoading(true);
             router.get(
                 route('transaction-types.index'),
-                { search: value },
+                { search: finalQuery, per_page: filters.per_page }, // Maintain current per_page setting
                 {
                     preserveState: true,
                     replace: true,
                     onFinish: () => setIsLoading(false),
                 },
             );
+        } else {
+            // Optional: Provide feedback if the search is too short
+            Swal.fire({
+                title: 'Search Too Short',
+                text: 'Please enter at least 3 characters to perform a search, or clear the input to view all results.',
+                icon: 'info',
+                toast: true,
+                position: 'top-end',
+                timer: 4000,
+                showConfirmButton: false,
+            });
         }
     };
+
+    // Function to handle page and per_page changes from the Pagination component
+    const handlePaginationChange = (page, perPage) => {
+        setIsLoading(true);
+        router.get(
+            route('transaction-types.index'),
+            { ...filters, page: page, per_page: perPage },
+            { 
+                preserveState: true, 
+                replace: true, 
+                onFinish: () => setIsLoading(false) 
+            }
+        );
+    }
+    
+    // ... (rest of the modal/delete functions remain the same) ...
 
     const openCreateModal = () => {
         setIsCreateModal(true);
@@ -89,6 +128,8 @@ export default function TransactionTypes() {
             confirmButtonText: 'Yes, delete it!',
         }).then((result) => {
             if (result.isConfirmed) {
+                // Set loading state on delete initiation
+                setIsLoading(true);
                 router.delete(route('transaction-types.destroy', id), {
                     onSuccess: () => {
                         Swal.fire({
@@ -101,24 +142,32 @@ export default function TransactionTypes() {
                             timer: 3000,
                         });
                     },
+                    onFinish: () => setIsLoading(false),
                 });
             }
         });
     };
 
+    // Extract pagination metadata from the types prop
+    const paginationProps = {
+        current_page: types.current_page,
+        last_page: types.last_page,
+        total: types.total,
+        per_page: types.per_page,
+    };
+
+
     return (
         <>
             <Head title="Transaction Types" />
             <AppLayout>
-                {/* Page wrapper (matches main-page light/dark gradient and text colors) */}
+                {/* ... (rest of the layout/header) ... */}
                 <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
-                    {/* Decorative radial glows (like main-page) */}
                     <div className="pointer-events-none absolute inset-0 overflow-hidden">
                         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
                         <div className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl dark:bg-red-600/15" />
                     </div>
 
-                    {/* Header (like main-page header) */}
                     <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
                             <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
@@ -130,7 +179,6 @@ export default function TransactionTypes() {
                         </div>
                     </header>
 
-                    {/* Content */}
                     <main className="relative z-10 mx-auto flex w-full flex-1 flex-col px-4 pt-6 pb-12 md:px-8 md:pt-10">
                         <div className="mx-auto w-full max-w-7xl">
                             {/* Card container */}
@@ -139,7 +187,7 @@ export default function TransactionTypes() {
                                     {/* Top bar */}
                                     <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                                         <h2 className="text-lg font-semibold tracking-wide text-slate-800 md:text-xl dark:text-slate-200">
-                                           <Button
+                                            <Button
                                                 onClick={openCreateModal}
                                                 disabled={isLoading}
                                                 className="rounded-xl bg-amber-400 px-4 py-2 font-semibold text-slate-900 hover:bg-amber-300 disabled:opacity-60"
@@ -147,7 +195,8 @@ export default function TransactionTypes() {
                                                 Create Transaction Type
                                             </Button>
                                         </h2>
-                                        <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
+                                        {/* 3. WRAP SEARCH INPUT AND BUTTON IN A FORM AND ADD BUTTON */}
+                                        <form onSubmit={handleSearch} className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
                                             <div className="relative w-full sm:w-72">
                                                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
                                                     <SearchIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
@@ -160,9 +209,9 @@ export default function TransactionTypes() {
                                                     className="w-full rounded-md border border-slate-300 bg-white py-2 pr-3 pl-8 text-sm text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-600"
                                                     disabled={isLoading}
                                                 />
-                                                {searchQuery.length > 0 && searchQuery.length < 3 && (
+                                                {searchQuery.length > 0 && searchQuery.trim().length < 3 && (
                                                     <p className="mt-1 text-xs text-rose-500 dark:text-rose-400">
-                                                        Type at least 3 characters to search
+                                                        Type at least 3 characters or click search
                                                     </p>
                                                 )}
                                                 {filters?.search && (
@@ -171,8 +220,17 @@ export default function TransactionTypes() {
                                                     </p>
                                                 )}
                                             </div>
-                                            
-                                        </div>
+                                            <Button 
+                                                type="submit" 
+                                                onClick={handleSearch}
+                                                disabled={isLoading}
+                                                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
+                                            >
+                                                <SearchIcon className="h-4 w-4 mr-1" />
+                                                Search
+                                            </Button>
+                                        </form>
+                                        
                                     </div>
 
                                     {/* Table */}
@@ -194,7 +252,8 @@ export default function TransactionTypes() {
                                                             className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
                                                         >
                                                             <TableCell className="text-center text-slate-700 dark:text-slate-200">
-                                                                {index + 1}
+                                                                {/* Calculate actual index based on current_page and per_page */}
+                                                                {(types.current_page - 1) * types.per_page + index + 1}
                                                             </TableCell>
                                                             <TableCell className="text-center text-slate-700 dark:text-slate-200">
                                                                 {type.name}
@@ -203,13 +262,14 @@ export default function TransactionTypes() {
                                                                 {type.description}
                                                             </TableCell>
                                                             <TableCell className="space-x-2 text-center">
-                                                                <Button size="sm" onClick={() => openEditModal(type)}>
+                                                                <Button size="sm" onClick={() => openEditModal(type)} disabled={isLoading}>
                                                                     <SquarePen className="h-4 w-4" />
                                                                 </Button>
                                                                 <Button
                                                                     size="sm"
                                                                     variant="destructive"
                                                                     onClick={() => confirmDelete(type.id)}
+                                                                    disabled={isLoading}
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
@@ -220,8 +280,9 @@ export default function TransactionTypes() {
                                                     <TableRow>
                                                         <TableCell colSpan={4} className="p-10">
                                                             <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
-                                                                <FileWarning className="mb-2 h-12 w-12 text-slate-400 dark:text-slate-500" />
-                                                                <p className="text-lg font-medium">No Transaction Types Found</p>
+                                                                <FileWarning className="h-12 w-12 text-muted-foreground" />
+                                                            <p className="text-xl font-semibold">No Records Found</p>
+                                                            <p className="text-muted-foreground"> "No results match your filters. Try adjusting your search criteria."</p>
                                                             </div>
                                                         </TableCell>
                                                     </TableRow>
@@ -229,6 +290,16 @@ export default function TransactionTypes() {
                                             </TableBody>
                                         </Table>
 
+                                        {/* 🔑 PAGINATION COMPONENT */}
+                                        <Pagination
+                                            pagination={paginationProps}
+                                            filters={filters}
+                                            baseUrl={route('transaction-types.index')}
+                                            isLoading={isLoading}
+                                            // The onPageChange prop should use handlePaginationChange if you want to centralize loading state here
+                                            onPageChange={(page) => handlePaginationChange(page, filters.per_page)}
+                                            onPerPageChange={(perPage) => handlePaginationChange(types.current_page, perPage)}
+                                        />
                                     </div>
                                 </div>
 
@@ -247,6 +318,12 @@ export default function TransactionTypes() {
                         DSWD Queuing System • Transaction Types
                     </footer>
                 </div>
+                {/* 🔑 MAIN LOADING OVERLAY (Full-Screen) */}
+                <LoadingOverlay 
+                    visible={isLoading} 
+                    title="Please wait..." 
+                    message="Fetching data from the server."
+                />
             </AppLayout>
         </>
     );
