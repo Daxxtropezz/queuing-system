@@ -16,7 +16,7 @@ export default function VideoPreviewModal({ video, isModalVisible, onClose }) {
             {/* Modal Box */}
             <div className="relative flex h-[90vh] w-[90%] max-w-6xl flex-col rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900">
                 {/* Close button */}
-                <button onClick={onClose} className="absolute top-6 right-6 text-2xl text-white hover:text-rose-400">
+                <button onClick={onClose} className="absolute top-6 right-6 text-2xl text-black hover:text-rose-400">
                     ✕
                 </button>
 

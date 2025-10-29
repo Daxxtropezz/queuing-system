@@ -3,99 +3,139 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react'; // 🔑 Import useMemo
+import Swal from 'sweetalert2'; // 🔑 Import Swal for toasts
 
 type VideoType = { id: number; title: string; description?: string | null; file_path?: string };
 type ModalProps = {
-  isModalVisible: boolean;
-  onClose: (open: boolean) => void;
-  video?: VideoType | null;
+ isModalVisible: boolean;
+ onClose: (open: boolean) => void;
+ video?: VideoType | null;
 };
 
 export default function VideoModal({ isModalVisible, onClose, video }: ModalProps) {
-  const isEditMode = !!video;
+ const isEditMode = !!video;
 
-  const { data, setData, post, processing, errors, reset } = useForm({
-    title: video?.title || '',
-    description: video?.description || '',
-    file_path: null as File | null,
-  });
+ const { data, setData, post, processing, errors, reset } = useForm({
+  title: video?.title || '',
+  description: video?.description || '',
+  file_path: null as File | null,
+ });
 
-  useEffect(() => {
-    if (isEditMode) {
-      setData({
-        title: video!.title,
-        description: video!.description || '',
-        file_path: null,
-      });
-    } else {
-      reset();
-    }
-  }, [isModalVisible, video]);
+ useEffect(() => {
+  if (isEditMode) {
+   setData({
+    title: video!.title,
+    description: video!.description || '',
+    file_path: null,
+   });
+  } else {
+   reset();
+  }
+ }, [isModalVisible, video]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+ // 🔑 NEW: Logic to determine if the form should be disabled
+ const isFormInvalid = useMemo(() => {
+  const hasTitle = data.title.trim().length > 0;
+    
+    // Create mode requires title AND a file
+  if (!isEditMode) {
+   return !hasTitle || !data.file_path;
+  } 
+    
+    // Edit mode only requires title to be present, file is optional
+    return !hasTitle;
+ }, [data.title, data.file_path, isEditMode]);
+
+
+ const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
+    
+    // Prevent submission if form is invalid
+    if (isFormInvalid) return;
+
 
   if (isEditMode) {
-    const formData: any = {
-      title: data.title,
-      description: data.description,
-      _method: 'put',
-    };
-
-    if (data.file_path) {
-      formData.file_path = data.file_path; // only add if a file is selected
-    }
-
-    post(route('videos.update', video!.id), {
-      data: formData,
-      forceFormData: true,
-      onSuccess: () => {
-        onClose(false);
-      },
-    });
+   // Update logic using PUT method via Inertia post helper for file uploads
+   post(route('videos.update', video!.id), {
+        // Must explicitly set _method to 'put' for Laravel route model binding with FormData
+        _method: 'put', 
+    forceFormData: true,
+    onSuccess: () => {
+     Swal.fire({title: 'Updated!', text: 'Video updated successfully.', icon: 'success', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false});
+     onClose(false);
+    },
+        onError: (errors) => {
+             console.error(errors);
+             Swal.fire({title: 'Error!', text: 'An error occurred while updating the video.', icon: 'error', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false});
+        }
+   });
   } else {
-    post(route('videos.store'), {
-      forceFormData: true,
-      onSuccess: () => {
-        onClose(false);
-      },
-    });
+   // Store logic
+   post(route('videos.store'), {
+    forceFormData: true,
+    onSuccess: () => {
+     Swal.fire({title: 'Uploaded!', text: 'Video uploaded successfully.', icon: 'success', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false});
+     onClose(false);
+    },
+      });
   }
-};
+ };
 
 
-  return (
-    <Dialog open={isModalVisible} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{isEditMode ? 'Edit Video' : 'Upload Video'}</DialogTitle>
-          <DialogDescription>{isEditMode ? 'Update video details.' : 'Upload a new video file.'}</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" value={data.title} onChange={(e) => setData('title', e.target.value)} className="col-span-3" />
-              {errors.title && <p className="col-span-4 text-red-500 text-sm">{errors.title}</p>}
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description">Description</Label>
-              <Input id="description" value={data.description} onChange={(e) => setData('description', e.target.value)} className="col-span-3" />
-              {errors.description && <p className="col-span-4 text-red-500 text-sm">{errors.description}</p>}
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="file_path">File</Label>
-              <Input id="file_path" type="file" accept="video/*" onChange={(e) => setData('file_path', e.target.files?.[0] ?? null)} className="col-span-3" />
-              {errors.file_path && <p className="col-span-4 text-red-500 text-sm">{errors.file_path}</p>}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={processing}>{isEditMode ? 'Update' : 'Upload'}</Button>
-            <Button type="button" variant="outline" onClick={() => onClose(false)}>Cancel</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+ return (
+  <Dialog open={isModalVisible} onOpenChange={onClose}>
+   <DialogContent className="max-w-lg border border-slate-200 bg-white/90 ring-1 ring-slate-200/60 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-slate-800/70 dark:bg-slate-900/80 dark:ring-slate-800/50">
+    <DialogHeader>
+     <DialogTitle className="text-slate-800 dark:text-slate-100">{isEditMode ? 'Edit Video' : 'Upload Video'}</DialogTitle>
+     <DialogDescription className="text-slate-600 dark:text-slate-400">
+      {isEditMode ? 'Update video details. Leave the file field blank to keep the current file.' : 'Upload a new video file. Fields marked with (*) are required.'}
+     </DialogDescription>
+    </DialogHeader>
+    <form onSubmit={handleSubmit}>
+     <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-4 items-center gap-4">
+       {/* 🔑 ADD RED ASTERISK */}
+       <Label htmlFor="title" className="text-slate-700 dark:text-slate-300">
+        Title <span className="text-red-500">*</span>
+       </Label>
+       <Input id="title" value={data.title} onChange={(e) => setData('title', e.target.value)} className="col-span-3" />
+       {errors.title && <p className="col-span-4 text-red-500 text-sm">{errors.title}</p>}
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+       <Label htmlFor="description" className="text-slate-700 dark:text-slate-300">Description</Label>
+       <Input id="description" value={data.description} onChange={(e) => setData('description', e.target.value)} className="col-span-3" />
+       {errors.description && <p className="col-span-4 text-red-500 text-sm">{errors.description}</p>}
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+       {/* 🔑 ADD RED ASTERISK (only in create mode) */}
+       <Label htmlFor="file_path" className="text-slate-700 dark:text-slate-300">
+        File {!isEditMode && <span className="text-red-500">*</span>}
+       </Label>
+       <Input id="file_path" type="file" accept="video/*" onChange={(e) => setData('file_path', e.target.files?.[0] ?? null)} className="col-span-3" />
+       {errors.file_path && <p className="col-span-4 text-red-500 text-sm">{errors.file_path}</p>}
+      </div>
+     </div>
+     <DialogFooter className="border-t border-slate-200 pt-4 dark:border-slate-800">
+      {/* 🔑 ADD DISABLED CONDITION */}
+      <Button 
+       type="submit" 
+       disabled={processing || isFormInvalid}
+       className="focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:outline-none"
+      >
+       {isEditMode ? 'Update' : 'Upload'}
+      </Button>
+      <Button 
+       type="button" 
+       variant="outline" 
+       onClick={() => onClose(false)}
+       className="focus-visible:ring-2 focus-visible:ring-slate-500/30 focus-visible:outline-none"
+      >
+       Cancel
+      </Button>
+     </DialogFooter>
+    </form>
+   </DialogContent>
+  </Dialog>
+ );
 }
