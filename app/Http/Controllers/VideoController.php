@@ -73,15 +73,13 @@ class VideoController extends Controller
 
     return redirect()->route('videos.index')->with('success', 'Video updated successfully.');
 }
+public function destroy(Video $video)
+{
+    // Don't attempt to delete the file here.
+    // Just delete the database record.
+    $video->delete();
 
+    return redirect()->back()->with('success', 'Video deleted.');
+}
 
-    public function destroy(Video $video)
-    {
-        if ($video->file_path && Storage::disk('public')->exists($video->file_path)) {
-            Storage::disk('public')->delete($video->file_path);
-        }
-        $video->delete();
-
-        return redirect()->back()->with('success', 'Video deleted.');
-    }
 }

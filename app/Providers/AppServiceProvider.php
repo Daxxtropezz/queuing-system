@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Video;
+use App\Observers\VideoObserver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
@@ -27,5 +29,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Prohibit destructive commands in production environment
         DB::prohibitDestructiveCommands($this->app->environment('production'));
+        
+        Video::observe(VideoObserver::class);
     }
 }

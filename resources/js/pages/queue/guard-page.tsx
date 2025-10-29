@@ -26,7 +26,6 @@ export default function GuardPage() {
 
     // Build a self-contained print document sized 80mm x 210mm, ticket at top-left
     function buildTicketHtml(type: string, number: string, datetime: string): string {
-        // Use public URL for logo
         const logoDSWD = '/img/dswd-ticket-logo.png';
         return `<!DOCTYPE html>
 <html>
@@ -34,25 +33,45 @@ export default function GuardPage() {
 <meta charset="utf-8">
 <title>Ticket</title>
 <style>
-  @page { size: 80mm 210mm; margin: 0; }
-  html, body { width: 80mm; height: 210mm; margin: 0; padding: 0; }
-  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .ticket {
-    position: absolute; top: 0; left: 0;
-    width: 80mm; height: 30mm; padding: 2mm; box-sizing: border-box;
-    display: block;
-    font-family: Arial, sans-serif; color: #000; text-align: center;
-    background: #fff;
+  /* ✅ Let height auto-adjust to content */
+ @page {
+  size: 80mm auto portrait;
+  margin: 0;
+}
+html, body {
+  width: 80mm;
+  margin: 0;
+  padding: 0;
+}
+
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    position: relative;
   }
+
+  .ticket {
+    margin: 0;
+    padding: 2mm;
+    width: 80mm;
+    box-sizing: border-box;
+    background: #fff;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    color: #000;
+  }
+
   .logo {
     width: 60mm;
     height: auto;
     margin: 0 auto 2mm auto;
     display: block;
   }
-  .type { font-weight: 700; font-size: 6mm; line-height: 1.1; }
-  .number { font-weight: 800; font-size: 16mm; line-height: 1; }
-  .datetime { font-size: 5mm; color: #333; line-height: 1.1; }
+
+  .type { font-weight: 700; font-size: 6mm; line-height: 1.1; margin: 0; }
+  .number { font-weight: 800; font-size: 16mm; line-height: 1; margin: 0; }
+  .datetime { font-size: 5mm; color: #333; line-height: 1.1; margin: 0; }
 </style>
 </head>
 <body>
@@ -65,6 +84,8 @@ export default function GuardPage() {
 </body>
 </html>`;
     }
+
+
 
     // Print via hidden iframe to avoid page CSS conflicting with print layout
     function printViaIframe(html: string): void {
@@ -117,72 +138,69 @@ export default function GuardPage() {
         setTimeout(tryPrint, 300);
     }
 
-    async function handleGenerate(value: number) {
-        if (processing || cooldown) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Please wait!',
-                text: 'You can only generate a new number every 5 seconds.',
-                confirmButtonColor: '#f59e0b'
-            });
-            return;
-        }
-
-        setCooldown(true); // 🚫 immediately lock buttons
-
-        try {
-            const { data: response } = await axios.post(route('queue.guard.generate'), {
-                ispriority: value,
-            });
-
-            let num = response.generatedNumber.toString().replace(/[^0-9]/g, '');
-            num = num.padStart(4, '0');
-            const typeLabel = value === 1 ? 'Priority' : 'Regular';
-
-            setGeneratedNumber(num);
-            setPriority(typeLabel);
-            setDialogOpen(true);
-
-            // Print immediately via isolated iframe (prevents blank/extra pages)
-            setTimeout(() => {
-                const nowDate = new Date();
-                const monthNames = ["Jan.", "Feb.", "Mar.", "Apr.", "May.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
-                const formattedDate = `${monthNames[nowDate.getMonth()]} ${nowDate.getDate()}, ${nowDate.getFullYear()}`;
-                const formattedTime = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const datetime = `${formattedDate} ${formattedTime}`;
-                const html = buildTicketHtml(typeLabel, num, datetime);
-                printViaIframe(html);
-
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Number Generated!',
-                    text: `Your ${typeLabel} number is ${num}`,
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true
-                });
-
-            }, 300);
-        } catch (error) {
-            console.error(error);
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'error',
-                title: 'Oops...',
-                text: 'Something went wrong while generating your number.',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
-
-        } finally {
-            // ⏳ Release after 5s
-            setTimeout(() => setCooldown(false), 5000);
-        }
+   async function handleGenerate(value: number) {
+    if (processing || cooldown) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Please wait!',
+            text: 'You can only generate a new number every 5 seconds.',
+            confirmButtonColor: '#f59e0b'
+        });
+        return;
     }
+
+    setCooldown(true);
+
+    try {
+        const { data: response } = await axios.post(route('queue.guard.generate'), {
+            ispriority: value,
+        });
+
+        let num = response.generatedNumber.toString().replace(/[^0-9]/g, '');
+        num = num.padStart(4, '0');
+        const typeLabel = value === 1 ? 'Priority' : 'Regular';
+
+        setGeneratedNumber(num);
+        setPriority(typeLabel);
+
+        // ✅ Print automatically right after generation
+        const nowDate = new Date();
+        const monthNames = ["Jan.", "Feb.", "Mar.", "Apr.", "May.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
+        const formattedDate = `${monthNames[nowDate.getMonth()]} ${nowDate.getDate()}, ${nowDate.getFullYear()}`;
+        const formattedTime = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const datetime = `${formattedDate} ${formattedTime}`;
+        const html = buildTicketHtml(typeLabel, num, datetime);
+        printViaIframe(html);
+
+        // ✅ Show success toast
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Number Generated!',
+            text: `Your ${typeLabel} number is ${num}`,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+
+    } catch (error) {
+        console.error(error);
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Something went wrong while generating your number.',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    } finally {
+        setTimeout(() => setCooldown(false), 5000);
+    }
+}
+
 
     return (
         <>
@@ -228,15 +246,6 @@ export default function GuardPage() {
                         </div>
                     </div>
                 </Dialog>
-
-                {/* Keep minimal print CSS in the page to avoid interfering with iframe-based printing */}
-                <style>
-                    {`
-                      @media print {
-                        @page { size: 80mm 60mm; margin: 0; }
-                      }
-                    `}
-                </style>
             </div>
         </>
     );
