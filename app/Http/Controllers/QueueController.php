@@ -29,20 +29,21 @@ class QueueController extends Controller
             ->limit(200)
             ->get();
 
-        $data = QueueTicket::with('transactionType')
-            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
-            ->get()
-            ->map(function ($ticket) {
-                return [
-                    'id' => $ticket->id,
-                    'number' => $ticket->formatted_number,
-                    'transaction_type' => $ticket->transactionType->name ?? '',
-                    'status' => $ticket->status,
-                    'served_by' => $ticket->served_by,
-                    'teller_id' => $ticket->teller_id,
-                ];
-            });
-
+         $data = QueueTicket::with(['transactionType'])
+        ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
+        ->get()
+        ->map(function ($ticket) {
+            return [
+                'id' => $ticket->id,
+                'number' => $ticket->formatted_number,
+                'transaction_type' => $ticket->transactionType->name ?? '',
+                'status' => $ticket->status,
+                'served_by' => $ticket->served_by,
+                'teller_id' => $ticket->teller_id,
+                // 'video_url' => $ticket->video?->file_path ? asset('storage/' . $ticket->video->file_path) : null,
+            ];
+        });
+        
         $boardData = [
             'serving' => $serving,
             'waiting' => $waiting,

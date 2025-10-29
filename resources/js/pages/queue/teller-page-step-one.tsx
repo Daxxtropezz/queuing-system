@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Swal from 'sweetalert2';
+import LoadingOverlay from "@/components/loading-overlay";
 
 type TellerPageStepOneProps = {
     userTellerNumber?: string;
@@ -40,6 +41,8 @@ export default function TellerPageStepOne() {
 
     const [manualOverrideNumber, setManualOverrideNumber] = useState("");
     const manualOverrideForm = useForm({ number: "", ispriority: "0" });
+
+    const showLoading = form.processing || manualOverrideForm.processing;
 
 
     useEffect(() => {
@@ -95,18 +98,28 @@ export default function TellerPageStepOne() {
         return () => clearInterval(intervalId);
     }, []);
 
+    // ✅ Toast alerts (top-end, timed)
     useEffect(() => {
-        if (page.props.flash?.no_found) {
-            Swal.fire({ icon: "error", title: "Not Found", text: page.props.flash.no_found });
-        } else if (page.props.flash?.no_show) {
-            Swal.fire({ icon: "warning", title: "No Show", text: page.props.flash.no_show });
-        } else if (page.props.flash?.success) {
-            Swal.fire({ icon: "success", title: "Success", text: page.props.flash.success });
-        } else if (page.props.flash?.error) {
-            Swal.fire({ icon: "error", title: "Error", text: page.props.flash.error });
-        } else if (page.props.flash?.message) {
-            Swal.fire({ icon: "info", title: "Notice", text: page.props.flash.message });
-        }
+        const commonConfig = {
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+            toast: true,
+            timerProgressBar: true,
+        };
+
+        const { flash } = page.props;
+
+        if (flash?.no_found)
+            Swal.fire({ ...commonConfig, icon: "error", title: "Not Found", text: flash.no_found });
+        else if (flash?.no_show)
+            Swal.fire({ ...commonConfig, icon: "warning", title: "No Show", text: flash.no_show });
+        else if (flash?.success)
+            Swal.fire({ ...commonConfig, icon: "success", title: "Success", text: flash.success });
+        else if (flash?.error)
+            Swal.fire({ ...commonConfig, icon: "error", title: "Error", text: flash.error });
+        else if (flash?.message)
+            Swal.fire({ ...commonConfig, icon: "info", title: "Notice", text: flash.message });
     }, [page.props.flash]);
 
 
@@ -166,16 +179,6 @@ export default function TellerPageStepOne() {
     };
 
     const handleManualOverride = () => {
-        // If there's a current client, require transaction type
-        if (current && !form.data.transaction_type_id) {
-            Swal.fire({
-                icon: "warning",
-                title: "Transaction Type Required",
-                text: "Please select a transaction type for the current client before serving another one.",
-            });
-            return;
-        }
-
         if (manualOverrideNumber.trim() === "") {
             Swal.fire({
                 icon: "warning",
@@ -203,6 +206,10 @@ export default function TellerPageStepOne() {
 
     return (
         <AppLayout breadcrumbs={[{ title: "Service Counter", href: "/queue/teller-step1" }]}>
+
+             {/* ✅ Overlay appears while processing */}
+            <LoadingOverlay visible={showLoading} title="Processing Request…" message="Please wait while we update the queue." />
+
             <Head title="Step 1 - Service Counter" />
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-slate-900 dark:from-slate-900 dark:to-slate-800 dark:text-slate-100">
                 <header className="w-full border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-800/90">

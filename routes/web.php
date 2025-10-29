@@ -41,7 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Optional: Add a new home route for authenticated users
     Route::get('/home', function () {
-        return redirect()->route('queue.teller');
+        return redirect()->route('queue.teller.step1');
     })->name('home.authenticated');
 });
 
