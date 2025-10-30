@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ippmis_app
+    container_name: queuing_app
     restart: unless-stopped
     volumes:
       - ./:/var/www/html
@@ -14,11 +14,11 @@ services:
 
   nginx:
     image: nginx:stable-alpine
-    container_name: ippmis_nginx
+    container_name: queuing_nginx
     restart: unless-stopped
     ports:
-      - "8082:8082"
-      - "8443:443"
+      - "8087:8087"
+      - "8448:443"
     volumes:
       - ./:/var/www/html
       - ./nginx/ssl:/etc/nginx/ssl:roy
@@ -26,10 +26,10 @@ services:
     depends_on:
       - app
     networks:
-      - ippmis_network
+      - queuing_network
 
 networks:
-  ippmis_network:
+  queuing_network:
     driver: bridge
 
 
