@@ -1,76 +1,48 @@
-# Use official PHP image with FPM and Ubuntu
 FROM php:8.4-fpm
-
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    nginx \
-    supervisor \
-    default-mysql-client \
-    nodejs \
-    npm \
-    libzip-dev \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libonig-dev \
-    libxml2-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN docker-php-ext-install \
-    pdo_mysql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    gd \
-    zip \
-    dom \
-    xml
-
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Create supervisor log directory
-RUN mkdir -p /var/log/supervisor
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy existing application directory contents
+# Install system dependencies, PHP extensions, Node.js, and Composer
+RUN apt-get update && apt-get install -y \
+    git nano unzip curl libpng-dev libonig-dev libxml2-dev zip libzip-dev \
+    gnupg2 ca-certificates build-essential \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Install Node.js v22.17.0 and npm
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && node -v && npm -v
+# Set ownership and permissions
+
+RUN chown -R www-data:www-data /var/www/html \
+    && find /var/www/html -type d -exec chmod 755 {} \; \
+    && find /var/www/html -type f -exec chmod 644 {} \; \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Install Composer globally
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Copy application files
 COPY . .
 
-# Recreate Laravel storage symlink
-RUN php artisan storage:link || true
-
-ENV COMPOSER_ALLOW_SUPERUSER=1
-ENV COMPOSER_NO_INTERACTION=1
-ENV COMPOSER_DISABLE_XDEBUG_WARN=1
-# ENV COMPOSER_DISABLE_NETWORK=1 
-
 # Install PHP dependencies
-RUN composer install --no-interaction --optimize-autoloader --no-dev
+RUN composer install 
 
-# Install Node.js dependencies and build assets
+# Install Node.js dependencies and build frontend assets
 RUN npm install && npm run build
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage
-RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
-RUN chmod -R 775 /var/www/html/storage
-RUN chmod -R 775 /var/www/html/bootstrap/cache
+# Set ownership and permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && find /var/www/html -type d -exec chmod 755 {} \; \
+    && find /var/www/html -type f -exec chmod 644 {} \; \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Copy Supervisor config
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Copy custom Nginx config
-COPY docker/nginx.conf /etc/nginx/nginx.conf
-
-# Expose port 9000 for PHP-FPM and 80 for Nginx
+# Expose port 9000 for PHP-FPM
 EXPOSE 9000
-EXPOSE 80
 
-# Start supervisor which will start both PHP-FPM and Nginx
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Start PHP-FPM
+CMD ["php-fpm"]
+
+
