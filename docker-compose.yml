@@ -1,20 +1,39 @@
+version: "3.8"
+
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: queuing-app
+    container_name: ippmis_app
     restart: unless-stopped
-    working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
-      - ./docker/nginx.conf:/etc/nginx/nginx.conf
-      - ./docker/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
     networks:
-      - laravel-network
+      - ippmis_network
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: ippmis_nginx
+    restart: unless-stopped
     ports:
-      - '2352:80'
+      - "8082:8082"
+      - "8443:443"
+    volumes:
+      - ./:/var/www/html
+      - ./nginx/ssl:/etc/nginx/ssl:roy
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - ippmis_network
 
 networks:
-  laravel-network:
+  ippmis_network:
     driver: bridge
+
+
+
+
+
+
