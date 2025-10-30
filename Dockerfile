@@ -15,10 +15,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && node -v && npm -v
 # Set ownership and permissions
 
-RUN chown -R www-data:www-data /var/www/html \
-    && find /var/www/html -type d -exec chmod 755 {} \; \
-    && find /var/www/html -type f -exec chmod 644 {} \; \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+#RUN chown -R www-data:www-data /var/www/html \
+#    && find /var/www/html -type d -exec chmod 755 {} \; \
+#    && find /var/www/html -type f -exec chmod 644 {} \; \
+#    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Install Composer globally
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -33,10 +33,10 @@ RUN composer install
 RUN npm install && npm run build
 
 # Set ownership and permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && find /var/www/html -type d -exec chmod 755 {} \; \
-    && find /var/www/html -type f -exec chmod 644 {} \; \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+#RUN chown -R www-data:www-data /var/www/html \
+#    && find /var/www/html -type d -exec chmod 755 {} \; \
+#    && find /var/www/html -type f -exec chmod 644 {} \; \
+#    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 
 # Expose port 9000 for PHP-FPM
