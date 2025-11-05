@@ -138,68 +138,68 @@ html, body {
         setTimeout(tryPrint, 300);
     }
 
-   async function handleGenerate(value: number) {
-    if (processing || cooldown) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Please wait!',
-            text: 'You can only generate a new number every 5 seconds.',
-            confirmButtonColor: '#f59e0b'
-        });
-        return;
+    async function handleGenerate(value: number) {
+        if (processing || cooldown) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Please wait!',
+                text: 'You can only generate a new number every 5 seconds.',
+                confirmButtonColor: '#f59e0b'
+            });
+            return;
+        }
+
+        setCooldown(true);
+
+        try {
+            const { data: response } = await axios.post(route('queue.guard.generate'), {
+                ispriority: value,
+            });
+
+            let num = response.generatedNumber.toString().replace(/[^0-9]/g, '');
+            num = num.padStart(4, '0');
+            const typeLabel = value === 1 ? 'Priority' : 'Regular';
+
+            setGeneratedNumber(num);
+            setPriority(typeLabel);
+
+            // ✅ Print automatically right after generation
+            const nowDate = new Date();
+            const monthNames = ["Jan.", "Feb.", "Mar.", "Apr.", "May.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
+            const formattedDate = `${monthNames[nowDate.getMonth()]} ${nowDate.getDate()}, ${nowDate.getFullYear()}`;
+            const formattedTime = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const datetime = `${formattedDate} ${formattedTime}`;
+            const html = buildTicketHtml(typeLabel, num, datetime);
+            printViaIframe(html);
+
+            // ✅ Show success toast
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Number Generated!',
+                text: `Your ${typeLabel} number is ${num}`,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: 'Oops...',
+                text: 'Something went wrong while generating your number.',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        } finally {
+            setTimeout(() => setCooldown(false), 5000);
+        }
     }
-
-    setCooldown(true);
-
-    try {
-        const { data: response } = await axios.post(route('queue.guard.generate'), {
-            ispriority: value,
-        });
-
-        let num = response.generatedNumber.toString().replace(/[^0-9]/g, '');
-        num = num.padStart(4, '0');
-        const typeLabel = value === 1 ? 'Priority' : 'Regular';
-
-        setGeneratedNumber(num);
-        setPriority(typeLabel);
-
-        // ✅ Print automatically right after generation
-        const nowDate = new Date();
-        const monthNames = ["Jan.", "Feb.", "Mar.", "Apr.", "May.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
-        const formattedDate = `${monthNames[nowDate.getMonth()]} ${nowDate.getDate()}, ${nowDate.getFullYear()}`;
-        const formattedTime = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const datetime = `${formattedDate} ${formattedTime}`;
-        const html = buildTicketHtml(typeLabel, num, datetime);
-        printViaIframe(html);
-
-        // ✅ Show success toast
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: 'Number Generated!',
-            text: `Your ${typeLabel} number is ${num}`,
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
-        });
-
-    } catch (error) {
-        console.error(error);
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'error',
-            title: 'Oops...',
-            text: 'Something went wrong while generating your number.',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
-        });
-    } finally {
-        setTimeout(() => setCooldown(false), 5000);
-    }
-}
 
 
     return (
@@ -226,11 +226,19 @@ html, body {
                             type="button"
                             size="lg"
                             disabled={cooldown}
-                            className="h-20 rounded-2xl text-xl font-bold bg-amber-400 text-black hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="h-auto min-h-[6rem] w-full rounded-2xl text-xl font-bold bg-amber-400 text-black hover:bg-amber-300 
+               disabled:opacity-50 disabled:cursor-not-allowed flex flex-col justify-center items-center 
+               px-3 py-3 text-center whitespace-normal break-words"
                             onClick={() => handleGenerate(1)}
                         >
-                            Priority
+                            <span>Priority</span>
+                            <span className="text-xs text-slate-900 italic font-normal mt-1 leading-tight text-center">
+                                For Senior Citizens, Pregnant Women, and Persons with Disabilities (PWD)
+                            </span>
                         </Button>
+
+
+
                     </CardContent>
                 </Card>
 
@@ -250,3 +258,4 @@ html, body {
         </>
     );
 }
+                                                                                                                                                                                                                                                                       

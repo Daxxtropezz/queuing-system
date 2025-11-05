@@ -10,7 +10,7 @@ type QueueTicket = {
     transaction_type?: { name: string } | null;
     status?: 'waiting' | 'serving' | string;
     served_by?: string | number;
-    teller_id?: string;
+    teller?: { id: number; name: string } | null;
     updated_at?: string;
     created_at?: string;
     ispriority?: number | boolean; // <-- added
@@ -116,6 +116,8 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     const waitingWrapRef = useRef<HTMLDivElement | null>(null);
     const [servingCapacity, setServingCapacity] = useState(4);
     const [waitingCapacity, setWaitingCapacity] = useState(4);
+
+    
 
     // Clock
     useEffect(() => {
@@ -577,7 +579,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                         {t.number}
                                                                                     </div>
                                                                                     <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                        {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                                         {t.teller?.name || '—'}
                                                                                     </div>
                                                                                 </div>
                                                                             ))
@@ -601,7 +603,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                         {t.number}
                                                                                     </div>
                                                                                     <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                        {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                                        {t.teller?.name || '—'}
                                                                                     </div>
                                                                                 </div>
                                                                             ))
@@ -684,14 +686,14 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                 {t.number}
                                                                             </div>
                                                                             <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                                  {t.teller?.name || '—'}
                                                                             </div>
                                                                         </div>
                                                                     </div>
 
 
                                                                 ))}
-                                                                {regularItems.length === 0 && <div className="text-xs text-slate-400">—</div>}
+                                                                {regularItems.length === 0 && <div className="text-xs text-slate-400">-</div>}
                                                             </div>
                                                         </div>
 
@@ -710,7 +712,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                 {t.number}
                                                                             </div>
                                                                             <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                {t.teller_id ? `Teller ${t.teller_id}` : '—'}
+                                                                                  {t.teller?.name || '—'}
                                                                             </div>
                                                                         </div>
                                                                     </div>

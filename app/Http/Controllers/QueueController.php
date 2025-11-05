@@ -29,21 +29,21 @@ class QueueController extends Controller
             ->limit(200)
             ->get();
 
-         $data = QueueTicket::with(['transactionType'])
-        ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
-        ->get()
-        ->map(function ($ticket) {
-            return [
-                'id' => $ticket->id,
-                'number' => $ticket->formatted_number,
-                'transaction_type' => $ticket->transactionType->name ?? '',
-                'status' => $ticket->status,
-                'served_by' => $ticket->served_by,
-                'teller_id' => $ticket->teller_id,
-                // 'video_url' => $ticket->video?->file_path ? asset('storage/' . $ticket->video->file_path) : null,
-            ];
-        });
-        
+        $data = QueueTicket::with(['transactionType'])
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => $ticket->transactionType->name ?? '',
+                    'status' => $ticket->status,
+                    'served_by' => $ticket->served_by,
+                    'teller_id' => $ticket->teller_id,
+                    // 'video_url' => $ticket->video?->file_path ? asset('storage/' . $ticket->video->file_path) : null,
+                ];
+            });
+
         $boardData = [
             'serving' => $serving,
             'waiting' => $waiting,
@@ -61,47 +61,94 @@ class QueueController extends Controller
 
     public function servingPage2()
     {
-        $serving = QueueTicket::with('transactionType')
-            ->where('status', 'serving')
-            ->where('step', 2)
-            ->whereNull('transaction_type_id')
-            ->orderByDesc('updated_at')
-            ->get();
+        Log::info('=== Serving Page 2: Start ===');
 
-        $waiting = QueueTicket::with('transactionType')
-            ->where('status', 'waiting')
-            ->where('step', 2) // <-- only step 2
-            ->orderBy('created_at')
-            ->limit(200)
-            ->get();
+        try {
+            // 1️⃣ Fetch serving queue
+            $serving = QueueTicket::with(['transactionType', 'teller'])
+                ->where('status', 'serving')
+                ->where('step', 2)
+                ->orderByDesc('updated_at')
+                ->get();
 
-        $data = QueueTicket::with('transactionType')
-            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
-            ->get()
-            ->map(function ($ticket) {
-                return [
-                    'id' => $ticket->id,
-                    'number' => $ticket->formatted_number,
-                    'transaction_type' => $ticket->transactionType->name ?? '',
-                    'status' => $ticket->status,
-                    'served_by' => $ticket->served_by,
-                    'teller_id' => $ticket->teller_id,
-                ];
-            });
+            Log::info('Serving tickets fetched', [
+                'count' => $serving->count(),
+                'sample' => optional($serving->first())->toArray(),
+            ]);
 
-        $boardData = [
-            'serving' => $serving,
-            'waiting' => $waiting,
-            'data' => $data,
-            'generated_at' => now()->toIso8601String(),
-        ];
+            // 2️⃣ Fetch waiting queue
+            $waiting = QueueTicket::with(['transactionType', 'teller'])
+                ->where('status', 'waiting')
+                ->where('step', 2)
+                ->orderBy('created_at')
+                ->limit(200)
+                ->get();
 
-        $transactionTypes = TransactionType::orderBy('name')->get(['id', 'name', 'description']);
+            Log::info('Waiting tickets fetched', [
+                'count' => $waiting->count(),
+                'sample' => optional($waiting->first())->toArray(),
+            ]);
 
-        return Inertia::render('queue/serving-board', [
-            'boardData' => $boardData,
-            'transactionTypes' => $transactionTypes,
-        ]);
+            // 3️⃣ Build data for table / board
+            $data = QueueTicket::with(['transactionType:id,name', 'teller:id,name'])
+                ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
+                ->get()
+                ->map(function ($ticket) {
+                    $teller = $ticket->teller; // capture the relation
+
+                    return [
+                        'id' => $ticket->id,
+                        'number' => $ticket->formatted_number,
+                        'transaction_type' => $ticket->transactionType->name ?? '',
+                        'status' => $ticket->status,
+                        'served_by' => $ticket->served_by,
+                        'teller_id' => $ticket->teller_id,
+                        'teller' => $teller ? [
+                            'id' => $teller->id,
+                            'name' => $teller->name,
+                        ] : null,
+                    ];
+                });
+
+            Log::info('Board data compiled', [
+                'count' => $data->count(),
+                'sample' => $data->first(),
+            ]);
+
+            // 4️⃣ Wrap into boardData structure
+            $boardData = [
+                'serving' => $serving,
+                'waiting' => $waiting,
+                'data' => $data,
+                'generated_at' => now()->toIso8601String(),
+            ];
+
+            Log::info('Final board data ready', [
+                'serving_count' => $serving->count(),
+                'waiting_count' => $waiting->count(),
+                'data_count' => $data->count(),
+            ]);
+
+            // 5️⃣ Load transaction types
+            $transactionTypes = TransactionType::orderBy('name')->get(['id', 'name', 'description']);
+
+            Log::info('Transaction types loaded', [
+                'count' => $transactionTypes->count(),
+            ]);
+
+            Log::info('=== Serving Page 2: Success ===');
+
+            return Inertia::render('queue/serving-board', [
+                'boardData' => $boardData,
+                'transactionTypes' => $transactionTypes,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error in servingPage2()', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
     }
 
     public function guardPage()
@@ -430,18 +477,18 @@ class QueueController extends Controller
     }
 
     public function setTransactionType(Request $request)
-{
-    $request->validate([
-        'ticket_id' => 'required|exists:queue_tickets,id',
-        'transaction_type_id' => 'required|exists:transaction_types,id',
-    ]);
+    {
+        $request->validate([
+            'ticket_id' => 'required|exists:queue_tickets,id',
+            'transaction_type_id' => 'required|exists:transaction_types,id',
+        ]);
 
-    $ticket = QueueTicket::findOrFail($request->ticket_id);
-    $ticket->transaction_type_id = $request->transaction_type_id;
-    $ticket->save();
+        $ticket = QueueTicket::findOrFail($request->ticket_id);
+        $ticket->transaction_type_id = $request->transaction_type_id;
+        $ticket->save();
 
-    return back();
-}
+        return back();
+    }
 
     //Step2: Teller Page
     public function tellerStep2Page(Request $request)
@@ -487,7 +534,7 @@ class QueueController extends Controller
                         'name' => $ticket->transactionType->name ?? '',
                     ],
                     'status' => $ticket->status,
-                    'is_priority' => (bool) $ticket->ispriority, 
+                    'is_priority' => (bool) $ticket->ispriority,
                 ];
             });
 
