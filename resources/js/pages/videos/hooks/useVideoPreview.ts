@@ -2,7 +2,7 @@ import Swal from 'sweetalert2';
 import { checkVideoExists } from '../utils/api';
 import type { VideoRecord } from '../types/types';
 
-const DEFAULT_TEXT = 'no video found, the video may have been deleted from the path. please check the path or upload a video again and delete this';
+const DEFAULT_TEXT = 'It may have been removed or the path is invalid. Please verify the path or re-upload the video.';
 
 type Options = {
     onOpen: (video: VideoRecord) => void;
@@ -19,7 +19,7 @@ export default function useVideoPreview({ onOpen, setGlobalLoading, onNotFoundTe
                 onOpen(video);
             } else {
                 Swal.fire({
-                    title: 'No Video Found',
+                    title: 'Video not found.',
                     text: onNotFoundText ?? DEFAULT_TEXT,
                     icon: 'warning',
                     toast: true,
