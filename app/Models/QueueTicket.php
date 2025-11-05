@@ -53,8 +53,9 @@ class QueueTicket extends Model
 
     public function teller()
     {
-        return $this->belongsTo(Teller::class);
+        return $this->belongsTo(Teller::class, 'teller_id');
     }
+
 
     public function servedBy()
     {
