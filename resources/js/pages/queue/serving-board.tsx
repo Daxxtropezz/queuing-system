@@ -32,21 +32,36 @@ interface Props {
 }
 
 // Lightweight, themed video slot used in the header corners.
-// Build a local playlist from storage/app/public/videos and auto-play/auto-next.
+// Build a playlist from backend /videos/active endpoint and auto-play/auto-next/loop.
 function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }) {
-    // Collect local videos from storage/app/public/videos (including subfolders). Supported: mp4, webm, ogg
-    const modules = import.meta.glob('/storage/app/public/videos/**/*.{mp4,webm,ogg}', { eager: true, as: 'url' }) as Record<string, string>;
-    const sources = useMemo(() => {
-        // Sort by path so playback is predictable
-        return Object.entries(modules)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([, url]) => url);
-    }, []);
+    type ActiveVideo = { id: number; title: string; description?: string | null; file_path: string; url: string };
+
+    const [videos, setVideos] = useState<ActiveVideo[]>([]);
     const [index, setIndex] = useState(0);
-    const hasVideos = sources.length > 0;
-    const src = hasVideos ? sources[index % sources.length] : null;
+    const hasVideos = videos.length > 0;
+    const src = hasVideos ? videos[index % videos.length]?.url : null;
     const videoRef = useRef<HTMLVideoElement | null>(null);
-    const [muted, setMuted] = useState(false);
+
+    // Fetch active videos from backend (non-deleted and file exists)
+    useEffect(() => {
+        let alive = true;
+        const load = async () => {
+            try {
+                const res = await fetch('/api/videos/active', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+                if (!res.ok) return;
+                const json = await res.json();
+                if (alive && json?.videos) setVideos(Array.isArray(json.videos) ? json.videos : []);
+            } catch (e) {
+                console.error('load videos error', e);
+            }
+        };
+        load();
+        const id = window.setInterval(load, 30000); // refresh every 30s in case files change
+        return () => {
+            alive = false;
+            window.clearInterval(id);
+        };
+    }, []);
 
     useEffect(() => {
         if (videoRef.current) {
@@ -55,14 +70,23 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
         }
     }, [src]);
 
-    const handleUnmute = () => {
-        if (videoRef.current) {
-            videoRef.current.muted = false;
-            videoRef.current.volume = 0.4; // force again
-            videoRef.current.play();
-            setMuted(false);
+    // Attempt autoplay unmuted first; if blocked, fallback to muted autoplay
+    useEffect(() => {
+        const el = videoRef.current;
+        if (!el || !src) return;
+        try {
+            el.muted = false;
+            el.volume = Math.max(el.volume, 0.4);
+            const p = el.play();
+            if (p && typeof p.then === 'function') {
+                p.catch(() => {
+                    try { el.muted = true; el.play().catch(() => { }); } catch { }
+                });
+            }
+        } catch {
+            try { el.muted = true; el.play().catch(() => { }); } catch { }
         }
-    };
+    }, [src]);
 
     return (
         <div className="h-[37.5vh] w-full overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 shadow-xl ring-1 ring-slate-200/60 backdrop-blur md:h-[37.5vh] lg:h-[42.5vh] xl:h-[47.5vh] dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
@@ -75,22 +99,18 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
                             className="h-full w-full object-cover"
                             src={src}
                             autoPlay
-                            muted={muted}
                             playsInline
+                            loop={videos.length === 1}
+                            preload="auto"
                             onLoadedData={() => {
-                                if (videoRef.current) videoRef.current.volume = 0.5;
+                                if (videoRef.current) {
+                                    videoRef.current.volume = 0.5;
+                                    try { videoRef.current.play().catch(() => { }); } catch { }
+                                }
                             }}
-                            onEnded={() => setIndex((i) => (i + 1) % sources.length)}
-                            onError={() => setIndex((i) => (i + 1) % sources.length)}
+                            onEnded={() => setIndex((i) => (i + 1) % Math.max(1, videos.length))}
+                            onError={() => setIndex((i) => (i + 1) % Math.max(1, videos.length))}
                         />
-                        {muted && (
-                            <button
-                                onClick={handleUnmute}
-                                className="absolute right-4 bottom-4 rounded-xl bg-black/60 px-3 py-1 text-sm font-medium text-white shadow-lg backdrop-blur-md hover:bg-black/80"
-                            >
-                                🔊 Unmute
-                            </button>
-                        )}
                     </>
                 ) : (
                     <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">
@@ -557,20 +577,16 @@ export default function MainPage({ boardData, transactionTypes = [], tellers = [
                                                 style={{ gridTemplateColumns: `repeat(${Math.max(1, waitingColumns.length)}, minmax(0, 1fr))` }}
                                             >
                                                 {waitingColumns.map((col) => {
-                                                    const perGroupCapacity = Math.max(
-                                                        3,
-                                                        Math.ceil(waitingCapacity / Math.max(1, waitingColumns.length))
-                                                    );
+                                                    const perGroupCapacity = Math.max(3, Math.ceil(waitingCapacity / Math.max(1, waitingColumns.length)));
+                                                    const isPri = (v: unknown) => v === 1 || v === true || String(v) === '1';
 
-                                                    // Concatenate priority first, then regular
                                                     const allTickets = [
-                                                        ...col.priority.filter((t) => [1, true, '1', 'true'].includes(t.ispriority)),
+                                                        ...col.priority.filter((t) => isPri(t.ispriority)),
                                                         ...col.regular,
                                                     ].slice(0, perGroupCapacity);
 
-                                                    const displayPriority = allTickets.filter((t) => [1, true, '1', 'true'].includes(t.ispriority));
-                                                    const displayRegular = allTickets.filter((t) => ![1, true, '1', 'true'].includes(t.ispriority));
-
+                                                    const displayPriority = allTickets.filter((t) => isPri(t.ispriority));
+                                                    const displayRegular = allTickets.filter((t) => !isPri(t.ispriority));
                                                     const queuedCount = col.priority.length + col.regular.length;
 
                                                     return (
@@ -589,52 +605,41 @@ export default function MainPage({ boardData, transactionTypes = [], tellers = [
 
                                                             {/* Two-column inner layout: left = Regular, right = Priority */}
                                                             <div className="grid grid-cols-2 gap-3">
-                                                                {/* Regular */}
-                                                                <div>
-                                                                    <div className="mb-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-                                                                        Regular
-                                                                    </div>
-                                                                    <div className="grid grid-cols-1 gap-2">
-                                                                        {displayRegular.length
-                                                                            ? displayRegular.map((t) => (
-                                                                                <div
-                                                                                    key={`w-reg-${t.id}`}
-                                                                                    className="flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
-                                                                                >
-                                                                                    <div className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">
-                                                                                        {t.number}
-                                                                                    </div>
-                                                                                    <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                        {getTellerName(t)}
-                                                                                    </div>
+                                                                <div className="space-y-3 overflow-auto" style={{ maxHeight: '56vh' }}>
+                                                                    {/* Regular waiting items */}
+                                                                    {displayRegular.length
+                                                                        ? displayRegular.map((t) => (
+                                                                            <div
+                                                                                key={`w-reg-${t.id}`}
+                                                                                className="flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50"
+                                                                            >
+                                                                                <div className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">
+                                                                                    {t.number}
                                                                                 </div>
-                                                                            ))
-                                                                            : <div className="text-xs text-slate-400">—</div>}
-                                                                    </div>
+                                                                                <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                                    {getTellerName(t)}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))
+                                                                        : <div className="text-xs text-slate-400">—</div>}
                                                                 </div>
-
-                                                                {/* Priority */}
-                                                                <div>
-                                                                    <div className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-                                                                        Priority
-                                                                    </div>
-                                                                    <div className="grid grid-cols-1 gap-2">
-                                                                        {displayPriority.length
-                                                                            ? displayPriority.map((t) => (
-                                                                                <div
-                                                                                    key={`w-prio-${t.id}`}
-                                                                                    className="flex flex-col items-center gap-1 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
-                                                                                >
-                                                                                    <div className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">
-                                                                                        {t.number}
-                                                                                    </div>
-                                                                                    <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                        {getTellerName(t)}
-                                                                                    </div>
+                                                                <div className="space-y-3 overflow-auto" style={{ maxHeight: '56vh' }}>
+                                                                    {/* Priority waiting items */}
+                                                                    {displayPriority.length
+                                                                        ? displayPriority.map((t) => (
+                                                                            <div
+                                                                                key={`w-prio-${t.id}`}
+                                                                                className="flex flex-col items-center gap-1 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner"
+                                                                            >
+                                                                                <div className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">
+                                                                                    {t.number}
                                                                                 </div>
-                                                                            ))
-                                                                            : <div className="text-xs text-slate-400">—</div>}
-                                                                    </div>
+                                                                                <div className="text-xs text-slate-600 dark:text-slate-300">
+                                                                                    {getTellerName(t)}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))
+                                                                        : <div className="text-xs text-slate-400">—</div>}
                                                                 </div>
                                                             </div>
                                                         </div>

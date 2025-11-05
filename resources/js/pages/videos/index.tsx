@@ -9,21 +9,35 @@ import { FileWarning, Search as SearchIcon, SquarePen, Trash2 } from 'lucide-rea
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 // 🔑 IMPORT NEW COMPONENTS
-import LoadingOverlay from '@/components/loading-overlay'; 
-import Pagination from '@/components/pagination'; 
+import LoadingOverlay from '@/components/loading-overlay';
+import Pagination from '@/components/pagination';
+
+type VideoRecord = { id: number; title: string; description?: string | null; file_path: string };
+interface Paginated<T> {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
+}
+interface PageProps {
+    videos: Paginated<VideoRecord>;
+    flash?: { success?: string; error?: string };
+    filters?: { search?: string; per_page?: number };
+}
 
 export default function Videos() {
-    const { videos, flash, filters = {} } = usePage().props;
+    const { videos, flash, filters = {} as PageProps['filters'] } = usePage<PageProps>().props;
     const [isCreateModalVisible, setIsCreateModal] = useState(false);
     const [isEditModalVisible, setIsEditModal] = useState(false);
-    const [selectedVideo, setSelectedVideo] = useState(null);
-    const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const [selectedVideo, setSelectedVideo] = useState<VideoRecord | null>(null);
+    const [searchQuery, setSearchQuery] = useState(filters?.search || '');
     const [isLoading, setIsLoading] = useState(false);
     const [isPreviewModalVisible, setIsPreviewModalVisible] = useState(false);
 
 
     useEffect(() => {
-        if (flash.success) {
+        if (flash?.success) {
             Swal.fire({
                 title: 'Success',
                 text: flash.success,
@@ -34,7 +48,7 @@ export default function Videos() {
                 showConfirmButton: false,
             });
         }
-        if (flash.error) {
+        if (flash?.error) {
             Swal.fire({
                 title: 'Error',
                 text: flash.error,
@@ -48,14 +62,14 @@ export default function Videos() {
     }, [flash]);
 
     // 1. UPDATED: Only update local state, remove automatic search
-    const onSearchInputChange = (e) => {
+    const onSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
     };
 
     // 2. NEW: Function to execute the search when the button is clicked or Enter is hit
-    const handleSearch = (e) => {
+    const handleSearch = (e: React.FormEvent) => {
         e.preventDefault(); // Prevents page reload if wrapped in a form
-        
+
         const finalQuery = searchQuery.trim();
         const minLength = 3;
 
@@ -64,11 +78,11 @@ export default function Videos() {
             setIsLoading(true);
             router.get(
                 route('videos.index'),
-                { 
-                    search: finalQuery, 
+                {
+                    search: finalQuery,
                     // Preserve current per_page setting
-                    per_page: filters.per_page 
-                }, 
+                    per_page: filters?.per_page
+                },
                 {
                     preserveState: true,
                     replace: true,
@@ -89,15 +103,15 @@ export default function Videos() {
     };
 
     // NEW: Function to handle page and per_page changes from the Pagination component
-    const handlePaginationChange = (page, perPage) => {
+    const handlePaginationChange = (page: number, perPage: number | undefined) => {
         setIsLoading(true);
         router.get(
             route('videos.index'),
             { ...filters, page: page, per_page: perPage },
-            { 
-                preserveState: true, 
-                replace: true, 
-                onFinish: () => setIsLoading(false) 
+            {
+                preserveState: true,
+                replace: true,
+                onFinish: () => setIsLoading(false)
             }
         );
     }
@@ -111,7 +125,7 @@ export default function Videos() {
         router.reload({ only: ['videos'] });
     };
 
-    const openEditModal = (video) => {
+    const openEditModal = (video: VideoRecord) => {
         setSelectedVideo(video);
         setIsEditModal(true);
     };
@@ -122,7 +136,7 @@ export default function Videos() {
         router.reload({ only: ['videos'] });
     };
 
-    const confirmDelete = (id) => {
+    const confirmDelete = (id: number) => {
         Swal.fire({
             title: 'Are you sure?',
             text: 'This action cannot be undone.',
@@ -149,14 +163,14 @@ export default function Videos() {
                     onError: (errors) => {
                         console.error(errors);
                         Swal.fire({
-                             title: 'Error!',
-                             text: 'An error occurred while deleting the video.',
-                             icon: 'error',
-                             toast: true,
-                             position: 'top-end',
-                             showConfirmButton: false,
-                             timer: 3000,
-                         });
+                            title: 'Error!',
+                            text: 'An error occurred while deleting the video.',
+                            icon: 'error',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                        });
                     },
                     onFinish: () => setIsLoading(false), // Reset loading state
                 });
@@ -164,7 +178,7 @@ export default function Videos() {
         });
     };
 
-    const openPreviewModal = (video) => {
+    const openPreviewModal = async (video: VideoRecord) => {
         setSelectedVideo(video);
         setIsPreviewModalVisible(true);
     };
@@ -173,7 +187,7 @@ export default function Videos() {
         setIsPreviewModalVisible(false);
         setSelectedVideo(null);
     };
-    
+
     // NEW: Extract pagination metadata from the videos prop
     const paginationProps = {
         current_page: videos.current_page,
@@ -243,8 +257,8 @@ export default function Videos() {
                                                     </p>
                                                 )}
                                             </div>
-                                            <Button 
-                                                type="submit" 
+                                            <Button
+                                                type="submit"
                                                 disabled={isLoading}
                                                 className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
                                             >
@@ -267,7 +281,7 @@ export default function Videos() {
                                             </TableHeader>
                                             <TableBody>
                                                 {videos?.data?.length > 0 ? (
-                                                    videos.data.map((video, index) => (
+                                                    videos.data.map((video: VideoRecord, index: number) => (
                                                         <TableRow key={video.id}>
                                                             <TableCell className="text-center">
                                                                 {/* Calculate actual index based on current_page and per_page */}
@@ -288,9 +302,9 @@ export default function Videos() {
                                                                 <Button size="sm" onClick={() => openEditModal(video)} disabled={isLoading}>
                                                                     <SquarePen className="h-4 w-4" />
                                                                 </Button>
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    variant="destructive" 
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="destructive"
                                                                     onClick={() => confirmDelete(video.id)}
                                                                     disabled={isLoading}
                                                                 >
@@ -304,7 +318,7 @@ export default function Videos() {
                                                         <TableCell colSpan={5} className="p-10">
                                                             <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
                                                                 <FileWarning className="mb-2 h-12 w-12 text-slate-400 dark:text-slate-500" />
-                                                                 <p className="text-xl font-semibold">No Records Found</p>
+                                                                <p className="text-xl font-semibold">No Records Found</p>
                                                                 <p className="text-muted-foreground"> "No results match your filters. Try adjusting your search criteria."</p>
                                                             </div>
                                                         </TableCell>
@@ -312,15 +326,15 @@ export default function Videos() {
                                                 )}
                                             </TableBody>
                                         </Table>
-                                        
+
                                         {/* 4. PAGINATION COMPONENT */}
                                         {videos.total > 0 && (
                                             <Pagination
                                                 pagination={paginationProps}
-                                                filters={filters}
+                                                filters={filters as Record<string, any>}
                                                 baseUrl={route('videos.index')}
                                                 isLoading={isLoading}
-                                                onPageChange={(page) => handlePaginationChange(page, filters.per_page)}
+                                                onPageChange={(page) => handlePaginationChange(page, filters?.per_page)}
                                                 onPerPageChange={(perPage) => handlePaginationChange(videos.current_page, perPage)}
                                             />
                                         )}
@@ -354,9 +368,9 @@ export default function Videos() {
                     </footer>
                 </div>
                 {/* 5. LOADING OVERLAY */}
-                <LoadingOverlay 
-                    visible={isLoading} 
-                    title="Processing Request..." 
+                <LoadingOverlay
+                    visible={isLoading}
+                    title="Processing Request..."
                     message="Please wait while the data is being updated."
                 />
             </AppLayout>
