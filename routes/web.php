@@ -132,7 +132,7 @@ Route::group(['middleware' => ['auth', 'role:Administrator']], routes: function 
 });
 
 // Queuing System Routes
-   // Step 1 Teller Page (restricted to Step1-Teller role)
+// Step 1 Teller Page (restricted to Step1-Teller role)
 Route::middleware(['auth', 'verified', 'role:Step1-Teller|Administrator'])->group(function () {
     Route::get('/queue/teller-step1', [QueueController::class, 'tellerStep1Page'])->name('queue.teller.step1');
     Route::post('/teller/assign-step1', [QueueController::class, 'assignTellerStep1'])->name('queue.teller.assign.step1');
@@ -144,7 +144,7 @@ Route::middleware(['auth', 'verified', 'role:Step1-Teller|Administrator'])->grou
     Route::post('/queue/teller-step1/search-no-show', [QueueController::class, 'searchNoShowTicket'])->name('queue.teller.step1.search-no-show');
     Route::post('/teller/serve-no-show', [QueueController::class, 'serveNoShow'])->name('queue.teller.serve-no-show');
     Route::post('/queue/teller/set-transaction-type', [QueueController::class, 'setTransactionType'])
-    ->name('queue.teller.setTransactionType');
+        ->name('queue.teller.setTransactionType');
 });
 
 // Step 2 Teller Page (restricted to Step2-Teller role)
@@ -156,7 +156,7 @@ Route::middleware(['auth', 'verified', 'role:Step2-Teller|Administrator'])->grou
     Route::post('/queue/teller/override-step2', [QueueController::class, 'overrideStep2Number'])->name('queue.teller.override.step2');
     Route::post('/teller/reset-step2', [QueueController::class, 'resetTellerStep2'])->name('queue.teller.reset.step2');
     Route::post('/queue/teller/step2/manual-override', [QueueController::class, 'manualOverrideStep2Number'])
-    ->name('queue.teller.step2.manual-override');
+        ->name('queue.teller.step2.manual-override');
     Route::post('/queue/teller-step2/search-no-show', [QueueController::class, 'searchNoShowStep2Ticket'])->name('queue.teller.step2.search-no-show');
     Route::post('/teller/serve-no-show-step2', [QueueController::class, 'serveNoShowStep2'])->name('queue.teller.serve-no-show.step2');
     Route::post('/queue/teller/no-show-step2', [QueueController::class, 'markNoShowStep2'])->name('queue.teller.no-show.step2');
@@ -183,13 +183,21 @@ Route::get('/queue/board-data', [QueueBoardController::class, 'data'])->name('qu
 // Public JSON endpoint for serving tickets (polled by main-page)
 Route::get('/queue/serving', [QueueController::class, 'servingIndex'])->name('queue.serving.index');
 
+// API endpoints (public) — avoid collision with /videos resource routes
+Route::get('/api/videos/active', [VideoController::class, 'active'])
+    ->name('api.videos.active')
+    ->withoutMiddleware(['auth']);
+
+Route::get('/api/videos/{video}/exists', [VideoController::class, 'exists'])
+    ->name('api.videos.exists')
+    ->withoutMiddleware(['auth']);
+
 // Audit Logs (Accounting Officer + Admin)
 Route::group(['middleware' => ['auth', 'verified', 'role:Administrator']], function () {
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 });
 Route::post('/log-activity', [AuditLogController::class, 'log'])
     ->middleware('auth');
-
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
