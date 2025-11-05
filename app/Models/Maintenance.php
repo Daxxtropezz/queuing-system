@@ -58,6 +58,7 @@ class Maintenance extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+         ->useLogName('Main Maintenance')
             ->logOnly([
                 'category_name',
                 'category_value',

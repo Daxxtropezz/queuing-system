@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Spatie\Activitylog\Models\Activity;
 
 class QueueController extends Controller
 {
@@ -233,6 +234,17 @@ class QueueController extends Controller
             ]);
         });
 
+        if ($ticket) {
+            activity()
+                ->inLog('Queue System')
+                ->performedOn($ticket)
+                ->withProperties([
+                    'number' => $ticket->formatted_number,
+                    'type' => $ticket->ispriority ? 'Priority' : 'Regular'
+                ])
+                ->log('generated');
+        }
+
         return response()->json([
             'generatedNumber' => optional($ticket)->formatted_number,
         ]);
@@ -349,6 +361,17 @@ class QueueController extends Controller
                 'started_at' => now(),
             ]);
 
+            // Log Activity: Ticket Grabbed (Step 1)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($next)
+                ->withProperties([
+                    'number' => $next->formatted_number,
+                    'priority' => $next->ispriority ? 'Priority' : 'Regular'
+                ])
+                ->log('grabbed_step1');
+
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
 
@@ -370,12 +393,25 @@ class QueueController extends Controller
         $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
 
         if ($current) {
+            $oldStatus = $current->status;
             $current->update([
                 'status' => 'ready_step2',
                 'finished_at' => now(),
                 'transaction_type_id' => $request->input('transaction_type_id', $current->transaction_type_id),
                 'remarks' => $request->input('remarks', $current->remarks),
             ]);
+
+            // Log Activity: Ticket Completed Step 1
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($current)
+                ->withProperties([
+                    'number' => $current->formatted_number,
+                    'old_status' => $oldStatus,
+                    'new_status' => $current->status
+                ])
+                ->log('completed_step1');
         }
 
         // Next ticket matching the same priority
@@ -393,6 +429,17 @@ class QueueController extends Controller
                 'transaction_type_id' => $next->transaction_type_id ?? $request->input('transaction_type_id'),
                 'remarks' => $next->remarks ?? '',
             ]);
+
+            // Log Activity: Next Ticket Grabbed (Step 1)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($next)
+                ->withProperties([
+                    'number' => $next->formatted_number,
+                    'priority' => $next->ispriority ? 'Priority' : 'Regular'
+                ])
+                ->log('grabbed_next_step1');
 
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
@@ -413,6 +460,7 @@ class QueueController extends Controller
         $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
 
         if ($current) {
+            $oldStatus = $current->status;
             $current->update([
                 'status' => 'no_show',
                 'step' => 1,
@@ -420,6 +468,17 @@ class QueueController extends Controller
                 'transaction_type_id' => $request->input('transaction_type_id', $current->transaction_type_id),
                 'remarks' => $request->input('remarks', $current->remarks),
             ]);
+            // Log Activity: Ticket Marked No Show (Step 1)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($current)
+                ->withProperties([
+                    'number' => $current->formatted_number,
+                    'old_status' => $oldStatus,
+                    'new_status' => $current->status
+                ])
+                ->log('no_show_step1');
         }
 
         $next = QueueTicket::where('status', 'waiting')
@@ -436,6 +495,17 @@ class QueueController extends Controller
                 'transaction_type_id' => $next->transaction_type_id ?? $request->input('transaction_type_id'),
                 'remarks' => $next->remarks ?? '',
             ]);
+
+            // Log Activity: Next Ticket Grabbed (Step 1)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($next)
+                ->withProperties([
+                    'number' => $next->formatted_number,
+                    'priority' => $next->ispriority ? 'Priority' : 'Regular'
+                ])
+                ->log('grabbed_next_after_no_show_step1');
 
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
@@ -482,17 +552,43 @@ class QueueController extends Controller
                 return back()->with('error', "Please select a transaction type for the current client ({$currentServing->formatted_number}) before serving another one.");
             }
 
+            $oldStatus = $currentServing->status;
             $currentServing->update([
                 'status' => 'ready_step2',
                 'finished_at' => now(),
             ]);
+
+            // Log Activity: Current Serving Completed (Manual Step 1 Override)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($currentServing)
+                ->withProperties([
+                    'number' => $currentServing->formatted_number,
+                    'old_status' => $oldStatus,
+                    'new_status' => $currentServing->status
+                ])
+                ->log('completed_step1_manual_override');
         }
 
+        $oldStatus = $ticket->status;
         $ticket->update([
             'status' => 'serving',
             'served_by' => $user->id,
             'started_at' => now(),
         ]);
+
+        // Log Activity: Ticket Served (Manual Step 1 Override)
+        activity()
+            ->inLog('Queue Action')
+            ->causedBy($user)
+            ->performedOn($ticket)
+            ->withProperties([
+                'number' => $ticket->formatted_number,
+                'old_status' => $oldStatus,
+                'new_status' => $ticket->status
+            ])
+            ->log('manual_grab_step1');
 
         return back()->with('success', "Now serving client: {$ticket->formatted_number}");
     }
@@ -510,15 +606,44 @@ class QueueController extends Controller
         }
 
         // End any current serving
-        QueueTicket::where('served_by', $user->id)
+        $currentServing = QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
-            ->update(['status' => 'ready_step2', 'finished_at' => now()]);
+            ->first();
 
+        if ($currentServing) {
+            $oldStatus = $currentServing->status;
+            $currentServing->update(['status' => 'ready_step2', 'finished_at' => now()]);
+            // Log Activity: Current Serving Completed (Serving No Show)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($currentServing)
+                ->withProperties([
+                    'number' => $currentServing->formatted_number,
+                    'old_status' => $oldStatus,
+                    'new_status' => $currentServing->status
+                ])
+                ->log('completed_step1_to_serve_no_show');
+        }
+
+        $oldStatus = $ticket->status;
         $ticket->update([
             'status' => 'serving',
             'served_by' => $user->id,
             'started_at' => now(),
         ]);
+
+        // Log Activity: No Show Ticket Resumed (Step 1)
+        activity()
+            ->inLog('Queue Action')
+            ->causedBy($user)
+            ->performedOn($ticket)
+            ->withProperties([
+                'number' => $ticket->formatted_number,
+                'old_status' => $oldStatus,
+                'new_status' => $ticket->status
+            ])
+            ->log('resumed_no_show_step1');
 
         return back()->with('success', "Now serving no show: {$ticket->formatted_number}");
     }
@@ -531,8 +656,22 @@ class QueueController extends Controller
         ]);
 
         $ticket = QueueTicket::findOrFail($request->ticket_id);
+        $oldTypeId = $ticket->transaction_type_id;
         $ticket->transaction_type_id = $request->transaction_type_id;
         $ticket->save();
+
+        // Log Activity: Transaction Type Set
+        $newType = TransactionType::find($request->transaction_type_id)->name ?? 'Unknown';
+        activity()
+            ->inLog('Queue Action')
+            ->causedBy($request->user())
+            ->performedOn($ticket)
+            ->withProperties([
+                'number' => $ticket->formatted_number,
+                'old_type_id' => $oldTypeId,
+                'new_type' => $newType
+            ])
+            ->log('set_transaction_type');
 
         return back();
     }
@@ -612,11 +751,30 @@ class QueueController extends Controller
             'ispriority' => 'required|in:0,1', // ✅ Added
         ]);
 
+        $oldTeller = $user->teller_id;
+        $oldTransType = $user->transaction_type_id;
+        $oldPriority = $user->ispriority;
+
         $user->update([
             'teller_id' => $request->teller_id,
             'transaction_type_id' => $request->transaction_type_id,
             'ispriority' => $request->ispriority,
         ]);
+
+        // Log Activity: Teller/Transaction Assigned
+        $tellerName = Teller::find($request->teller_id)->name ?? 'Unknown';
+        $transType = TransactionType::find($request->transaction_type_id)->name ?? 'Unknown';
+        activity()
+            ->inLog('User Setup')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->withProperties([
+                'old_teller_id' => $oldTeller,
+                'new_teller' => $tellerName,
+                'new_transaction_type' => $transType,
+                'new_priority' => $request->ispriority ? 'Priority' : 'Regular',
+            ])
+            ->log('assigned_teller_step2');
 
         return redirect()->route('queue.teller.step2');
     }
@@ -664,6 +822,18 @@ class QueueController extends Controller
                 'teller_id' => $user->teller_id,
                 'started_at' => now(),
             ]);
+
+            // Log Activity: Ticket Grabbed (Step 2)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($next)
+                ->withProperties([
+                    'number' => $next->formatted_number,
+                    'teller_id' => $user->teller_id
+                ])
+                ->log('grabbed_step2');
+
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
 
@@ -704,11 +874,28 @@ class QueueController extends Controller
         }
 
         // Mark current serving as done
-        QueueTicket::where('served_by', $user->id)
+        $current = QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
             ->where('step', 2)
             ->whereDate('created_at', now())
-            ->update(['status' => 'done', 'finished_at' => now()]);
+            ->first();
+
+        if ($current) {
+            $oldStatus = $current->status;
+            $current->update(['status' => 'done', 'finished_at' => now()]);
+
+            // Log Activity: Ticket Completed (Step 2)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($current)
+                ->withProperties([
+                    'number' => $current->formatted_number,
+                    'old_status' => $oldStatus,
+                    'new_status' => $current->status
+                ])
+                ->log('completed_step2');
+        }
 
         // ✅ Strict filter: must match teller’s transaction type AND priority
         $next = QueueTicket::where('status', 'ready_step2') // ✅ only done from Step 1
@@ -728,6 +915,17 @@ class QueueController extends Controller
                 'started_at' => now(),
             ]);
 
+            // Log Activity: Next Ticket Grabbed (Step 2)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($next)
+                ->withProperties([
+                    'number' => $next->formatted_number,
+                    'teller_id' => $user->teller_id
+                ])
+                ->log('grabbed_next_step2');
+
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }
 
@@ -745,14 +943,32 @@ class QueueController extends Controller
         }
 
         // Mark current serving as no_show and set step = 2
-        QueueTicket::where('served_by', $user->id)
+        $current = QueueTicket::where('served_by', $user->id)
             ->where('status', 'serving')
             ->whereDate('created_at', now())
-            ->update([
+            ->first();
+
+        if ($current) {
+            $oldStatus = $current->status;
+            $current->update([
                 'status' => 'no_show',
-                'step' => 2,            // ✅ ensure step is saved
+                'step' => 2,        // ✅ ensure step is saved
                 'finished_at' => now()
             ]);
+
+            // Log Activity: Current Ticket Marked No Show (Step 2 Override)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($current)
+                ->withProperties([
+                    'number' => $current->formatted_number,
+                    'old_status' => $oldStatus,
+                    'new_status' => $current->status
+                ])
+                ->log('no_show_override_step2');
+        }
+
 
         // Strict filter: must match teller’s transaction type AND priority
         $next = QueueTicket::where('status', 'ready_step2')
@@ -769,6 +985,17 @@ class QueueController extends Controller
                 'teller_id' => $user->teller_id,
                 'started_at' => now(),
             ]);
+
+            // Log Activity: Next Ticket Grabbed (Step 2 Override)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($next)
+                ->withProperties([
+                    'number' => $next->formatted_number,
+                    'teller_id' => $user->teller_id
+                ])
+                ->log('grabbed_next_after_override_step2');
 
             return back()->with('success', "Client skipped. Now serving: {$next->formatted_number}");
         }
@@ -812,10 +1039,24 @@ class QueueController extends Controller
             ->first();
 
         if ($currentServing) {
+            $oldStatus = $currentServing->status;
             $currentServing->update(['status' => 'done', 'finished_at' => now()]);
+
+            // Log Activity: Current Serving Completed (Manual Step 2 Override)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($currentServing)
+                ->withProperties([
+                    'number' => $currentServing->formatted_number,
+                    'old_status' => $oldStatus,
+                    'new_status' => $currentServing->status
+                ])
+                ->log('completed_step2_manual_override');
         }
 
         // Serve the chosen no_show ticket in Step 2
+        $oldStatus = $ticket->status;
         $ticket->update([
             'status' => 'serving',
             'step' => 2,
@@ -823,6 +1064,18 @@ class QueueController extends Controller
             'teller_id' => $user->teller_id,
             'started_at' => now(),
         ]);
+
+        // Log Activity: No Show Ticket Resumed (Manual Step 2)
+        activity()
+            ->inLog('Queue Action')
+            ->causedBy($user)
+            ->performedOn($ticket)
+            ->withProperties([
+                'number' => $ticket->formatted_number,
+                'old_status' => $oldStatus,
+                'new_status' => $ticket->status
+            ])
+            ->log('manual_resumed_no_show_step2');
 
         return back()->with('success', "Now serving no show client in Step 2: {$ticket->formatted_number}");
     }
@@ -837,11 +1090,24 @@ class QueueController extends Controller
             ->first();
 
         if ($ticket) {
+            $oldStatus = $ticket->status;
             $ticket->update([
                 'status' => 'no_show',
                 'step' => 2,
                 'finished_at' => now(),
             ]);
+
+            // Log Activity: Current Ticket Marked No Show (Step 2)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($ticket)
+                ->withProperties([
+                    'number' => $ticket->formatted_number,
+                    'old_status' => $oldStatus,
+                    'new_status' => $ticket->status
+                ])
+                ->log('no_show_step2');
 
             // ✅ after marking no_show, grab the next matching ticket
             $next = QueueTicket::where('status', 'ready_step2')
@@ -860,6 +1126,17 @@ class QueueController extends Controller
                     'started_at' => now(),
                 ]);
 
+                // Log Activity: Next Ticket Grabbed (Step 2 after No Show)
+                activity()
+                    ->inLog('Queue Action')
+                    ->causedBy($user)
+                    ->performedOn($next)
+                    ->withProperties([
+                        'number' => $next->formatted_number,
+                        'teller_id' => $user->teller_id
+                    ])
+                    ->log('grabbed_next_after_no_show_step2');
+
                 return back()->with('success', "Ticket {$ticket->formatted_number} marked as No Show. Now serving: {$next->formatted_number}");
             }
 
@@ -874,11 +1151,27 @@ class QueueController extends Controller
     {
         $user = $request->user();
 
+        $oldTeller = $user->teller_id;
+        $oldTransType = $user->transaction_type_id;
+        $oldPriority = $user->ispriority;
+
         $user->update([
             'teller_id' => null,
             'transaction_type_id' => null,
             'ispriority' => 0,
         ]);
+
+        // Log Activity: Teller/Transaction Reset
+        activity()
+            ->inLog('User Setup')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->withProperties([
+                'old_teller_id' => $oldTeller,
+                'old_transaction_type_id' => $oldTransType,
+                'old_priority' => $oldPriority,
+            ])
+            ->log('teller_reset_step2');
 
         return redirect()->route('queue.teller.step2')->with('success', 'Transaction type cleared. Please select a new transaction type and customer type.');
     }

@@ -43,42 +43,13 @@ export default function AuthFloatingCardLayout({ children, title, description }:
                         <AppLogoIcon className="size-12 h-10 fill-current text-black dark:text-white" />
                     </Link>
 
-                    {/* Content heading with hover-replace for developers */}
+                    {/* Content heading - the "developers" section is now removed */}
                     <div className="group relative mb-6 text-center">
                         <div className="relative inline-block">
-                            <h1 className="text-2xl font-semibold text-gray-800 transition-opacity duration-500 group-hover:opacity-0 dark:text-gray-100">
+                            <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
                                 {title}
                             </h1>
-                            {/* Hidden Team Boxes: replaces title on hover */}
-                            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center opacity-0 transition-opacity duration-700 group-hover:pointer-events-auto group-hover:opacity-100">
-                                <div className="flex flex-col items-center">
-                                    <span className="mb-2 text-xs font-bold tracking-widest text-gray-500 uppercase dark:text-gray-300">
-                                        Developers
-                                    </span>
-                                    <div className="flex flex-row items-end space-x-3">
-                                        <div className="flex w-32 flex-col items-center rounded-lg border border-gray-200 bg-white/90 p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900/90">
-                                            <img
-                                                src="/img/mm.png"
-                                                alt="Melbert Monteagudo"
-                                                className="mb-1 h-12 w-12 rounded-full bg-gray-200 object-cover"
-                                            />
-                                            <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Melbert Monteagudo</span>
-                                        </div>
-                                        <div className="flex w-32 flex-col items-center rounded-lg border border-gray-200 bg-white/90 p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900/90">
-                                            <img
-                                                src="/img/jm.png"
-                                                alt="John Paul Miraflores"
-                                                className="mb-1 h-12 w-12 rounded-full bg-gray-200 object-cover"
-                                            />
-                                            <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">John Paul Miraflores</span>
-                                        </div>
-                                        <div className="flex w-32 flex-col items-center rounded-lg border border-gray-200 bg-white/90 p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900/90">
-                                            <img src="/img/md.png" alt="Person 3" className="mb-1 h-12 w-12 rounded-full bg-gray-200 object-cover" />
-                                            <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Mc Joshua de Lima</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            {/* The whole "Hidden Team Boxes" div is removed */}
                         </div>
                         {description && <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{description}</p>}
                     </div>
