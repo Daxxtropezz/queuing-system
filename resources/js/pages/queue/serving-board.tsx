@@ -448,7 +448,7 @@ export default function MainPage({ boardData, transactionTypes = [], tellers = [
                         <div className="flex-shrink-0 px-4">
                             <h1 className="text-xl font-semibold tracking-wide text-slate-800 md:text-2xl lg:text-3xl dark:text-slate-200">
                                 <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-transparent dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">
-                                    Step 2
+                                    {"Step 2"}
                                 </span>
                             </h1>
                         </div>
