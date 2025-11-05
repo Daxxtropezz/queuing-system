@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TransactionType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class TransactionTypeController extends Controller
 {
@@ -51,7 +52,18 @@ class TransactionTypeController extends Controller
             'name' => 'required|unique:transaction_types,name|max:255',
             'description' => 'nullable|max:255',
         ]);
-        TransactionType::create($validated);
+        
+        $transactionType = TransactionType::create($validated);
+
+        // --- Activity Log: Created ---
+        activity()
+            ->inLog('Transaction Types')
+            ->performedOn($transactionType)
+            ->causedBy(Auth::user()) 
+            ->event('created')
+            ->log('Created a new transaction type: ' . $transactionType->name);
+        // -----------------------------
+
         return redirect()->route('transaction-types.index')->with('success', 'Transaction type created.');
     }
 
@@ -61,13 +73,42 @@ class TransactionTypeController extends Controller
             'name' => 'required|max:255|unique:transaction_types,name,' . $transactionType->id,
             'description' => 'nullable|max:255',
         ]);
+        
+        // Get original attributes for context in the log
+        $originalAttributes = $transactionType->getOriginal(); 
+
         $transactionType->update($validated);
+
+        // --- Activity Log: Updated ---
+        // Checks if any attributes were actually changed before logging
+        if ($transactionType->wasChanged()) { 
+            activity()
+                ->inLog('Transaction Types')
+                ->performedOn($transactionType)
+                ->causedBy(Auth::user())
+                ->event('updated')
+                ->withProperty('old', $originalAttributes) // Log original data
+                ->withProperty('new', $transactionType->getChanges()) // Log only changes
+                ->log('Updated transaction type: ' . $transactionType->name);
+        }
+        // -----------------------------
+
         return redirect()->route('transaction-types.index')->with('success', 'Transaction type updated.');
     }
 
     public function destroy(TransactionType $transactionType)
     {
+        // --- Activity Log: About to be deleted ---
+        activity()
+            ->inLog('Transaction Types')
+            ->performedOn($transactionType)
+            ->event('deleted')
+            ->causedBy(Auth::user())
+            ->log('Deleted transaction type: ' . $transactionType->name);
+        // -----------------------------------------
+
         $transactionType->delete();
+
         return redirect()->back()->with('success', 'Transaction type deleted.');
     }
 }

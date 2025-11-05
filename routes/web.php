@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivitylogsController;
+use App\Http\Controllers\AuditLogController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Config;
@@ -181,6 +182,13 @@ Route::get('/queue/board-data', [QueueBoardController::class, 'data'])->name('qu
 
 // Public JSON endpoint for serving tickets (polled by main-page)
 Route::get('/queue/serving', [QueueController::class, 'servingIndex'])->name('queue.serving.index');
+
+// Audit Logs (Accounting Officer + Admin)
+Route::group(['middleware' => ['auth', 'verified', 'role:Administrator']], function () {
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+});
+Route::post('/log-activity', [AuditLogController::class, 'log'])
+    ->middleware('auth');
 
 
 require __DIR__ . '/settings.php';

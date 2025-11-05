@@ -34,35 +34,13 @@ class RolePermissionSeeder extends Seeder
 
         // Create Permissions
         $permissions = [
-            'BarangayFocal',
-            'LGUFocal',
-            'ProvincialFocal',
-            'RegionalFocal',
-            'DSWDFocal',
-            'Sectoral',
-            'LedSecretariat',
+            'Step1-Teller',
+            'Step2-Teller',
             'Administrator',
-            'create case',
-            'edit case',
-            'delete case',
-            'create forms',
-            'edit forms',
-            'delete forms'
         ];
 
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
-        }
-
-        // Assign Permissions to Roles
-        $administrator = Role::where('name', 'Administrator')->first();
-        $barangayFocal = Role::where('name', 'BarangayFocal')->first();
-
-        if ($administrator) {
-            $administrator->givePermissionTo(['edit case', 'delete case', 'create forms', 'edit forms', 'delete forms']);
-        }
-        if ($barangayFocal) {
-            $barangayFocal->givePermissionTo(['create case', 'create forms']);
         }
     }
 }
