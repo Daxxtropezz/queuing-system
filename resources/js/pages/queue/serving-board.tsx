@@ -11,6 +11,7 @@ type QueueTicket = {
     status?: 'waiting' | 'serving' | string;
     served_by?: string | number;
     teller?: { id: number; name: string } | null;
+    teller_id?: number | string | null; // <-- added
     updated_at?: string;
     created_at?: string;
     ispriority?: number | boolean; // <-- added
@@ -27,6 +28,7 @@ interface BoardData {
 interface Props {
     boardData: BoardData;
     transactionTypes?: Array<{ id: number; name: string; description?: string;[key: string]: any }>;
+    tellers?: Array<{ id: number; name: string }>; // <-- added
 }
 
 // Lightweight, themed video slot used in the header corners.
@@ -100,7 +102,7 @@ function VideoSlot({ emptyText = 'No video configured' }: { emptyText?: string }
     );
 }
 
-export default function MainPage({ boardData, transactionTypes = [] }: Props) {
+export default function MainPage({ boardData, transactionTypes = [], tellers = [] }: Props) {
     const [servingTickets, setServingTickets] = useState<QueueTicket[]>(boardData.serving || []);
     const [waitingTickets, setWaitingTickets] = useState<QueueTicket[]>(boardData.waiting || []);
     const [loading, setLoading] = useState(false);
@@ -111,13 +113,37 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
     // Poll the board endpoint for step=2 data
     const BOARD_ENDPOINT = '/queue/board-data?step=2';
 
-    // Fit-to-screen: compute how many cards can be shown in each area.
+    // Build a map of teller_id -> name for fallback lookups
+    const tellerMap = useMemo(() => {
+        const m = new Map<number, string>();
+        for (const t of tellers || []) {
+            if (t && typeof t.id !== 'undefined') m.set(Number(t.id), t.name);
+        }
+        return m;
+    }, [tellers]);
+
+    // Helper to resolve teller name reliably
+    const getTellerName = (t: QueueTicket): string => {
+        if (t?.teller?.name) return t.teller.name;
+        if (t?.teller && typeof (t.teller as any).id !== 'undefined') {
+            const id = Number((t.teller as any).id);
+            const name = tellerMap.get(id);
+            if (name) return name;
+        }
+        if (typeof t?.teller_id !== 'undefined' && t?.teller_id !== null) {
+            const name = tellerMap.get(Number(t.teller_id));
+            if (name) return name;
+        }
+        return '—';
+    };
+
+    // Fit-to-screen refs & state
     const servingWrapRef = useRef<HTMLDivElement | null>(null);
     const waitingWrapRef = useRef<HTMLDivElement | null>(null);
     const [servingCapacity, setServingCapacity] = useState(4);
     const [waitingCapacity, setWaitingCapacity] = useState(4);
 
-    
+
 
     // Clock
     useEffect(() => {
@@ -579,7 +605,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                         {t.number}
                                                                                     </div>
                                                                                     <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                         {t.teller?.name || '—'}
+                                                                                        {getTellerName(t)}
                                                                                     </div>
                                                                                 </div>
                                                                             ))
@@ -603,7 +629,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                         {t.number}
                                                                                     </div>
                                                                                     <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                        {t.teller?.name || '—'}
+                                                                                        {getTellerName(t)}
                                                                                     </div>
                                                                                 </div>
                                                                             ))
@@ -616,8 +642,6 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                 })}
                                             </div>
                                         )}
-
-
                                     </div>
                                 </div>
                             </div>
@@ -686,7 +710,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                 {t.number}
                                                                             </div>
                                                                             <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                  {t.teller?.name || '—'}
+                                                                                {getTellerName(t)}
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -712,7 +736,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: Props) {
                                                                                 {t.number}
                                                                             </div>
                                                                             <div className="text-xs text-slate-600 dark:text-slate-300">
-                                                                                  {t.teller?.name || '—'}
+                                                                                {getTellerName(t)}
                                                                             </div>
                                                                         </div>
                                                                     </div>

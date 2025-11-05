@@ -115,10 +115,53 @@ class QueueController extends Controller
                 'sample' => $data->first(),
             ]);
 
+            // ✅ Normalize serving/waiting payloads to ensure teller object and formatted number are present
+            $servingList = $serving->map(function ($ticket) {
+                $teller = $ticket->teller;
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => [
+                        'name' => $ticket->transactionType->name ?? '',
+                    ],
+                    'status' => $ticket->status,
+                    'served_by' => $ticket->served_by,
+                    'teller_id' => $ticket->teller_id,
+                    'teller' => $teller ? [
+                        'id' => $teller->id,
+                        'name' => $teller->name,
+                    ] : null,
+                    'created_at' => optional($ticket->created_at)->toIso8601String(),
+                    'updated_at' => optional($ticket->updated_at)->toIso8601String(),
+                    'ispriority' => (int) $ticket->ispriority,
+                ];
+            });
+
+            $waitingList = $waiting->map(function ($ticket) {
+                $teller = $ticket->teller;
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => [
+                        'name' => $ticket->transactionType->name ?? '',
+                    ],
+                    'status' => $ticket->status,
+                    'served_by' => $ticket->served_by,
+                    'teller_id' => $ticket->teller_id,
+                    'teller' => $teller ? [
+                        'id' => $teller->id,
+                        'name' => $teller->name,
+                    ] : null,
+                    'created_at' => optional($ticket->created_at)->toIso8601String(),
+                    'updated_at' => optional($ticket->updated_at)->toIso8601String(),
+                    'ispriority' => (int) $ticket->ispriority,
+                ];
+            });
+
             // 4️⃣ Wrap into boardData structure
             $boardData = [
-                'serving' => $serving,
-                'waiting' => $waiting,
+                'serving' => $servingList,
+                'waiting' => $waitingList,
                 'data' => $data,
                 'generated_at' => now()->toIso8601String(),
             ];
@@ -136,11 +179,15 @@ class QueueController extends Controller
                 'count' => $transactionTypes->count(),
             ]);
 
+            // ✅ Also send tellers list for client-side fallback lookups by teller_id
+            $tellers = Teller::orderBy('name')->get(['id', 'name']);
+
             Log::info('=== Serving Page 2: Success ===');
 
             return Inertia::render('queue/serving-board', [
                 'boardData' => $boardData,
                 'transactionTypes' => $transactionTypes,
+                'tellers' => $tellers,
             ]);
         } catch (\Throwable $e) {
             Log::error('Error in servingPage2()', [
@@ -187,7 +234,7 @@ class QueueController extends Controller
         });
 
         return response()->json([
-            'generatedNumber' => $ticket->formatted_number,
+            'generatedNumber' => optional($ticket)->formatted_number,
         ]);
     }
 
@@ -807,6 +854,7 @@ class QueueController extends Controller
             if ($next) {
                 $next->update([
                     'status' => 'serving',
+                    'step' => 2,
                     'served_by' => $user->id,
                     'teller_id' => $user->teller_id,
                     'started_at' => now(),

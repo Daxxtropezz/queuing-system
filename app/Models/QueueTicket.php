@@ -12,6 +12,9 @@ class QueueTicket extends Model
 
     protected $table = 'queue_tickets';
 
+    // Always eager-load these relations so frontend receives teller/transactionType consistently
+    protected $with = ['teller', 'transactionType'];
+
     protected $fillable = [
         'step',
         'number',
