@@ -15,7 +15,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
 
   return (
     <SidebarGroup className="px-2 py-0">
-      <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+      <SidebarGroupLabel>{"Main Menu"}</SidebarGroupLabel>
       <SidebarMenu className="ml-4 overflow-x-hidden">
         {items.map((item) => (
           <NavItemComponent key={item.title} item={item} currentUrl={page.url} />

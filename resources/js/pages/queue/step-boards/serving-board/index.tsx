@@ -1,25 +1,30 @@
 import { Head } from '@inertiajs/react';
+import { useMemo } from 'react';
 import Box from '@/components/ui/box';
 
 import HeaderBar from './components/HeaderBar';
-import BrandTitle from './components/BrandTitle';
+import BrandTitle from '../components/BrandTitle';
 import DataWarning from './components/DataWarning';
-import VideoSlot from './components/VideoSlot';
 import WaitingList from './components/WaitingList';
 import ServingList from './components/ServingList';
 
 import { useBoardData } from './hooks/useBoardData';
 import { useCapacities } from './hooks/useCapacities';
 
-import type { MainPageProps } from './types';
+import type { ServingBoardPageProps, Teller } from './types';
+import { buildTellerMap, getTellerName as _getTellerName } from './utils';
+import VideoSlot from '../components/VideoSlot';
 
-export default function MainPage({ boardData, transactionTypes = [] }: MainPageProps) {
-    const { servingWrapRef, waitingWrapRef, servingCapacity } = useCapacities();
-    const { displayServingTickets, waitingTickets, loading, lastUpdated, redirectError } = useBoardData(boardData);
+export default function MainPage({ boardData, transactionTypes = [], tellers = [] }: ServingBoardPageProps) {
+    const { servingWrapRef, waitingWrapRef, servingCapacity, waitingCapacity } = useCapacities();
+    const { servingTickets, waitingTickets, loading, lastUpdated, redirectError } = useBoardData(boardData);
+
+    const tellerMap = useMemo(() => buildTellerMap(tellers as Teller[]), [tellers]);
+    const getTellerName = (t: any) => _getTellerName(t, tellerMap);
 
     return (
         <>
-            <Head title="Step 1" />
+            <Head title="Now Serving" />
             <Box className="relative flex h-screen min-h-screen flex-col overflow-hidden bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
                 <Box className="pointer-events-none absolute inset-0 overflow-hidden">
                     <Box className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
@@ -61,7 +66,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: MainPageP
                                             </>
                                         )}
 
-                                        <WaitingList waitingTickets={waitingTickets} transactionTypes={transactionTypes} />
+                                        <WaitingList waitingTickets={waitingTickets} waitingCapacity={waitingCapacity} transactionTypes={transactionTypes} getTellerName={getTellerName} />
                                     </Box>
                                 </Box>
                             </Box>
@@ -73,12 +78,12 @@ export default function MainPage({ boardData, transactionTypes = [] }: MainPageP
                                     <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-transparent dark:from-amber-500 dark:via-yellow-400 dark:to-amber-500">{"Serving List"}</span>
                                 </h2>
                                 <Box className="rounded-full bg-slate-200/70 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
-                                    {displayServingTickets.length} {"active"}
+                                    {servingTickets.length} {"active"}
                                 </Box>
                             </header>
 
                             <Box ref={servingWrapRef} className="min-h-0 flex-1 overflow-hidden">
-                                <ServingList tickets={displayServingTickets} servingCapacity={servingCapacity} loading={loading} />
+                                <ServingList servingTickets={servingTickets} servingCapacity={servingCapacity} transactionTypes={transactionTypes} getTellerName={getTellerName} />
                             </Box>
                         </section>
                     </Box>
