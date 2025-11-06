@@ -2,18 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Services\QueueService;
 use App\Models\QueueTicket;
 use App\Models\Teller;
 use App\Models\TransactionType;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use Spatie\Activitylog\Models\Activity;
 
 class QueueController extends Controller
 {
+    protected $queueService;
+
+    public function __construct(QueueService $queueService)
+    {
+        $this->queueService = $queueService;
+    }
+
     // Main page: show tellers and serving numbers
     public function mainPage()
     {
@@ -383,68 +390,37 @@ class QueueController extends Controller
     {
         $user = $request->user();
 
-        // Current ticket being served by this teller
-        $current = QueueTicket::where('served_by', $user->id)
-            ->where('status', 'serving')
-            ->where('step', 1)
-            ->whereDate('created_at', now())
-            ->first();
+        try {
+            DB::beginTransaction();
 
-        $ispriority = $current ? $current->ispriority : ($request->input('ispriority', 0));
+            $current = $this->queueService->getCurrentTicket($user, 1);
 
-        if ($current) {
-            $oldStatus = $current->status;
-            $current->update([
-                'status' => 'ready_step2',
-                'finished_at' => now(),
-                'transaction_type_id' => $request->input('transaction_type_id', $current->transaction_type_id),
-                'remarks' => $request->input('remarks', $current->remarks),
+            if ($current) {
+                $this->queueService->updateTicketStatus($current, 'ready_step2', $user);
+            }
+
+            $next = $this->queueService->getNextTicket([
+                'status' => 'waiting',
+                'ispriority' => $current ? $current->ispriority : $request->input('ispriority', 0)
             ]);
 
-            // Log Activity: Ticket Completed Step 1
-            activity()
-                ->inLog('Queue Action')
-                ->causedBy($user)
-                ->performedOn($current)
-                ->withProperties([
-                    'number' => $current->formatted_number,
-                    'old_status' => $oldStatus,
-                    'new_status' => $current->status
-                ])
-                ->log('completed_step1');
-        }
+            if ($next) {
+                $this->queueService->updateTicketStatus($next, 'serving', $user);
+                DB::commit();
+                return back()->with('success', "Now serving: {$next->formatted_number}");
+            }
 
-        // Next ticket matching the same priority
-        $next = QueueTicket::where('status', 'waiting')
-            ->where('ispriority', $ispriority)
-            ->whereDate('created_at', now())
-            ->orderBy('id')
-            ->first();
-
-        if ($next) {
-            $next->update([
-                'status' => 'serving',
-                'served_by' => $user->id,
-                'started_at' => now(),
-                'transaction_type_id' => $next->transaction_type_id ?? $request->input('transaction_type_id'),
-                'remarks' => $next->remarks ?? '',
+            DB::commit();
+            return back()->with('error', 'No customers found for this status.')
+                ->with('confirm_reset', true);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in nextStep1Number', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id
             ]);
-
-            // Log Activity: Next Ticket Grabbed (Step 1)
-            activity()
-                ->inLog('Queue Action')
-                ->causedBy($user)
-                ->performedOn($next)
-                ->withProperties([
-                    'number' => $next->formatted_number,
-                    'priority' => $next->ispriority ? 'Priority' : 'Regular'
-                ])
-                ->log('grabbed_next_step1');
-
-            return back()->with('success', "Now serving: {$next->formatted_number}");
+            return back()->with('error', 'An error occurred while processing the request.');
         }
-
-        return back()->with('error', 'No customers found for this status.')->with('confirm_reset', true);
     }
 
     // Step1: Mark current as no_show and get next
@@ -505,7 +481,7 @@ class QueueController extends Controller
                     'number' => $next->formatted_number,
                     'priority' => $next->ispriority ? 'Priority' : 'Regular'
                 ])
-                ->log('grabbed_next_after_no_show_step1');
+                ->log('grabbed_next_step1');
 
             return back()->with('success', "Now serving: {$next->formatted_number}");
         }

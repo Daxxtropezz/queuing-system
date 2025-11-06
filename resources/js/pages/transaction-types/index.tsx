@@ -161,7 +161,6 @@ export default function TransactionTypes() {
         <>
             <Head title="Transaction Types" />
             <AppLayout>
-                {/* ... (rest of the layout/header) ... */}
                 <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
                     <div className="pointer-events-none absolute inset-0 overflow-hidden">
                         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
@@ -227,7 +226,6 @@ export default function TransactionTypes() {
                                                 className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
                                             >
                                                 <SearchIcon className="h-4 w-4 mr-1" />
-                                                Search
                                             </Button>
                                         </form>
                                         

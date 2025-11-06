@@ -1,10 +1,9 @@
 import AppLayout from "@/layouts/app-layout";
 import { Head, router, usePage } from "@inertiajs/react";
-import { useState, useCallback } from "react";
-import { debounce } from "lodash";
-import AuditLogModal from "@/components/audit-modal";
+import { useState, useEffect } from "react";
+import Swal from "sweetalert2";
 
-// UI
+// Components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,26 +14,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  FileWarning,
-  Search as SearchIcon,
-} from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FileWarning, Search as SearchIcon, ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LoadingOverlay from "@/components/loading-overlay";
 import Pagination from "@/components/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import AuditLogModal from "@/components/audit-modal";
 
-
-// Types
 interface AuditLog {
   id: number;
   log_name: string;
@@ -68,16 +54,17 @@ export default function AuditLogs() {
 
   const [searchQuery, setSearchQuery] = useState(filters?.search || "");
   const [isLoading, setIsLoading] = useState(false);
-
-  // Sorting
   const [sortBy, setSortBy] = useState(filters?.sort_by || "created_at");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(
-    filters?.sort_direction || "desc"
-  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">(filters?.sort_direction || "desc");
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Debounced search
-  const performSearch = useCallback(
-    debounce((value: string) => {
+  // Handle search submit
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = searchQuery.trim();
+
+    if (value.length === 0 || value.length >= 3) {
       setIsLoading(true);
       router.get(
         route("audit-logs.index"),
@@ -85,44 +72,24 @@ export default function AuditLogs() {
         {
           preserveState: true,
           replace: true,
-          only: ["logs", "filters"],
           onFinish: () => setIsLoading(false),
         }
       );
-    }, 400),
-    [sortBy, sortDirection]
-  );
-
-  const onSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const value = searchQuery.trim();
-
-      // Only search if 3 or more characters, or if empty (to reset results)
-      if (value.length >= 3 || value.length === 0) {
-        setIsLoading(true);
-        router.get(
-          route("audit-logs.index"),
-          { search: value, sort_by: sortBy, sort_direction: sortDirection },
-          {
-            preserveState: true,
-            replace: true,
-            only: ["logs", "filters"],
-            onFinish: () => setIsLoading(false),
-          }
-        );
-      }
+    } else {
+      Swal.fire({
+        title: "Search Too Short",
+        text: "Please enter at least 3 characters or clear the field to reset.",
+        icon: "info",
+        toast: true,
+        position: "top-end",
+        timer: 3500,
+        showConfirmButton: false,
+      });
     }
   };
 
-  // Handle sorting
   const toggleSort = (column: string) => {
-    const direction =
-      sortBy === column && sortDirection === "asc" ? "desc" : "asc";
+    const direction = sortBy === column && sortDirection === "asc" ? "desc" : "asc";
     setSortBy(column);
     setSortDirection(direction);
     setIsLoading(true);
@@ -134,6 +101,7 @@ export default function AuditLogs() {
         search: searchQuery,
         sort_by: column,
         sort_direction: direction,
+        log_name: filters.log_name,
       },
       {
         preserveState: true,
@@ -143,238 +111,259 @@ export default function AuditLogs() {
     );
   };
 
-
-  // Modal state
-  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
   const openModal = (log: AuditLog) => {
     setSelectedLog(log);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
-    setIsModalOpen(false);
     setSelectedLog(null);
+    setIsModalOpen(false);
   };
-
-  const breadcrumbs = [{ title: "Audit Logs", href: "/audit-logs" }];
 
   return (
     <>
       <Head title="Audit Logs" />
-      <AppLayout breadcrumbs={breadcrumbs}>
-        <LoadingOverlay
-          visible={isLoading}
-          title="Switching View"
-          message="Loading new data, please wait..."
-          className="z-[60]"
-          animation="bounce"
-        />
-
-        <div className="py-10">
-          <div className="mx-4 sm:rounded-lg">
-            <div className="container mx-auto px-4 sm:px-8">
-              {/* Page Header */}
-              <div className="flex flex-col gap-2 mb-6">
-                <h1 className="text-2xl font-bold tracking-tight">Audit Logs</h1>
-                <p className="text-sm text-muted-foreground">
-                  Track system changes and user activities in real time.
-                </p>
-              </div>
-
-              {/* Filters */}
-              <div className="mb-6 flex flex-wrap gap-3 items-center justify-between bg-muted/40 p-4 rounded-xl">
-                {/* Search */}
-                <div className="relative w-full sm:w-72">
-                  <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={searchQuery}
-                    placeholder="Search logs..."
-                    onChange={onSearchInputChange}
-                    onKeyDown={onSearchKeyDown}
-                    maxLength={50}
-                    className="pl-8"
-                    disabled={isLoading}
-                  />
-
-                  {isLoading && (
-                    <span className="absolute right-2 top-2.5 h-4 w-4 animate-spin border-2 border-muted-foreground border-t-transparent rounded-full" />
-                  )}
-                </div>
-
-                {/* Log Name Filter */}
-                <Select
-                  value={filters.log_name ?? "all"}
-                  onValueChange={(value) => {
-                    setIsLoading(true);
-                    router.get(
-                      route("audit-logs.index"),
-                      {
-                        search: searchQuery,
-                        sort_by: sortBy,
-                        sort_direction: sortDirection,
-                        log_name: value === "all" ? undefined : value,
-                      },
-                      {
-                        preserveState: true,
-                        replace: true,
-                        only: ["logs", "filters"],
-                        onFinish: () => setIsLoading(false),
-                      }
-                    );
-                  }}
-                >
-                  <SelectTrigger className="w-full sm:w-60">
-                    <SelectValue placeholder="Filter by Log Name" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Logs</SelectItem>
-                    {logNames.map((name: string) => (
-                      <SelectItem key={name} value={name}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Table */}
-              <div className="overflow-x-auto rounded-xl border">
-                <Table className="w-full border-collapse">
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead>#</TableHead>
-                      <TableHead>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1"
-                          onClick={() => toggleSort("log_name")}
-                          disabled={isLoading}
-                        >
-                          Log Name
-                          {sortBy === "log_name" ? (
-                            sortDirection === "asc" ? (
-                              <ArrowUp className="h-4 w-4" />
-                            ) : (
-                              <ArrowDown className="h-4 w-4" />
-                            )
-                          ) : (
-                            <ArrowUpDown className="h-4 w-4 opacity-50" />
-                          )}
-                        </Button>
-                      </TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Event</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1"
-                          onClick={() => toggleSort("created_at")}
-                          disabled={isLoading}
-                        >
-                          Date
-                          {sortBy === "created_at" ? (
-                            sortDirection === "asc" ? (
-                              <ArrowUp className="h-4 w-4" />
-                            ) : (
-                              <ArrowDown className="h-4 w-4" />
-                            )
-                          ) : (
-                            <ArrowUpDown className="h-4 w-4 opacity-50" />
-                          )}
-                        </Button>
-                      </TableHead>
-                      <TableHead>Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      [...Array(logs.per_page || 10)].map((_, i) => (
-                        <TableRow key={i} className="animate-pulse">
-                          {[...Array(7)].map((__, j) => (
-                            <TableCell key={j}>
-                              <Skeleton className="mx-auto h-4 w-24" />
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))
-                    ) : logs.data.length ? (
-                      logs.data.map((log, i) => (
-                        <TableRow key={log.id} className="transition-opacity">
-                          <TableCell>
-                            {(logs.current_page - 1) * logs.per_page + i + 1}
-                          </TableCell>
-                          <TableCell>{log.log_name}</TableCell>
-                          <TableCell data-tippy-content={log.description || "-"}
-                            className="max-w-[200px] truncate cursor-help">
-                            {log.description && log.description.length > 20
-                              ? log.description.substring(0, 20) + "..."
-                              : log.description || "-"}
-                          </TableCell>
-                          <TableCell>{log.event || "-"}</TableCell>
-                          <TableCell>
-                            {log.causer
-                              ? `${log.causer.first_name?.charAt(0)}.${log.causer.last_name}`
-                              : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(log.created_at).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => openModal(log)}
-                            >
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="p-10 text-center">
-                          <div className="flex flex-col items-center justify-center space-y-3">
-                            <FileWarning className="h-12 w-12 text-muted-foreground" />
-                            <h3 className="text-lg font-semibold">No Logs Found</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Try adjusting filters or check again later.
-                            </p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              {/* ✅ Reusable Pagination */}
-              {logs.data.length > 0 && (
-                <Pagination
-                  pagination={{
-                    current_page: logs.current_page,
-                    last_page: logs.last_page,
-                    total: logs.total,
-                  }}
-                  filters={filters}
-                  baseUrl="/audit-logs"
-                  isLoading={isLoading}
-                />
-              )}
-            </div>
+      <AppLayout>
+        <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+          {/* Gradient Blobs */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
+            <div className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-amber-500/10 blur-3xl dark:bg-amber-600/15" />
           </div>
+
+          {/* Header */}
+          <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
+            <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
+              <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
+                Audit Logs
+              </h1>
+              <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
+                Track and review system activities and changes.
+              </p>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main className="relative z-10 mx-auto flex w-full flex-1 flex-col px-4 pt-6 pb-12 md:px-8 md:pt-10">
+            <div className="mx-auto w-full max-w-7xl">
+              {/* Card container */}
+              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-200/60 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
+                <div className="p-6">
+                  {/* Filters */}
+                  <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                    {/* Log Name Filter */}
+                    <Select
+                      value={filters.log_name ?? "all"}
+                      onValueChange={(value) => {
+                        setIsLoading(true);
+                        router.get(
+                          route("audit-logs.index"),
+                          {
+                            search: searchQuery,
+                            sort_by: sortBy,
+                            sort_direction: sortDirection,
+                            log_name: value === "all" ? undefined : value,
+                          },
+                          {
+                            preserveState: true,
+                            replace: true,
+                            only: ["logs", "filters"],
+                            onFinish: () => setIsLoading(false),
+                          }
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="w-full sm:w-60">
+                        <SelectValue placeholder="Filter by Log Name" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Logs</SelectItem>
+                        {logNames.map((name) => (
+                          <SelectItem key={name} value={name}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Search Bar */}
+                    <form
+                      onSubmit={handleSearch}
+                      className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center"
+                    >
+                      <div className="relative w-full sm:w-72">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
+                          <SearchIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                        </span>
+                        <Input
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search logs..."
+                          className="w-full rounded-md border border-slate-300 bg-white py-2 pr-3 pl-8 text-sm text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-600"
+                          disabled={isLoading}
+                        />
+                        {searchQuery.length > 0 && searchQuery.length < 3 && (
+                          <p className="mt-1 text-xs text-rose-500 dark:text-rose-400">
+                            Type at least 3 characters or click search
+                          </p>
+                        )}
+                        {filters?.search && (
+                          <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                            Showing results for "{filters.search}"
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
+                      >
+                        <SearchIcon className="h-4 w-4 mr-1" />
+                      </Button>
+                    </form>
+                  </div>
+
+                  {/* Table */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
+                    <Table className="w-full">
+                      <TableHeader className="bg-slate-50 dark:bg-slate-900/60">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="text-center w-12 text-slate-600 dark:text-slate-300">#</TableHead>
+                          <TableHead>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => toggleSort("log_name")}
+                              disabled={isLoading}
+                            >
+                              Log Name
+                              {sortBy === "log_name" ? (
+                                sortDirection === "asc" ? (
+                                  <ArrowUp className="h-4 w-4" />
+                                ) : (
+                                  <ArrowDown className="h-4 w-4" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-4 w-4 opacity-50" />
+                              )}
+                            </Button>
+                          </TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Event</TableHead>
+                          <TableHead>User</TableHead>
+                          <TableHead>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => toggleSort("created_at")}
+                              disabled={isLoading}
+                            >
+                              Date
+                              {sortBy === "created_at" ? (
+                                sortDirection === "asc" ? (
+                                  <ArrowUp className="h-4 w-4" />
+                                ) : (
+                                  <ArrowDown className="h-4 w-4" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-4 w-4 opacity-50" />
+                              )}
+                            </Button>
+                          </TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isLoading ? (
+                          [...Array(8)].map((_, i) => (
+                            <TableRow key={i}>
+                              {[...Array(7)].map((_, j) => (
+                                <TableCell key={j}>
+                                  <Skeleton className="mx-auto h-4 w-24" />
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))
+                        ) : logs.data.length ? (
+                          logs.data.map((log, i) => (
+                            <TableRow key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                              <TableCell className="text-center">
+                                {(logs.current_page - 1) * logs.per_page + i + 1}
+                              </TableCell>
+                              <TableCell>{log.log_name}</TableCell>
+                              <TableCell className="max-w-[200px] truncate" title={log.description || "-"}>
+                                {log.description || "-"}
+                              </TableCell>
+                              <TableCell>{log.event || "-"}</TableCell>
+                              <TableCell>
+                                {log.causer
+                                  ? `${log.causer.first_name?.charAt(0)}.${log.causer.last_name}`
+                                  : "-"}
+                              </TableCell>
+                              <TableCell>{new Date(log.created_at).toLocaleString()}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => openModal(log)}
+                                >
+                                  View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={7} className="p-10 text-center">
+                              <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
+                                <FileWarning className="h-12 w-12 text-muted-foreground" />
+                                <p className="text-xl font-semibold">No Logs Found</p>
+                                <p className="text-muted-foreground">Try adjusting filters or search again later.</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {logs.data.length > 0 && (
+                      <Pagination
+                        pagination={{
+                          current_page: logs.current_page,
+                          last_page: logs.last_page,
+                          total: logs.total,
+                        }}
+                        filters={filters}
+                        baseUrl="/audit-logs"
+                        isLoading={isLoading}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+
+          {/* Footer */}
+          <footer className="relative z-10 mt-auto w-full border-t border-slate-200/70 bg-white/80 py-4 text-center text-xs font-medium tracking-wide text-slate-600 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
+            DSWD Queuing System • Audit Logs
+          </footer>
         </div>
 
+        {/* Modal */}
+        {isModalOpen && (
+          <AuditLogModal
+            isOpen={isModalOpen}
+            onClose={closeModal}
+            log={selectedLog}
+          />
+        )}
 
-
-        <AuditLogModal
-          isOpen={isModalOpen}
-          onClose={closeModal}
-          log={selectedLog}
-        />
+        {/* Loading Overlay */}
+        <LoadingOverlay visible={isLoading} title="Please wait..." message="Fetching audit logs..." />
       </AppLayout>
     </>
   );

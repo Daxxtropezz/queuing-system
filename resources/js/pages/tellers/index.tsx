@@ -229,7 +229,6 @@ export default function Tellers() {
                                                 className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
                                             >
                                                 <SearchIcon className="h-4 w-4 mr-1" />
-                                                Search
                                             </Button>
                                         </form>
                                     </div>
