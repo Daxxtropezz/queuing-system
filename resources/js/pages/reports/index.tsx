@@ -6,21 +6,13 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { FileWarning, Download, Filter, BarChart3, Calendar, User, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend,
-} from "chart.js";
-import { Bar } from "react-chartjs-2";
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
+import SummaryCards from '@/components/reports/summary-cards';
+import ServiceTimeChart from '@/components/reports/service-time-chart';
+import LoadingOverlay from '@/components/loading-overlay';
+import Pagination from '@/components/pagination';
 
 export default function Reports() {
-    const { tickets, summary, tellers, types, filters } = usePage().props;
+    const { tickets, summary, users, types, filters } = usePage().props;
     const [isLoading, setIsLoading] = useState(false);
 
     const onFilterChange = (name: string, value: any) => {
@@ -31,35 +23,35 @@ export default function Reports() {
         );
     };
 
-   const exportExcel = () => {
-    // Create a form and submit it
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = route('reports.export');
-    
-    // Add CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = '_token';
-    csrfInput.value = csrfToken;
-    form.appendChild(csrfInput);
-    
-    // Add filter parameters
-    Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = value;
-            form.appendChild(input);
-        }
-    });
-    
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-};
+    const exportExcel = () => {
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = route('reports.export');
+
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+
+        // Add filter parameters
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = value;
+                form.appendChild(input);
+            }
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    };
 
     const statusOptions = [
         { value: '', label: 'All Statuses' },
@@ -84,53 +76,21 @@ export default function Reports() {
         }
     };
 
-    const chartData = {
-        labels: tickets.data.map((t) => t.formatted_number),
-        datasets: [
+    const handlePaginationChange = (page: number, perPage?: number) => {
+        setIsLoading(true);
+        router.get(
+            route('reports.index'),
             {
-                label: "Service Time (s)",
-                data: tickets.data.map((t) =>
-                    t.started_at && t.finished_at
-                        ? Math.round(
-                            (new Date(t.finished_at).getTime() -
-                            new Date(t.started_at).getTime()) /
-                            1000
-                        )
-                        : 0
-                ),
-                backgroundColor: "#f59e0b",
-                borderRadius: 6,
+                ...filters,
+                page,
+                per_page: perPage || filters.per_page
             },
-        ],
-    };
-
-    const chartOptions = {
-        responsive: true,
-        plugins: {
-            legend: {
-                display: false,
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => `${context.raw} sec`,
-                },
-            },
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                title: {
-                    display: true,
-                    text: "Seconds",
-                },
-            },
-            x: {
-                title: {
-                    display: true,
-                    text: "Queue Number",
-                },
-            },
-        },
+            {
+                preserveState: true,
+                replace: true,
+                onFinish: () => setIsLoading(false),
+            }
+        );
     };
 
     return (
@@ -169,19 +129,22 @@ export default function Reports() {
                             <CardContent>
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Teller</label>
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">User</label>
                                         <div className="relative">
                                             <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                                             <select
-                                                className="w-full rounded-md border pl-10 pr-3 py-2 bg-white dark:bg-slate-800"
-                                                value={filters.teller_id || ''}
-                                                onChange={(e) => onFilterChange('teller_id', e.target.value)}
+                                                className="w-full rounded-md border pl-10 pr-3 py-2 bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100"
+                                                value={filters.served_by || ''}
+                                                onChange={(e) => onFilterChange('served_by', e.target.value)}
                                             >
-                                                <option value="">All Tellers</option>
-                                                {tellers.map((t) => (
-                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                <option value="">All Users</option>
+                                                {users.map((u) => (
+                                                    <option key={u.id} value={u.id}>
+                                                        {u.name || `${u.first_name} ${u.last_name}` || u.username || 'Unnamed'}
+                                                    </option>
                                                 ))}
                                             </select>
+
                                         </div>
                                     </div>
 
@@ -241,71 +204,8 @@ export default function Reports() {
                             </CardContent>
                         </Card>
 
-                        {/* KPI Summary Cards */}
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardDescription>Total Tickets</CardDescription>
-                                    <CardTitle className="text-3xl">{summary.total}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-xs text-slate-500">
-                                        All transactions in selected period
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardDescription>Served Tickets</CardDescription>
-                                    <CardTitle className="text-3xl">{summary.served}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-xs text-slate-500">
-                                        {summary.total > 0 ? Math.round((summary.served / summary.total) * 100) : 0}% completion rate
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardDescription>Avg Service Time</CardDescription>
-                                    <CardTitle className="text-3xl">{Math.round(summary.avg_service_time || 0)}s</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-xs text-slate-500">
-                                        Average time per transaction
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardDescription>Total Service Time</CardDescription>
-                                    <CardTitle className="text-3xl">
-                                        {Math.round(summary.avg_service_time * summary.served || 0)}s
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-xs text-slate-500">
-                                        Combined service time across all transactions
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* KPI Chart */}
-                        <Card className="mb-8">
-                            <CardHeader>
-                                <CardTitle>Service Time Analysis</CardTitle>
-                                <CardDescription>Time spent per transaction (in seconds)</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="h-80">
-                                    <Bar data={chartData} options={chartOptions} />
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <SummaryCards data={summary} />
+                        <ServiceTimeChart data={tickets.data} />
 
                         {/* KPI Table */}
                         <Card>
@@ -318,13 +218,9 @@ export default function Reports() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Queue #</TableHead>
-                                            <TableHead>Teller</TableHead>
+                                            {/* 🚨 CHANGED: Column Header from 'Teller' to 'User' */}
+                                            <TableHead>User</TableHead>
                                             <TableHead>Transaction</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Wait Time</TableHead>
-                                            <TableHead>Service Time</TableHead>
-                                            <TableHead>Total Time</TableHead>
-                                            <TableHead>Date</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -333,7 +229,7 @@ export default function Reports() {
                                                 const created = new Date(t.created_at);
                                                 const started = t.started_at ? new Date(t.started_at) : null;
                                                 const finished = t.finished_at ? new Date(t.finished_at) : null;
-                                                
+
                                                 const waitTime = started ? Math.round((started.getTime() - created.getTime()) / 1000) : null;
                                                 const serviceTime = started && finished ? Math.round((finished.getTime() - started.getTime()) / 1000) : null;
                                                 const totalTime = waitTime && serviceTime ? waitTime + serviceTime : null;
@@ -341,18 +237,9 @@ export default function Reports() {
                                                 return (
                                                     <TableRow key={t.id}>
                                                         <TableCell className="font-medium">{t.formatted_number}</TableCell>
-                                                        <TableCell>{t.served_by?.name || '-'}</TableCell>
+                                                        {/* 🚨 CHANGED: Displaying servedBy name (assuming User model has 'name' attribute or a similar accessor) */}
+                                                        <TableCell>{t.served_by?.name || t.served_by?.first_name || '-'}</TableCell>
                                                         <TableCell>{t.transaction_type?.name}</TableCell>
-                                                        <TableCell>
-                                                            <div className="flex items-center gap-2">
-                                                                {getStatusIcon(t.status)}
-                                                                <span className="capitalize">{t.status.replace('_', ' ')}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell>{waitTime ? `${waitTime}s` : '-'}</TableCell>
-                                                        <TableCell>{serviceTime ? `${serviceTime}s` : '-'}</TableCell>
-                                                        <TableCell>{totalTime ? `${totalTime}s` : '-'}</TableCell>
-                                                        <TableCell>{new Date(t.created_at).toLocaleDateString()}</TableCell>
                                                     </TableRow>
                                                 );
                                             })
@@ -366,9 +253,31 @@ export default function Reports() {
                                         )}
                                     </TableBody>
                                 </Table>
+
+                                {tickets.data.length > 0 && (
+                                    <Pagination
+                                        pagination={{
+                                            current_page: tickets.current_page,
+                                            last_page: tickets.last_page,
+                                            total: tickets.total,
+                                            per_page: tickets.per_page,
+                                        }}
+                                        filters={filters}
+                                        baseUrl={route('reports.index')}
+                                        isLoading={isLoading}
+                                        onPageChange={(page) => handlePaginationChange(page)}
+                                        onPerPageChange={(perPage) => handlePaginationChange(1, perPage)}
+                                    />
+                                )}
                             </CardContent>
                         </Card>
                     </main>
+
+                    <LoadingOverlay
+                        visible={isLoading}
+                        title="Please wait..."
+                        message="Processing your request..."
+                    />
                 </div>
             </AppLayout>
         </>
