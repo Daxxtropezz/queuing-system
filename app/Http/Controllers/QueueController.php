@@ -54,7 +54,7 @@ class QueueController extends Controller
 
         $transactionTypes = TransactionType::orderBy('name')->get(['id', 'name', 'description']);
 
-        return Inertia::render('queue/main-page/index', [
+        return Inertia::render('queue/step-boards/main-page/index', [
             'boardData' => $boardData,
             'transactionTypes' => $transactionTypes,
         ]);
@@ -185,7 +185,7 @@ class QueueController extends Controller
 
             Log::info('=== Serving Page 2: Success ===');
 
-            return Inertia::render('queue/serving-board/index', [
+            return Inertia::render('queue/step-boards/serving-board/index', [
                 'boardData' => $boardData,
                 'transactionTypes' => $transactionTypes,
                 'tellers' => $tellers,

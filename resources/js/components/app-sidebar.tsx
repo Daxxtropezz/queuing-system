@@ -65,7 +65,7 @@ export function AppSidebar() {
                     href: '/videos',
                     icon: Video,
                 },
-                 {
+                {
                     title: 'Audit Logs',
                     href: '/audit-logs',
                     icon: ScrollText,
@@ -79,6 +79,21 @@ export function AppSidebar() {
         });
     }
 
+    if (isAdmin || isTellerStep1) {
+        mainNavItems.push({
+            title: "Step 1 - Serving Board",
+            href: "/queue/step-1",
+            icon: UserCheck,
+        });
+    }
+    if (isAdmin || isTellerStep2) {
+        mainNavItems.push({
+            title: "Step 2 - Serving Board",
+            href: "/queue/step-2",
+            icon: UserCheck,
+        });
+    }
+
     // const footerNavItems: NavItem[] = [
     //     {
     //         title: 'User Management',
@@ -88,7 +103,7 @@ export function AppSidebar() {
     // ];
 
     return (
-<Sidebar collapsible="icon" variant="inset" className="overflow-x-hidden max-w-full">
+        <Sidebar collapsible="icon" variant="inset" className="overflow-x-hidden max-w-full">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
