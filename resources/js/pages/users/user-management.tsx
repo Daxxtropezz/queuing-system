@@ -38,6 +38,7 @@ interface UsersProps {
 
 export default function UserIndex() {
     const { users, filters, roles } = usePage<UsersProps>().props;
+    const authUser = usePage().props.auth.user as User;
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [roleModalOpen, setRoleModalOpen] = useState(false);
@@ -268,15 +269,17 @@ export default function UserIndex() {
                                                                 </span>
                                                             </TableCell>
                                                             <TableCell className="text-center">
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => openRoleModal(user)}
-                                                                    className="text-xs"
-                                                                    disabled={isLoading}
-                                                                >
-                                                                    Change Role
-                                                                </Button>
+                                                                {authUser.id !== user.id && (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => openRoleModal(user)}
+                                                                        className="text-xs"
+                                                                        disabled={isLoading}
+                                                                    >
+                                                                        Change Role
+                                                                    </Button>
+                                                                )}
                                                             </TableCell>
                                                         </TableRow>
                                                     ))
