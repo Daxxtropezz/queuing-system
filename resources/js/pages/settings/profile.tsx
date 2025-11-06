@@ -1,113 +1,157 @@
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Transition } from '@headlessui/react';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
-
-import HeadingSmall from '@/components/heading-small';
-import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import HeadingSmall from '@/components/heading-small';
 import Box from '@/components/ui/box';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Profile settings',
-        href: '/settings/profile',
-    },
+    { title: 'Profile settings', href: '/settings/profile' },
 ];
-
-type ProfileForm = {
-    name: string;
-    email: string;
-};
 
 export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: boolean; status?: string }) {
     const { auth } = usePage<SharedData>().props;
+    const { user } = auth;
+    const [loading, setLoading] = useState(true);
 
-    const { data, setData, patch, errors } = useForm<Required<ProfileForm>>({
-        name: auth.user.first_name + ' ' + auth.user.last_name,
-        email: auth.user.email,
-    });
+    useEffect(() => {
+        const timer = setTimeout(() => setLoading(false), 1200);
+        return () => clearTimeout(timer);
+    }, []);
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
-
-        patch(route('profile.update'), {
-            preserveScroll: true,
-        });
-    };
+    const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Profile settings" />
 
             <SettingsLayout>
-                <Box className="space-y-6">
-                    <HeadingSmall title="Profile information" description="Update your name and email address" />
+                <Box className="space-y-8">
+                    <HeadingSmall
+                        title="Profile Overview"
+                        description="Your personal information and account details."
+                    />
 
-                    <form onSubmit={submit} className="space-y-6">
-                        <Box className="grid gap-2">
-                            <Label htmlFor="name">{"Name"}</Label>
+                    <Card className="overflow-hidden shadow-lg transition-all hover:shadow-xl">
+                        <CardContent className="p-8 space-y-10">
+                            {loading ? (
+                                <>
+                                    <div className="grid gap-8 md:grid-cols-2">
+                                        <SkeletonAvatar />
+                                        <SkeletonSection title="Personal Details" />
+                                    </div>
+                                    <SkeletonFullWidthSection title="Organization Info" />
+                                </>
+                            ) : (
+                                <>
+                                    {/* Top Section: Two Columns */}
+                                    <div className="grid gap-8 md:grid-cols-2">
+                                        {/* Left Column — Avatar + Badges */}
+                                        <Box className="flex flex-col items-center justify-center gap-3">
+                                            <Avatar className="h-28 w-28 border-4 border-background shadow-lg">
+                                                <AvatarImage
+                                                    src={`https://api.dicebear.com/9.x/fun-emoji/svg?backgroundType=gradientLinear,solid&seed=${user.first_name}%20${user.last_name}`}
+                                                    alt={`${user.first_name} ${user.last_name}`}
+                                                />
+                                                <AvatarFallback className="text-2xl font-semibold">
+                                                    {initials}
+                                                </AvatarFallback>
+                                            </Avatar>
 
-                            <Input
-                                id="name"
-                                className="mt-1 block w-full text-center"
-                                value={data.name}
-                                onChange={(e) => setData('name', e.target.value)}
-                                required
-                                autoComplete="name"
-                                placeholder="Full name"
-                                disabled
-                            />
+                                            <Box className="flex flex-wrap justify-center gap-2">
+                                                <Badge variant="secondary">{user.position || 'No Position'}</Badge>
+                                                <Badge variant="secondary">{user.role || 'User'}</Badge>
+                                            </Box>
+                                        </Box>
 
-                            <InputError className="mt-2" message={errors.name} />
-                        </Box>
+                                        {/* Right Column — Personal Details */}
+                                        <InfoSection
+                                            title="Personal Details"
+                                            details={[
+                                                { label: 'Employee ID', value: user.id_number || '—' },
+                                                { label: 'Full Name', value: `${user.first_name} ${user.last_name}` },
+                                                { label: 'Email Address', value: user.email },
+                                            ]}
+                                        />
+                                    </div>
 
-                        <Box className="grid gap-2">
-                            <Label htmlFor="email">{"Email address"}</Label>
-
-                            <Input
-                                id="email"
-                                type="email"
-                                className="mt-1 block w-full text-center"
-                                value={data.email}
-                                onChange={(e) => setData('email', e.target.value)}
-                                required
-                                autoComplete="username"
-                                placeholder="Email address"
-                                disabled
-                            />
-
-                            <InputError className="mt-2" message={errors.email} />
-                        </Box>
-
-                        {mustVerifyEmail && auth.user.email_verified_at === null && (
-                            <Box>
-                                <p className="text-muted-foreground -mt-4 text-sm">
-                                    {"Your email address is unverified. "}
-                                    <Link
-                                        href={route('verification.send')}
-                                        method="post"
-                                        as="button"
-                                        className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
-                                    >
-                                        {"Click here to resend the verification email."}
-                                    </Link>
-                                </p>
-
-                                {status === 'verification-link-sent' && (
-                                    <Box className="mt-2 text-sm font-medium text-green-600">
-                                        {"A new verification link has been sent to your email address."}
+                                    {/* Full Width Organization Info */}
+                                    <Box className="pt-2 md:col-span-2">
+                                        <InfoSection
+                                            title="Organization Info"
+                                            details={[
+                                                { label: 'Division', value: user.division || '—' },
+                                                { label: 'Section', value: user.section || '—' },
+                                            ]}
+                                        />
                                     </Box>
-                                )}
-                            </Box>
-                        )}
-                    </form>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
                 </Box>
             </SettingsLayout>
         </AppLayout>
     );
+}
+
+/* Info Section Component */
+function InfoSection({
+    title,
+    details,
+}: {
+    title: string;
+    details: { label: string; value: string }[];
+}) {
+    return (
+        <Box className="space-y-4">
+            <h3 className="text-lg font-semibold">{title}</h3>
+            <Separator />
+            <Box className="space-y-3">
+                {details.map((item, index) => (
+                    <Box key={index} className="flex flex-col">
+                        <span className="text-sm font-medium text-muted-foreground">{item.label}</span>
+                        <span className="text-base font-semibold">{item.value}</span>
+                    </Box>
+                ))}
+            </Box>
+        </Box>
+    );
+}
+
+/* Skeleton Components */
+function SkeletonSection({ title }: { title: string }) {
+    return (
+        <Box className="space-y-4">
+            <Box className="h-5 w-40 rounded-md bg-muted" />
+            <Separator />
+            <Box className="space-y-3">
+                <Skeleton className="h-5 w-48 rounded-md" />
+                <Skeleton className="h-5 w-56 rounded-md" />
+            </Box>
+        </Box>
+    );
+}
+
+function SkeletonFullWidthSection({ title }: { title: string }) {
+    return (
+        <Box className="space-y-4">
+            <Box className="h-5 w-40 rounded-md bg-muted" />
+            <Separator />
+            <Box className="space-y-3">
+                <Skeleton className="h-5 w-80 rounded-md" />
+                <Skeleton className="h-5 w-64 rounded-md" />
+            </Box>
+        </Box>
+    );
+}
+
+function SkeletonAvatar() {
+    return <Skeleton className="h-28 w-28 rounded-full" />;
 }
