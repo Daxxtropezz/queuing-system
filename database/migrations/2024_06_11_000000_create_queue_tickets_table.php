@@ -24,11 +24,16 @@ public function up()
         // Status: waiting, serving, finished
         $table->string('status')->default('waiting');
 
-        $table->foreignId('served_by')->nullable()->constrained('users');
+        $table->foreignId('served_by_step1')->nullable()->constrained('users');
+        $table->foreignId('served_by_step2')->nullable()->constrained('users');
         $table->boolean('ispriority')->default(0);
 
-        $table->timestamp('started_at')->nullable(); 
-        $table->timestamp('finished_at')->nullable();
+        // Per-step timestamps
+        $table->timestamp('started_at_step1')->nullable();
+        $table->timestamp('finished_at_step1')->nullable();
+        $table->timestamp('started_at_step2')->nullable();
+        $table->timestamp('finished_at_step2')->nullable();
+
         $table->timestamps();
     });
 }

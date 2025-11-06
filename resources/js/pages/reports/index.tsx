@@ -12,7 +12,7 @@ import LoadingOverlay from '@/components/loading-overlay';
 import Pagination from '@/components/pagination';
 
 export default function Reports() {
-    const { tickets, summary, users, types, filters } = usePage().props;
+    const { tickets, summary, users, types, filters, step1Done = [], step2Done = [], groupedStep1 = {}, groupedStep2 = {} } = usePage().props;
     const [isLoading, setIsLoading] = useState(false);
 
     const onFilterChange = (name: string, value: any) => {
@@ -205,7 +205,93 @@ export default function Reports() {
                         </Card>
 
                         <SummaryCards data={summary} />
-                        <ServiceTimeChart data={tickets.data} />
+                        <ServiceTimeChart step1Data={step1Done} step2Data={step2Done} />
+
+                        {/* Step 1 Done Table */}
+                        <Card className="mb-8">
+                            <CardHeader>
+                                <CardTitle>Step 1 - Completed Transactions</CardTitle>
+                                <CardDescription>Grouped by Transaction Type and Customer Type</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {Object.keys(groupedStep1).length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Transaction Type</TableHead>
+                                                <TableHead>Customer Type</TableHead>
+                                                <TableHead>Count</TableHead>
+                                                <TableHead>Avg Service Time (s)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {Object.entries(groupedStep1).map(([key, group]: any) => {
+                                                const [type, custType] = key.split('|');
+                                                const avg = group.reduce((sum: number, t: any) => {
+                                                    if (t.started_at_step1 && t.finished_at_step1) {
+                                                        return sum + (new Date(t.finished_at_step1).getTime() - new Date(t.started_at_step1).getTime()) / 1000;
+                                                    }
+                                                    return sum;
+                                                }, 0) / group.length;
+                                                return (
+                                                    <TableRow key={key}>
+                                                        <TableCell>{type}</TableCell>
+                                                        <TableCell>{custType}</TableCell>
+                                                        <TableCell>{group.length}</TableCell>
+                                                        <TableCell>{Math.round(avg || 0)}</TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                ) : (
+                                    <div className="text-center text-slate-500 py-6">No Step 1 completed transactions found.</div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Step 2 Done Table */}
+                        <Card className="mb-8">
+                            <CardHeader>
+                                <CardTitle>Step 2 - Completed Transactions</CardTitle>
+                                <CardDescription>Grouped by Transaction Type and Customer Type</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {Object.keys(groupedStep2).length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Transaction Type</TableHead>
+                                                <TableHead>Customer Type</TableHead>
+                                                <TableHead>Count</TableHead>
+                                                <TableHead>Avg Service Time (s)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {Object.entries(groupedStep2).map(([key, group]: any) => {
+                                                const [type, custType] = key.split('|');
+                                                const avg = group.reduce((sum: number, t: any) => {
+                                                    if (t.started_at_step2 && t.finished_at_step2) {
+                                                        return sum + (new Date(t.finished_at_step2).getTime() - new Date(t.started_at_step2).getTime()) / 1000;
+                                                    }
+                                                    return sum;
+                                                }, 0) / group.length;
+                                                return (
+                                                    <TableRow key={key}>
+                                                        <TableCell>{type}</TableCell>
+                                                        <TableCell>{custType}</TableCell>
+                                                        <TableCell>{group.length}</TableCell>
+                                                        <TableCell>{Math.round(avg || 0)}</TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                ) : (
+                                    <div className="text-center text-slate-500 py-6">No Step 2 completed transactions found.</div>
+                                )}
+                            </CardContent>
+                        </Card>
 
                         {/* KPI Table */}
                         <Card>

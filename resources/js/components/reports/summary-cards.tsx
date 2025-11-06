@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 interface SummaryData {
     total: number;
     served: number;
-    avg_service_time: number;
+    avg_service_time_step1?: number;
+    avg_service_time_step2?: number;
 }
 
 export default function SummaryCards({ data }: { data: SummaryData }) {
@@ -35,26 +36,24 @@ export default function SummaryCards({ data }: { data: SummaryData }) {
 
             <Card>
                 <CardHeader className="pb-2">
-                    <CardDescription>Avg Service Time</CardDescription>
-                    <CardTitle className="text-3xl">{Math.round(data.avg_service_time || 0)}s</CardTitle>
+                    <CardDescription>Avg Service Time (Step 1)</CardDescription>
+                    <CardTitle className="text-3xl">{Math.round(data.avg_service_time_step1 || 0)}s</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="text-xs text-slate-500">
-                        Average time per transaction
+                        Step 1: Average time per transaction
                     </div>
                 </CardContent>
             </Card>
 
             <Card>
                 <CardHeader className="pb-2">
-                    <CardDescription>Total Service Time</CardDescription>
-                    <CardTitle className="text-3xl">
-                        {Math.round(data.avg_service_time * data.served || 0)}s
-                    </CardTitle>
+                    <CardDescription>Avg Service Time (Step 2)</CardDescription>
+                    <CardTitle className="text-3xl">{Math.round(data.avg_service_time_step2 || 0)}s</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="text-xs text-slate-500">
-                        Combined service time across all transactions
+                        Step 2: Average time per transaction
                     </div>
                 </CardContent>
             </Card>

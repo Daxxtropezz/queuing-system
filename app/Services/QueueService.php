@@ -12,7 +12,7 @@ class QueueService
 {
     public function getCurrentTicket(User $user, int $step): ?QueueTicket
     {
-        return QueueTicket::where('served_by', $user->id)
+        return QueueTicket::where("served_by_step{$step}", $user->id)
             ->where('status', 'serving')
             ->where('step', $step)
             ->whereDate('created_at', now())
@@ -22,11 +22,11 @@ class QueueService
     public function getNextTicket(array $filters): ?QueueTicket
     {
         return QueueTicket::where('status', $filters['status'])
-            ->when(isset($filters['transaction_type_id']), fn($q) => 
+            ->when(isset($filters['transaction_type_id']), fn($q) =>
                 $q->where('transaction_type_id', $filters['transaction_type_id']))
-            ->when(isset($filters['ispriority']), fn($q) => 
+            ->when(isset($filters['ispriority']), fn($q) =>
                 $q->where('ispriority', $filters['ispriority']))
-            ->when(isset($filters['step']), fn($q) => 
+            ->when(isset($filters['step']), fn($q) =>
                 $q->where('step', $filters['step']))
             ->whereDate('created_at', now())
             ->orderBy('id')
@@ -36,52 +36,58 @@ class QueueService
     public function updateTicketStatus(QueueTicket $ticket, string $status, User $user = null): void
     {
         $oldStatus = $ticket->status;
-        
-        $updateData = [
-            'status' => $status,
-            'finished_at' => in_array($status, ['done', 'no_show']) ? now() : null,
-            'started_at' => $status === 'serving' ? now() : null,
-        ];
-        
+        $updateData = ['status' => $status];
+        $step = $ticket->step;
+
+        // Dynamically resolve step-based columns
+        $servedByColumn = "served_by_step{$step}";
+        $startedAtColumn = "started_at_step{$step}";
+        $finishedAtColumn = "finished_at_step{$step}";
+
+        // Step-based timestamps
+        if ($step === 1) {
+            $updateData[$finishedAtColumn] = in_array($status, ['done', 'no_show', 'ready_step2']) ? now() : null;
+            $updateData[$startedAtColumn] = $status === 'serving' ? now() : $ticket->$startedAtColumn;
+        } elseif ($step === 2) {
+            $updateData[$finishedAtColumn] = in_array($status, ['done', 'no_show']) ? now() : null;
+            $updateData[$startedAtColumn] = $status === 'serving' ? now() : $ticket->$startedAtColumn;
+        }
+
         if ($user && $status === 'serving') {
-            $updateData['served_by'] = $user->id;
+            $updateData[$servedByColumn] = $user->id;
             $updateData['teller_id'] = $user->teller_id;
         }
-        
-        $ticket->update($updateData);
-        
+
+       QueueTicket::where('id', $ticket->id)->update($updateData);
+
         $this->logTicketActivity($ticket, $user, $oldStatus, $status);
     }
 
     private function logTicketActivity(QueueTicket $ticket, ?User $user, string $oldStatus, string $newStatus): void
     {
         $activity = activity()->inLog('Queue Action');
-        
+
         if ($user) {
             $activity->causedBy($user);
         }
-        
+
         $activity->performedOn($ticket)
             ->withProperties([
                 'number' => $ticket->formatted_number,
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
-                'teller_id' => $ticket->teller_id ?? null
+                'teller_id' => $ticket->teller_id ?? null,
             ])
             ->log($this->determineLogAction($oldStatus, $newStatus));
     }
 
     private function determineLogAction(string $oldStatus, string $newStatus): string
     {
-        if ($oldStatus === 'waiting' && $newStatus === 'serving') {
-            return 'grabbed_ticket';
-        }
-        if ($newStatus === 'done') {
-            return 'completed_service';
-        }
-        if ($newStatus === 'no_show') {
-            return 'marked_no_show';
-        }
-        return 'status_changed';
+        return match ([$oldStatus, $newStatus]) {
+            ['waiting', 'serving'] => 'grabbed_ticket',
+            [_, 'done'] => 'completed_service',
+            [_, 'no_show'] => 'marked_no_show',
+            default => 'status_changed',
+        };
     }
 }
