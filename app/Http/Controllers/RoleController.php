@@ -28,11 +28,6 @@ class RoleController extends Controller
         ]);
     }
 
-    public function create()
-    {
-        return inertia('Psgc/Create');
-    }
-
     public function store(Request $request)
     {
         $request->validate([

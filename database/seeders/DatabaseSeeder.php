@@ -16,15 +16,6 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        $this->call(MaintenanceSeeder::class);
         $this->call(RolePermissionSeeder::class);
-
-        // $this->command->getOutput()->write("\033[H\033[2J");
-        // $this->command->info('Importing PSGC...');
-
-        // Artisan::call('import:psgc');
-
-        // $this->command->getOutput()->write("\033[H\033[2J");
-        // $this->command->info('PSGC data has been imported successfully.');
     }
 }

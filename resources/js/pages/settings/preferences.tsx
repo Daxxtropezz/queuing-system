@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
 import axios from 'axios';
+import Box from '@/components/ui/box';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -26,10 +27,10 @@ export default function Password({ two_factor_enabled }: { two_factor_enabled: b
             <Head title="Profile settings" />
 
             <SettingsLayout>
-                <div className="space-y-6">
+                <Box className="space-y-6">
                     <HeadingSmall title="Theme" description="Update your account's interface settings" />
                     <AppearanceTabs />
-                </div>
+                </Box>
 
                 <Separator className="my-6" />
 
@@ -48,6 +49,12 @@ function TwoFactorSection({ initialEnabled }: { initialEnabled: boolean }) {
     const [error, setError] = useState('');
 
     const confirmPassword = async () => {
+        // If no input provided, show required message and skip request
+        if (!password.trim()) {
+            setError('This field is required.');
+            return false;
+        }
+
         try {
             await axios.post('/user/confirm-password', { password });
             setPassword('');
@@ -97,10 +104,10 @@ function TwoFactorSection({ initialEnabled }: { initialEnabled: boolean }) {
     };
 
     return (
-        <div className="mt-10 space-y-6">
+        <Box className="mt-10 space-y-6">
             <HeadingSmall title="Two-Factor Authentication" description="Protect your account with 2FA" />
 
-            <div className="grid gap-2">
+            <Box className="grid gap-2">
                 <Label htmlFor="confirm_password">Confirm your password</Label>
                 <Input
                     id="confirm_password"
@@ -110,23 +117,23 @@ function TwoFactorSection({ initialEnabled }: { initialEnabled: boolean }) {
                     placeholder="Enter current password"
                 />
                 {error && <p className="text-sm text-red-600">{error}</p>}
-            </div>
+            </Box>
             {enabled ? (
                 <>
-                    <div>
+                    <Box>
                         <p className="font-medium text-green-600">Two-factor authentication is enabled.</p>
-                        {qrCode && <div className="mt-4 flex justify-center rounded-lg bg-white p-3" dangerouslySetInnerHTML={{ __html: qrCode }} />}
+                        {qrCode && <Box className="mt-4 flex justify-center rounded-lg bg-white p-3" dangerouslySetInnerHTML={{ __html: qrCode }} />}
                         {recoveryCodes.length > 0 && (
-                            <div className="mt-4">
+                            <Box className="mt-4">
                                 <p className="text-sm text-gray-600 dark:text-white">Recovery Codes:</p>
                                 <ul className="mt-1 rounded bg-neutral-100 p-2 text-center font-mono text-sm dark:bg-neutral-800">
                                     {recoveryCodes.map((code) => (
                                         <li key={code}>{code}</li>
                                     ))}
                                 </ul>
-                            </div>
+                            </Box>
                         )}
-                    </div>
+                    </Box>
                     <Button className="cursor-pointer" variant="destructive" onClick={disable2FA} disabled={loading}>
                         Disable 2FA
                     </Button>
@@ -139,6 +146,6 @@ function TwoFactorSection({ initialEnabled }: { initialEnabled: boolean }) {
                     </Button>
                 </>
             )}
-        </div>
+        </Box>
     );
 }
