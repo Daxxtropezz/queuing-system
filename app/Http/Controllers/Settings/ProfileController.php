@@ -18,7 +18,7 @@ class ProfileController extends Controller
      */
     public function index(Request $request): Response
     {
-        return Inertia::render('settings/profile', [
+        return Inertia::render('settings/profile/index', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
         ]);
@@ -26,7 +26,7 @@ class ProfileController extends Controller
 
     public function twoFactorAuth(): Response
     {
-        return Inertia::render('settings/preferences', [
+        return Inertia::render('settings/preferences/index', [
             'two_factor_enabled' => !is_null(auth()->user()->two_factor_secret),
         ]);
     }
