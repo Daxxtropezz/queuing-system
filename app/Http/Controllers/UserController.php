@@ -2,16 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\UserCredentialsMail;
-use App\Models\Maintenance;
-use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -39,8 +33,7 @@ class UserController extends Controller
         // Paginate results (fixed: removed duplicate query)
         $users = $usersQuery->paginate(10);
 
-        // Cache these if they rarely change (better performance)
-        $regions = Region::all();
+        // Cache these if they rarely change (better performance) 
         $roles   = Role::groupBy('name')->pluck('name');
 
         return inertia('users/user-management', [
