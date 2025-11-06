@@ -1,3 +1,4 @@
+import Box from '@/components/ui/box';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -75,12 +76,12 @@ html, body {
 </style>
 </head>
 <body>
-  <div class="ticket">
+  <Box class="ticket">
     <img src="${logoDSWD}" alt="DSWD Logo" class="logo" />
-    <div class="type">${type}</div>
-    <div class="number">${number}</div>
-    <div class="datetime">${datetime}</div>
-  </div>
+    <Box class="type">${type}</Box>
+    <Box class="number">${number}</Box>
+    <Box class="datetime">${datetime}</Box>
+  </Box>
 </body>
 </html>`;
     }
@@ -205,7 +206,7 @@ html, body {
     return (
         <>
             <Head title="Generate Number" />
-            <div className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-100">
+            <Box className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-100">
                 <Card className="w-full max-w-md p-6 rounded-3xl bg-slate-800/70 text-center shadow-lg">
                     <CardHeader>
                         <CardTitle className="text-3xl font-bold text-amber-400">
@@ -246,16 +247,15 @@ html, body {
                 <Dialog open={dialogOpen} onOpenChange={() => setDialogOpen(false)}>
 
                     {/* Print-only ticket (kept for on-screen preview if needed) */}
-                    <div className="print-ticket hidden text-center print:block">
-                        <div className="type font-bold">{priority}</div>
-                        <div className="number font-bold">{generatedNumber}</div>
-                        <div className="datetime">
+                    <Box className="print-ticket hidden text-center print:block">
+                        <Box className="type font-bold">{priority}</Box>
+                        <Box className="number font-bold">{generatedNumber}</Box>
+                        <Box className="datetime">
                             {now.toLocaleDateString()} {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                    </div>
+                        </Box>
+                    </Box>
                 </Dialog>
-            </div>
+            </Box>
         </>
     );
 }
-                                                                                                                                                                                                                                                                       

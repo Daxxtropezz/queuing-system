@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import Box from '@/components/ui/box';
 
 interface ResetPasswordProps {
     token: string;
@@ -40,8 +41,8 @@ export default function ResetPassword({ token, email }: ResetPasswordProps) {
             <Head title="Reset password" />
 
             <form onSubmit={submit}>
-                <div className="grid gap-6">
-                    <div className="grid gap-2">
+                <Box className="grid gap-6">
+                    <Box className="grid gap-2">
                         <Label htmlFor="email">Email</Label>
                         <Input
                             id="email"
@@ -54,9 +55,9 @@ export default function ResetPassword({ token, email }: ResetPasswordProps) {
                             onChange={(e) => setData('email', e.target.value)}
                         />
                         <InputError message={errors.email} className="mt-2" />
-                    </div>
+                    </Box>
 
-                    <div className="grid gap-2">
+                    <Box className="grid gap-2">
                         <Label htmlFor="password">Password</Label>
                         <Input
                             id="password"
@@ -70,9 +71,9 @@ export default function ResetPassword({ token, email }: ResetPasswordProps) {
                             placeholder="Password"
                         />
                         <InputError message={errors.password} />
-                    </div>
+                    </Box>
 
-                    <div className="grid gap-2">
+                    <Box className="grid gap-2">
                         <Label htmlFor="password_confirmation">Confirm password</Label>
                         <Input
                             id="password_confirmation"
@@ -85,13 +86,13 @@ export default function ResetPassword({ token, email }: ResetPasswordProps) {
                             placeholder="Confirm password"
                         />
                         <InputError message={errors.password_confirmation} className="mt-2" />
-                    </div>
+                    </Box>
 
                     <Button type="submit" className="mt-4 w-full" disabled={processing}>
                         {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
                         Reset password
                     </Button>
-                </div>
+                </Box>
             </form>
         </AuthLayout>
     );

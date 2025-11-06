@@ -10,6 +10,7 @@ import SummaryCards from '@/components/reports/summary-cards';
 import ServiceTimeChart from '@/components/reports/service-time-chart';
 import LoadingOverlay from '@/components/loading-overlay';
 import Pagination from '@/components/pagination';
+import Box from '@/components/ui/box';
 
 export default function Reports() {
     const { tickets, summary, users, types, filters } = usePage().props;
@@ -97,40 +98,40 @@ export default function Reports() {
         <>
             <Head title="KPI Reports" />
             <AppLayout>
-                <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
+                <Box className="relative flex min-h-screen flex-col bg-gradient-to-br from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
                     <header className="relative z-10 w-full border-b bg-white/80 backdrop-blur dark:bg-slate-900/70">
-                        <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
-                            <div className="flex items-center gap-2">
+                        <Box className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
+                            <Box className="flex items-center gap-2">
                                 <BarChart3 className="h-8 w-8 text-amber-500" />
                                 <h1 className="text-3xl font-extrabold tracking-widest text-amber-500 dark:text-amber-300">
                                     KPI Reports
                                 </h1>
-                            </div>
+                            </Box>
                             <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                                 Teller & Transaction Performance Analytics
                             </p>
-                        </div>
+                        </Box>
                     </header>
 
                     <main className="mx-auto w-full max-w-7xl px-6 py-10">
                         {/* Filters Section */}
                         <Card className="mb-8">
                             <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
+                                <Box className="flex items-center justify-between">
+                                    <Box className="flex items-center gap-2">
                                         <Filter className="h-5 w-5 text-slate-500" />
                                         <CardTitle className="text-lg">Filters</CardTitle>
-                                    </div>
+                                    </Box>
                                     <Button onClick={exportExcel} className="flex gap-2">
                                         <Download className="h-4 w-4" /> Export Excel
                                     </Button>
-                                </div>
+                                </Box>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-                                    <div className="space-y-2">
+                                <Box className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+                                    <Box className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">User</label>
-                                        <div className="relative">
+                                        <Box className="relative">
                                             <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                                             <select
                                                 className="w-full rounded-md border pl-10 pr-3 py-2 bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100"
@@ -145,10 +146,10 @@ export default function Reports() {
                                                 ))}
                                             </select>
 
-                                        </div>
-                                    </div>
+                                        </Box>
+                                    </Box>
 
-                                    <div className="space-y-2">
+                                    <Box className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Transaction Type</label>
                                         <select
                                             className="w-full rounded-md border px-3 py-2 bg-white dark:bg-slate-800"
@@ -160,9 +161,9 @@ export default function Reports() {
                                                 <option key={ty.id} value={ty.id}>{ty.name}</option>
                                             ))}
                                         </select>
-                                    </div>
+                                    </Box>
 
-                                    <div className="space-y-2">
+                                    <Box className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Status</label>
                                         <select
                                             className="w-full rounded-md border px-3 py-2 bg-white dark:bg-slate-800"
@@ -173,11 +174,11 @@ export default function Reports() {
                                                 <option key={option.value} value={option.value}>{option.label}</option>
                                             ))}
                                         </select>
-                                    </div>
+                                    </Box>
 
-                                    <div className="space-y-2">
+                                    <Box className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">From Date</label>
-                                        <div className="relative">
+                                        <Box className="relative">
                                             <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                                             <Input
                                                 type="date"
@@ -185,12 +186,12 @@ export default function Reports() {
                                                 value={filters.date_from || ''}
                                                 onChange={(e) => onFilterChange('date_from', e.target.value)}
                                             />
-                                        </div>
-                                    </div>
+                                        </Box>
+                                    </Box>
 
-                                    <div className="space-y-2">
+                                    <Box className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">To Date</label>
-                                        <div className="relative">
+                                        <Box className="relative">
                                             <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                                             <Input
                                                 type="date"
@@ -198,9 +199,9 @@ export default function Reports() {
                                                 value={filters.date_to || ''}
                                                 onChange={(e) => onFilterChange('date_to', e.target.value)}
                                             />
-                                        </div>
-                                    </div>
-                                </div>
+                                        </Box>
+                                    </Box>
+                                </Box>
                             </CardContent>
                         </Card>
 
@@ -278,7 +279,7 @@ export default function Reports() {
                         title="Please wait..."
                         message="Processing your request..."
                     />
-                </div>
+                </Box>
             </AppLayout>
         </>
     );

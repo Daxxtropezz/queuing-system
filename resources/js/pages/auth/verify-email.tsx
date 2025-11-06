@@ -6,6 +6,7 @@ import { FormEventHandler } from 'react';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import AuthLayout from '@/layouts/auth-layout';
+import Box from '@/components/ui/box';
 
 export default function VerifyEmail({ status }: { status?: string }) {
     const { post, processing } = useForm({});
@@ -21,9 +22,9 @@ export default function VerifyEmail({ status }: { status?: string }) {
             <Head title="Email verification" />
 
             {status === 'verification-link-sent' && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <Box className="mb-4 text-center text-sm font-medium text-green-600">
                     A new verification link has been sent to the email address you provided during registration.
-                </div>
+                </Box>
             )}
 
             <form onSubmit={submit} className="space-y-6 text-center">

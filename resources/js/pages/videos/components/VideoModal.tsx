@@ -102,7 +102,7 @@ export default function VideoModal({ isModalVisible, onClose, video }: ModalProp
 
     return (
         <Dialog open={isModalVisible} onOpenChange={onClose}>
-            <DialogContent className="max-w-lg border border-slate-200 bg-white/90 ring-1 ring-slate-200/60 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-slate-800/70 dark:bg-slate-900/80 dark:ring-slate-800/50">
+            <DialogContent className="max-w-lg border border-slate-200 bg-white ring-1 ring-slate-200/60 backdrop-blur supports-[backdrop-filter]:bg-white dark:border-slate-800/70 dark:bg-slate-900 dark:ring-slate-800/50">
                 <DialogHeader>
                     <DialogTitle className="text-slate-800 dark:text-slate-100">
                         {isEditMode ? 'Edit Video' : 'Upload Video'}

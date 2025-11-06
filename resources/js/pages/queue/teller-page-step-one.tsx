@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Swal from 'sweetalert2';
 import LoadingOverlay from "@/components/loading-overlay";
+import Box from "@/components/ui/box";
 
 type TellerPageStepOneProps = {
     userTellerNumber?: string;
@@ -207,32 +208,32 @@ export default function TellerPageStepOne() {
     return (
         <AppLayout breadcrumbs={[{ title: "Service Counter", href: "/queue/teller-step1" }]}>
 
-             {/* ✅ Overlay appears while processing */}
+            {/* ✅ Overlay appears while processing */}
             <LoadingOverlay visible={showLoading} title="Processing Request…" message="Please wait while we update the queue." />
 
             <Head title="Step 1 - Service Counter" />
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-slate-900 dark:from-slate-900 dark:to-slate-800 dark:text-slate-100">
+            <Box className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-slate-900 dark:from-slate-900 dark:to-slate-800 dark:text-slate-100">
                 <header className="w-full border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-800/90">
-                    <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-6 py-5 text-center md:py-6">
-                        <div className="flex items-center gap-3">
-                            <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
+                    <Box className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-6 py-5 text-center md:py-6">
+                        <Box className="flex items-center gap-3">
+                            <Box className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
                                 <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                            </div>
+                            </Box>
                             <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 md:text-3xl">
                                 Service Counter - Step 1
                             </h1>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-center gap-3">
-                            <div className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 font-mono text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                        </Box>
+                        <Box className="flex flex-wrap items-center justify-center gap-3">
+                            <Box className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 font-mono text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                                 <Clock className="h-4 w-4" />
                                 {now.toLocaleTimeString()}
-                            </div>
-                        </div>
-                    </div>
+                            </Box>
+                        </Box>
+                    </Box>
                 </header>
 
                 <main className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-                    <div className="flex flex-col md:flex-row gap-6">
+                    <Box className="flex flex-col md:flex-row gap-6">
                         <Card className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
                             <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
                                 <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
@@ -253,20 +254,20 @@ export default function TellerPageStepOne() {
                                         </TabsList>
 
                                         <TabsContent value="current-customer" className="space-y-6">
-                                            <div className="text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                            <Box className="text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                                                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
-                                                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
+                                                <Box className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
                                                     {current.number}
-                                                </div>
-                                                <div className="mt-2">
+                                                </Box>
+                                                <Box className="mt-2">
                                                     <Badge variant={current.is_priority ? "destructive" : "secondary"}>
                                                         {current.is_priority ? "Priority" : "Regular"}
                                                     </Badge>
-                                                </div>
-                                            </div>
+                                                </Box>
+                                            </Box>
 
-                                            <div className="space-y-4">
-                                                <div>
+                                            <Box className="space-y-4">
+                                                <Box>
                                                     <Label
                                                         htmlFor="transaction-type"
                                                         className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300"
@@ -303,8 +304,8 @@ export default function TellerPageStepOne() {
                                                             </SelectGroup>
                                                         </SelectContent>
                                                     </Select>
-                                                </div>
-                                                <div>
+                                                </Box>
+                                                <Box>
                                                     <Label htmlFor="remarks" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                                                         Remarks
                                                     </Label>
@@ -316,10 +317,10 @@ export default function TellerPageStepOne() {
                                                         placeholder="Add any notes about this transaction"
                                                         rows={3}
                                                     />
-                                                </div>
-                                            </div>
+                                                </Box>
+                                            </Box>
 
-                                            <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                            <Box className="flex flex-col sm:flex-row gap-3 w-full">
                                                 <Button
                                                     onClick={handleNext}
                                                     disabled={processing}
@@ -339,18 +340,18 @@ export default function TellerPageStepOne() {
                                                     {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <AlertCircle className="mr-2 h-5 w-5" />}
                                                     Mark as No Show
                                                 </Button>
-                                            </div>
+                                            </Box>
                                         </TabsContent>
 
                                         <TabsContent value="manual-serve-current" className="space-y-4">
-                                            <div className="text-center p-4">
+                                            <Box className="text-center p-4">
                                                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
                                                     Manually serve a client who is not in the waiting list
                                                 </p>
-                                            </div>
+                                            </Box>
 
-                                            <div className="space-y-4">
-                                                <div className="space-y-2">
+                                            <Box className="space-y-4">
+                                                <Box className="space-y-2">
                                                     <Label htmlFor="ticket-number-current" className="text-sm font-medium">
                                                         Customer Type
                                                     </Label>
@@ -372,7 +373,7 @@ export default function TellerPageStepOne() {
                                                     <Label htmlFor="ticket-number-current" className="text-sm font-medium">
                                                         Ticket Number
                                                     </Label>
-                                                    <div className="flex items-center">
+                                                    <Box className="flex items-center">
                                                         <Input
                                                             id="ticket-number-current"
                                                             type="text"
@@ -381,9 +382,9 @@ export default function TellerPageStepOne() {
                                                             onChange={(e) => setManualOverrideNumber(e.target.value)}
                                                             className="w-full"
                                                         />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                    </Box>
+                                                </Box>
+                                            </Box>
 
 
                                             <Button
@@ -412,7 +413,7 @@ export default function TellerPageStepOne() {
                                         </TabsList>
 
                                         <TabsContent value="next-customer" className="space-y-4 pt-4">
-                                            <div className="space-y-2">
+                                            <Box className="space-y-2">
                                                 <Label htmlFor="customer-type" className="text-sm font-medium">
                                                     Client Type
                                                 </Label>
@@ -433,7 +434,7 @@ export default function TellerPageStepOne() {
                                                         </SelectGroup>
                                                     </SelectContent>
                                                 </Select>
-                                            </div>
+                                            </Box>
 
                                             <Button
                                                 onClick={handleGrab}
@@ -453,8 +454,8 @@ export default function TellerPageStepOne() {
                                         </TabsContent>
 
                                         <TabsContent value="manual-serve" className="space-y-4 pt-4">
-                                            <div className="space-y-4">
-                                                <div className="space-y-2">
+                                            <Box className="space-y-4">
+                                                <Box className="space-y-2">
                                                     <Label htmlFor="ticket-number-current" className="text-sm font-medium">
                                                         Customer Type
                                                     </Label>
@@ -475,7 +476,7 @@ export default function TellerPageStepOne() {
                                                     <Label htmlFor="ticket-number" className="text-sm font-medium">
                                                         Ticket Number
                                                     </Label>
-                                                    <div className="flex items-center">
+                                                    <Box className="flex items-center">
                                                         <Input
                                                             id="ticket-number"
                                                             type="text"
@@ -484,9 +485,9 @@ export default function TellerPageStepOne() {
                                                             onChange={(e) => setManualOverrideNumber(e.target.value)}
                                                             className="w-full"
                                                         />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                    </Box>
+                                                </Box>
+                                            </Box>
 
                                             <Button
                                                 onClick={handleManualOverride}
@@ -529,7 +530,7 @@ export default function TellerPageStepOne() {
                                     {/* Waiting List */}
                                     <TabsContent value="waiting">
                                         {waiting_list.length > 0 ? (
-                                            <div className="rounded-md border border-slate-200 dark:border-slate-700">
+                                            <Box className="rounded-md border border-slate-200 dark:border-slate-700">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
@@ -554,19 +555,19 @@ export default function TellerPageStepOne() {
                                                         ))}
                                                     </TableBody>
                                                 </Table>
-                                            </div>
+                                            </Box>
                                         ) : (
-                                            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                                            <Box className="text-center py-8 text-slate-500 dark:text-slate-400">
                                                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                                                 <p>No client in the waiting queue</p>
-                                            </div>
+                                            </Box>
                                         )}
                                     </TabsContent>
 
                                     {/* No Show List */}
                                     <TabsContent value="no-show">
                                         {page.props.no_show_list && page.props.no_show_list.length > 0 ? (
-                                            <div className="rounded-md border border-slate-200 dark:border-slate-700">
+                                            <Box className="rounded-md border border-slate-200 dark:border-slate-700">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
@@ -596,21 +597,21 @@ export default function TellerPageStepOne() {
                                                     </TableBody>
 
                                                 </Table>
-                                            </div>
+                                            </Box>
                                         ) : (
-                                            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                                            <Box className="text-center py-8 text-slate-500 dark:text-slate-400">
                                                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                                                 <p>No client marked as no show</p>
-                                            </div>
+                                            </Box>
                                         )}
                                     </TabsContent>
                                 </Tabs>
                             </CardContent>
                         </Card>
 
-                    </div>
+                    </Box>
                 </main>
-            </div>
+            </Box>
         </AppLayout>
     );
 }

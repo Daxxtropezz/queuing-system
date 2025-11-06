@@ -20,6 +20,7 @@ import LoadingOverlay from "@/components/loading-overlay";
 import Pagination from "@/components/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import AuditLogModal from "@/components/audit-modal";
+import Box from "@/components/ui/box";
 
 interface AuditLog {
   id: number;
@@ -125,33 +126,33 @@ export default function AuditLogs() {
     <>
       <Head title="Audit Logs" />
       <AppLayout>
-        <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+        <Box className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
           {/* Gradient Blobs */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
-            <div className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-amber-500/10 blur-3xl dark:bg-amber-600/15" />
-          </div>
+          <Box className="pointer-events-none absolute inset-0 overflow-hidden">
+            <Box className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
+            <Box className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-amber-500/10 blur-3xl dark:bg-amber-600/15" />
+          </Box>
 
           {/* Header */}
           <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
-            <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
+            <Box className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
               <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
                 Audit Logs
               </h1>
               <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
                 Track and review system activities and changes.
               </p>
-            </div>
+            </Box>
           </header>
 
           {/* Main Content */}
           <main className="relative z-10 mx-auto flex w-full flex-1 flex-col px-4 pt-6 pb-12 md:px-8 md:pt-10">
-            <div className="mx-auto w-full max-w-7xl">
+            <Box className="mx-auto w-full max-w-7xl">
               {/* Card container */}
-              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-200/60 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
-                <div className="p-6">
+              <Box className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-200/60 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
+                <Box className="p-6">
                   {/* Filters */}
-                  <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                  <Box className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     {/* Log Name Filter */}
                     <Select
                       value={filters.log_name ?? "all"}
@@ -192,7 +193,7 @@ export default function AuditLogs() {
                       onSubmit={handleSearch}
                       className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center"
                     >
-                      <div className="relative w-full sm:w-72">
+                      <Box className="relative w-full sm:w-72">
                         <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
                           <SearchIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                         </span>
@@ -213,7 +214,7 @@ export default function AuditLogs() {
                             Showing results for "{filters.search}"
                           </p>
                         )}
-                      </div>
+                      </Box>
                       <Button
                         type="submit"
                         disabled={isLoading}
@@ -222,10 +223,10 @@ export default function AuditLogs() {
                         <SearchIcon className="h-4 w-4 mr-1" />
                       </Button>
                     </form>
-                  </div>
+                  </Box>
 
                   {/* Table */}
-                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
+                  <Box className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
                     <Table className="w-full">
                       <TableHeader className="bg-slate-50 dark:bg-slate-900/60">
                         <TableRow className="hover:bg-transparent">
@@ -318,11 +319,11 @@ export default function AuditLogs() {
                         ) : (
                           <TableRow>
                             <TableCell colSpan={7} className="p-10 text-center">
-                              <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
+                              <Box className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
                                 <FileWarning className="h-12 w-12 text-muted-foreground" />
                                 <p className="text-xl font-semibold">No Logs Found</p>
                                 <p className="text-muted-foreground">Try adjusting filters or search again later.</p>
-                              </div>
+                              </Box>
                             </TableCell>
                           </TableRow>
                         )}
@@ -341,17 +342,17 @@ export default function AuditLogs() {
                         isLoading={isLoading}
                       />
                     )}
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
           </main>
 
           {/* Footer */}
           <footer className="relative z-10 mt-auto w-full border-t border-slate-200/70 bg-white/80 py-4 text-center text-xs font-medium tracking-wide text-slate-600 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
             DSWD Queuing System • Audit Logs
           </footer>
-        </div>
+        </Box>
 
         {/* Modal */}
         {isModalOpen && (

@@ -8,8 +8,9 @@ import { FileWarning, Search as SearchIcon, SquarePen, Trash2 } from 'lucide-rea
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 // 🔑 IMPORT NEW COMPONENTS
-import LoadingOverlay from '@/components/loading-overlay'; 
-import Pagination from '@/components/pagination'; 
+import LoadingOverlay from '@/components/loading-overlay';
+import Pagination from '@/components/pagination';
+import Box from '@/components/ui/box';
 
 export default function Tellers() {
     // Extract pagination metadata, filters, and flash messages
@@ -54,7 +55,7 @@ export default function Tellers() {
     // 2. NEW: Function to execute the search when the button is clicked or Enter is hit
     const handleSearch = (e) => {
         e.preventDefault(); // Prevents page reload if wrapped in a form
-        
+
         const finalQuery = searchQuery.trim();
         const minLength = 3;
 
@@ -63,11 +64,11 @@ export default function Tellers() {
             setIsLoading(true);
             router.get(
                 route('tellers.index'),
-                { 
-                    search: finalQuery, 
+                {
+                    search: finalQuery,
                     // Preserve current per_page setting
-                    per_page: filters.per_page 
-                }, 
+                    per_page: filters.per_page
+                },
                 {
                     preserveState: true,
                     replace: true,
@@ -86,17 +87,17 @@ export default function Tellers() {
             });
         }
     };
-    
+
     // NEW: Function to handle page and per_page changes from the Pagination component
     const handlePaginationChange = (page, perPage) => {
         setIsLoading(true);
         router.get(
             route('tellers.index'),
             { ...filters, page: page, per_page: perPage },
-            { 
-                preserveState: true, 
-                replace: true, 
-                onFinish: () => setIsLoading(false) 
+            {
+                preserveState: true,
+                replace: true,
+                onFinish: () => setIsLoading(false)
             }
         );
     }
@@ -152,7 +153,7 @@ export default function Tellers() {
             }
         });
     };
-    
+
     // NEW: Extract pagination metadata from the tellers prop
     const paginationProps = {
         current_page: tellers.current_page,
@@ -166,28 +167,28 @@ export default function Tellers() {
         <>
             <Head title="Tellers" />
             <AppLayout>
-                <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
-                    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
-                        <div className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl dark:bg-red-600/15" />
-                    </div>
+                <Box className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+                    <Box className="pointer-events-none absolute inset-0 overflow-hidden">
+                        <Box className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
+                        <Box className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl dark:bg-red-600/15" />
+                    </Box>
 
                     <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70">
-                        <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
+                        <Box className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
                             <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
                                 Tellers
                             </h1>
                             <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
                                 Manage and search tellers
                             </p>
-                        </div>
+                        </Box>
                     </header>
 
                     <main className="relative z-10 mx-auto flex w-full flex-1 flex-col px-4 pt-6 pb-12 md:px-8 md:pt-10">
-                        <div className="mx-auto w-full max-w-7xl">
-                            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-200/60 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
-                                <div className="p-6">
-                                    <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                        <Box className="mx-auto w-full max-w-7xl">
+                            <Box className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-200/60 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
+                                <Box className="p-6">
+                                    <Box className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                                         <h2 className="text-lg font-semibold tracking-wide text-slate-800 md:text-xl dark:text-slate-200">
                                             <Button
                                                 onClick={openCreateModal}
@@ -197,10 +198,10 @@ export default function Tellers() {
                                                 Create Teller
                                             </Button>
                                         </h2>
-                                        
+
                                         {/* 3. WRAP SEARCH INPUT AND BUTTON IN A FORM AND ADD BUTTON */}
                                         <form onSubmit={handleSearch} className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
-                                            <div className="relative w-full sm:w-72">
+                                            <Box className="relative w-full sm:w-72">
                                                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
                                                     <SearchIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                                                 </span>
@@ -222,18 +223,18 @@ export default function Tellers() {
                                                         Showing results for **"{filters.search}"**
                                                     </p>
                                                 )}
-                                            </div>
-                                            <Button 
-                                                type="submit" 
+                                            </Box>
+                                            <Button
+                                                type="submit"
                                                 disabled={isLoading}
                                                 className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
                                             >
                                                 <SearchIcon className="h-4 w-4 mr-1" />
                                             </Button>
                                         </form>
-                                    </div>
+                                    </Box>
 
-                                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
+                                    <Box className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
                                         <Table className="w-full">
                                             <TableHeader className="bg-slate-50 dark:bg-slate-900/60">
                                                 <TableRow className="hover:bg-transparent">
@@ -246,7 +247,7 @@ export default function Tellers() {
                                             <TableBody>
                                                 {tellers?.data?.length > 0 ? (
                                                     tellers.data.map((teller, index) => (
-                                                        <TableRow 
+                                                        <TableRow
                                                             key={teller.id}
                                                             className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
                                                         >
@@ -260,9 +261,9 @@ export default function Tellers() {
                                                                 <Button size="sm" onClick={() => openEditModal(teller)} disabled={isLoading}>
                                                                     <SquarePen className="h-4 w-4" />
                                                                 </Button>
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    variant="destructive" 
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="destructive"
                                                                     onClick={() => confirmDelete(teller.id)}
                                                                     disabled={isLoading}
                                                                 >
@@ -274,17 +275,17 @@ export default function Tellers() {
                                                 ) : (
                                                     <TableRow>
                                                         <TableCell colSpan={4} className="p-10">
-                                                            <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
+                                                            <Box className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
                                                                 <FileWarning className="mb-2 h-12 w-12 text-slate-400 dark:text-slate-500" />
-                                                               <p className="text-xl font-semibold">No Records Found</p>
+                                                                <p className="text-xl font-semibold">No Records Found</p>
                                                                 <p className="text-muted-foreground"> "No results match your filters. Try adjusting your search criteria."</p>
-                                                            </div>
+                                                            </Box>
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
                                             </TableBody>
                                         </Table>
-                                        
+
                                         {/* 4. PAGINATION COMPONENT */}
                                         <Pagination
                                             pagination={paginationProps}
@@ -294,25 +295,25 @@ export default function Tellers() {
                                             onPageChange={(page) => handlePaginationChange(page, filters.per_page)}
                                             onPerPageChange={(perPage) => handlePaginationChange(tellers.current_page, perPage)}
                                         />
-                                    </div>
-                                </div>
+                                    </Box>
+                                </Box>
 
                                 {isCreateModalVisible && <TellerModal isModalVisible={isCreateModalVisible} onClose={closeCreateModal} />}
                                 {isEditModalVisible && (
                                     <TellerModal teller={selectedTeller} isModalVisible={isEditModalVisible} onClose={closeEditModal} />
                                 )}
-                            </div>
-                        </div>
+                            </Box>
+                        </Box>
                     </main>
 
                     <footer className="relative z-10 mt-auto w-full border-t border-slate-200/70 bg-white/80 py-4 text-center text-xs font-medium tracking-wide text-slate-600 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
                         DSWD Queuing System • Tellers
                     </footer>
-                </div>
+                </Box>
                 {/* 5. LOADING OVERLAY */}
-                <LoadingOverlay 
-                    visible={isLoading} 
-                    title="Please wait..." 
+                <LoadingOverlay
+                    visible={isLoading}
+                    title="Please wait..."
                     message="Fetching data from the server."
                 />
             </AppLayout>
