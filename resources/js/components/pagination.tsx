@@ -234,11 +234,11 @@ const Pagination: React.FC<PaginationProps> = ({
                 ) : (
                   <Button
                     key={idx}
-                    variant={page === current_page ? "default" : "outline"}
+                    variant="outline"
                     size="sm"
                     className={
                       page === current_page
-                        ? `${colorClasses.bg} text-white ${colorClasses.hover}`
+                        ? `bg-blue-600 text-white hover:bg-blue-700`
                         : ""
                     }
                     onClick={() => goToPage(page as number)}
@@ -246,6 +246,7 @@ const Pagination: React.FC<PaginationProps> = ({
                   >
                     {page}
                   </Button>
+
                 )
               )}
 

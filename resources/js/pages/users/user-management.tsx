@@ -1,24 +1,15 @@
+import UserRoleModal from '@/components/user-role-modal';
+import LoadingOverlay from '@/components/loading-overlay';
+import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton component
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import UserRoleModal from '@/components/user-role-modal';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { debounce } from 'lodash';
-import { FileWarning, Search as SearchIcon } from 'lucide-react'; // Import SearchIcon for clarity
+import { FileWarning, Search as SearchIcon } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
+import { debounce } from 'lodash';
 
 interface User {
     id: number;
@@ -41,110 +32,77 @@ interface UsersProps {
     roles: string[];
     filters: {
         search?: string;
+        per_page?: number;
     };
 }
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'User Management',
-        href: '/users',
-    },
-];
-
 export default function UserIndex() {
-    const { users, filters } = usePage<UsersProps>().props;
+    const { users, filters, roles } = usePage<UsersProps>().props;
+    const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
-    const [isLoading, setIsLoading] = useState(true); // New loading state
+    const [roleModalOpen, setRoleModalOpen] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [selectedUserRole, setSelectedUserRole] = useState('');
 
-    // Simulate loading for demonstration purposes
-    useEffect(() => {
-        // In a real application, you would set isLoading based on your data fetching lifecycle.
-        // For example, when an Inertia request starts, set true, and on success/error, set false.
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 1000); // Simulate 1 second loading time
-
-        return () => clearTimeout(timer);
-    }, [users]); // Re-run this effect when users data changes (e.g., on pagination/search)
-
+    // 🟡 Debounced Search
     const handleSearch = useMemo(
         () =>
             debounce((value: string) => {
-                setIsLoading(true); // Set loading to true when search starts
-                if (value === '') {
+                const finalQuery = value.trim();
+                if (finalQuery.length === 0 || finalQuery.length >= 3) {
+                    setIsLoading(true);
                     router.get(
                         users.path,
-                        {},
+                        { search: finalQuery, per_page: filters.per_page },
                         {
                             preserveState: true,
                             replace: true,
                             only: ['users'],
-                            onFinish: () => setIsLoading(false), // Set loading to false on finish
-                        },
-                    );
-                    return;
-                }
-
-                if (value.length >= 3) {
-                    router.get(
-                        users.path,
-                        { search: value.trim() },
-                        {
-                            preserveState: true,
-                            replace: true,
-                            only: ['users'],
-                            onFinish: () => setIsLoading(false), // Set loading to false on finish
+                            onFinish: () => setIsLoading(false),
                         },
                     );
                 } else {
-                    setIsLoading(false); // If less than 3 chars, stop loading immediately
+                    Swal.fire({
+                        title: 'Search Too Short',
+                        text: 'Type at least 3 characters or clear to reset.',
+                        icon: 'info',
+                        toast: true,
+                        position: 'top-end',
+                        timer: 2500,
+                        showConfirmButton: false,
+                    });
                 }
-            }, 500),
+            }, 600),
         [users.path],
     );
 
-    useEffect(() => {
-        setSearchQuery(filters.search || '');
-    }, [filters.search]);
-
-    const preventSpecialChars = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (/[^a-zA-Z0-9\s@._-]/.test(event.key)) {
-            event.preventDefault();
-            return false;
-        }
+    // 🟢 Pagination Handling
+    const handlePaginationChange = (page: number, perPage: number) => {
+        setIsLoading(true);
+        router.get(
+            users.path,
+            { page, per_page: perPage, search: filters.search },
+            {
+                preserveState: true,
+                replace: true,
+                only: ['users'],
+                onFinish: () => setIsLoading(false),
+            },
+        );
     };
 
-    const paginationPages = useMemo(() => {
-        const current = users.current_page;
-        const last = users.last_page;
-        const range = 2;
-        const pages: (number | string)[] = [];
-
-        for (let i = 1; i <= last; i++) {
-            if (i === 1 || i === last || (i >= current - range && i <= current + range)) {
-                pages.push(i);
-            } else if (pages[pages.length - 1] !== '...') {
-                pages.push('...');
-            }
-        }
-        return pages;
-    }, [users.current_page, users.last_page]);
-
+    // 🟣 Toggle Status
     const toggleUserStatus = (user: User) => {
         Swal.fire({
             title: `Are you sure you want to ${user.is_enabled ? 'deactivate' : 'activate'} this user?`,
             icon: 'warning',
             showCancelButton: true,
+            confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#9ca3af',
             confirmButtonText: user.is_enabled ? 'Deactivate' : 'Activate',
-            cancelButtonText: 'Cancel',
-            customClass: {
-                confirmButton: 'bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline-blue',
-                cancelButton:
-                    'ml-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline-gray',
-            },
-            buttonsStyling: false,
         }).then((result) => {
             if (result.isConfirmed) {
+                setIsLoading(true);
                 router.put(
                     `/users/${user.id}/toggle-status`,
                     { is_enabled: !user.is_enabled },
@@ -152,44 +110,22 @@ export default function UserIndex() {
                         onSuccess: () => {
                             Swal.fire({
                                 icon: 'success',
-                                title: `Success`,
+                                title: 'Success',
                                 text: `User has been ${user.is_enabled ? 'deactivated' : 'activated'}.`,
+                                toast: true,
+                                position: 'top-end',
                                 timer: 2000,
                                 showConfirmButton: false,
                             });
                         },
-                        onError: () => {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: 'Something went wrong. Please try again.',
-                            });
-                        },
+                        onFinish: () => setIsLoading(false),
                     },
                 );
             }
         });
     };
 
-    const goToPage = (page: number) => {
-        setIsLoading(true); // Set loading to true when changing page
-        const params: { page: number; search?: string } = { page };
-        if (searchQuery) {
-            params.search = searchQuery;
-        }
-        router.get(users.path, params, {
-            preserveState: true,
-            onFinish: () => setIsLoading(false), // Set loading to false on finish
-        });
-    };
-
-    const tableHeader = ['Item', 'Name', 'Email', 'Role', 'Status', 'Actions'];
-    const itemStartIndex = (users.current_page - 1) * users.per_page;
-
-    const [roleModalOpen, setRoleModalOpen] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-    const [selectedUserRole, setSelectedUserRole] = useState('');
-
+    // 🟢 Modal Handlers
     const openRoleModal = (user: User) => {
         setSelectedUserId(user.id);
         setSelectedUserRole(user.role);
@@ -197,6 +133,7 @@ export default function UserIndex() {
     };
 
     const handleRoleChange = (userId: number, newRole: string) => {
+        setIsLoading(true);
         router.put(
             `/users/${userId}/change-role`,
             { role: newRole },
@@ -208,185 +145,192 @@ export default function UserIndex() {
                 onError: () => {
                     Swal.fire('Error', 'Something went wrong.', 'error');
                 },
+                onFinish: () => setIsLoading(false),
             },
         );
+    };
+
+    const itemStartIndex = (users.current_page - 1) * users.per_page;
+    const paginationProps = {
+        current_page: users.current_page,
+        last_page: users.last_page,
+        total: users.total,
+        per_page: users.per_page,
     };
 
     return (
         <>
             <Head title="User Management" />
+            <AppLayout>
+                <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+                    {/* Background */}
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
+                        <div className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-amber-500/10 blur-3xl dark:bg-amber-600/15" />
+                    </div>
 
-            <AppLayout breadcrumbs={breadcrumbs}>
-                <div className="py-2">
-                    <div className="mx-4 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="container mx-auto px-4 sm:px-8">
-                            <div className="py-8">
-                                <div className="mb-4 flex items-center justify-between">
-                                    <div className="relative block">
-                                        <span className="absolute inset-y-0 left-0 flex h-full items-center pl-2">
-                                            <SearchIcon className="h-4 w-4 fill-current text-gray-500" /> {/* Using Lucide icon */}
-                                        </span>
-                                        <div className="relative block">
-                                            <Input
-                                                value={searchQuery}
-                                                placeholder="Search User"
-                                                onKeyDown={preventSpecialChars}
-                                                onChange={(e) => {
-                                                    setSearchQuery(e.target.value);
-                                                    handleSearch(e.target.value);
-                                                }}
-                                                maxLength={50}
-                                                className="w-full py-2 pr-6 pl-8 text-sm"
-                                                disabled={isLoading} // Disable search input when loading
-                                            />
-                                            {searchQuery.length > 0 && searchQuery.length < 3 && (
-                                                <p className="mt-1 text-xs text-red-500">Type at least 3 characters to search</p>
-                                            )}
-                                            {filters.search && <p className="mt-1 text-xs text-green-500">Showing results for "{filters.search}"</p>}
-                                        </div>
+                    {/* Header */}
+                    <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70">
+                        <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
+                            <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
+                                User Management
+                            </h1>
+                            <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
+                                Manage users, roles, and account status
+                            </p>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="relative z-10 mx-auto flex w-full flex-1 flex-col px-4 pt-6 pb-12 md:px-8 md:pt-10">
+                        <div className="mx-auto w-full max-w-7xl">
+                            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-200/60 dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
+                                <div className="p-6">
+                                    {/* Search Bar */}
+                                    <div className="mb-6 flex justify-end">
+                                        <form
+                                            onSubmit={(e) => {
+                                                e.preventDefault();
+                                                handleSearch(searchQuery);
+                                            }}
+                                            className="flex w-full max-w-md flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end"
+                                        >
+                                            <div className="relative w-full sm:w-72">
+                                                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
+                                                    <SearchIcon className="h-4 w-4 text-slate-400" />
+                                                </span>
+                                                <Input
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    placeholder="Search users..."
+                                                    className="w-full rounded-md border border-slate-300 bg-white py-2 pr-3 pl-8 text-sm text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                                    disabled={isLoading}
+                                                />
+                                                {searchQuery.length > 0 && searchQuery.length < 3 && (
+                                                    <p className="mt-1 text-xs text-rose-500">Type at least 3 characters</p>
+                                                )}
+                                                {filters?.search && (
+                                                    <p className="mt-1 text-xs text-emerald-600">
+                                                        Showing results for "{filters.search}"
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <Button
+                                                type="submit"
+                                                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
+                                                disabled={isLoading}
+                                            >
+                                                <SearchIcon className="h-4 w-4 mr-1" />
+                                            </Button>
+                                        </form>
                                     </div>
-                                </div>
 
-                                <div className="-mx-4 overflow-x-auto px-4 py-4 sm:-mx-8 sm:px-8">
-                                    <div className="overflow-x-auto rounded-lg">
+
+                                    {/* Table */}
+                                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
                                         <Table className="w-full">
-                                            <TableHeader>
+                                            <TableHeader className="bg-slate-50 dark:bg-slate-900/60">
                                                 <TableRow>
-                                                    {tableHeader.map((header, index) => (
-                                                        <TableHead
-                                                            key={index}
-                                                            className="px-5 py-3 text-center text-xs font-semibold tracking-wider uppercase"
-                                                        >
-                                                            {header}
-                                                        </TableHead>
-                                                    ))}
+                                                    <TableHead className="text-center w-16">#</TableHead>
+                                                    <TableHead className="text-center">Name</TableHead>
+                                                    <TableHead className="text-center">Email</TableHead>
+                                                    <TableHead className="text-center">Role</TableHead>
+                                                    <TableHead className="text-center">Status</TableHead>
+                                                    <TableHead className="text-center">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {isLoading ? (
-                                                    // Skeleton rows while loading
-                                                    [...Array(users.per_page || 10)].map((_, index) => (
-                                                        <TableRow key={index}>
-                                                            <TableCell>
-                                                                <Skeleton className="mx-auto h-4 w-6" />
-                                                            </TableCell>
-                                                            <TableCell className="p-3">
-                                                                <Skeleton className="mx-auto h-4 w-32" />
-                                                            </TableCell>
-                                                            <TableCell className="p-3">
-                                                                <Skeleton className="mx-auto h-4 w-48" />
-                                                            </TableCell>
-                                                            <TableCell className="p-3">
-                                                                <Skeleton className="mx-auto h-4 w-24" />
-                                                            </TableCell>
-                                                            <TableCell className="p-2 text-center">
-                                                                <Skeleton className="mx-auto h-4 w-20 rounded-full" />
-                                                            </TableCell>
-                                                            <TableCell className="p-3">
-                                                                <Skeleton className="mx-auto h-8 w-24" />
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))
-                                                ) : users.data.length === 0 ? (
-                                                    // No records found
-                                                    <TableRow>
-                                                        <TableCell colSpan={tableHeader.length} className="p-10 text-center">
-                                                            <div className="flex flex-col items-center justify-center space-y-4">
-                                                                <FileWarning className="h-12 w-12 text-gray-400" />
-                                                                <p className="text-xl font-semibold">No Records Found</p>
-                                                                <p className="text-md text-gray-500">It looks like there are no entries here yet.</p>
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ) : (
-                                                    // Actual user data rows
+                                                {users.data.length > 0 ? (
                                                     users.data.map((user, index) => (
-                                                        <TableRow key={user.id} className="text-center">
-                                                            <TableCell>{itemStartIndex + index + 1}</TableCell>
-                                                            <TableCell className="p-3">
+                                                        <TableRow
+                                                            key={user.id}
+                                                            className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
+                                                        >
+                                                            <TableCell className="text-center">
+                                                                {itemStartIndex + index + 1}
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
                                                                 {user.first_name} {user.last_name}
                                                             </TableCell>
-                                                            <TableCell className="p-3">{user.email}</TableCell>
-                                                            <TableCell className="p-3">{user.role}</TableCell>
-                                                            <TableCell className="p-2 text-center">
+                                                            <TableCell className="text-center">{user.email}</TableCell>
+                                                            <TableCell className="text-center">{user.role}</TableCell>
+                                                            <TableCell className="text-center">
                                                                 <span
                                                                     onClick={() => toggleUserStatus(user)}
                                                                     className={[
-                                                                        'inline-flex cursor-pointer items-center rounded-full px-2 py-0.5 text-[10px] font-medium tracking-tight uppercase transition-colors hover:brightness-90',
-                                                                        user.is_enabled === 1
-                                                                            ? 'border border-emerald-200 bg-emerald-100 text-emerald-700'
-                                                                            : 'border border-rose-200 bg-rose-100 text-rose-700',
+                                                                        'inline-flex cursor-pointer items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase',
+                                                                        user.is_enabled
+                                                                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                                                                            : 'bg-rose-100 text-rose-700 border border-rose-300',
                                                                     ].join(' ')}
-                                                                    title="Click to toggle status"
                                                                 >
-                                                                    {user.is_enabled === 1 ? 'Active' : 'Inactive'}
+                                                                    {user.is_enabled ? 'Active' : 'Inactive'}
                                                                 </span>
                                                             </TableCell>
-                                                            <TableCell className="p-3">
+                                                            <TableCell className="text-center">
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
                                                                     onClick={() => openRoleModal(user)}
                                                                     className="text-xs"
+                                                                    disabled={isLoading}
                                                                 >
                                                                     Change Role
                                                                 </Button>
                                                             </TableCell>
                                                         </TableRow>
                                                     ))
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={6} className="p-10 text-center">
+                                                            <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50">
+                                                                <FileWarning className="h-12 w-12 text-muted-foreground" />
+                                                                <p className="text-xl font-semibold">No Records Found</p>
+                                                                <p className="text-muted-foreground">
+                                                                    No users found. Try adjusting your search criteria.
+                                                                </p>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
                                                 )}
                                             </TableBody>
                                         </Table>
+
+                                        {/* Pagination */}
+                                        <Pagination
+                                            pagination={paginationProps}
+                                            filters={filters}
+                                            baseUrl={users.path}
+                                            isLoading={isLoading}
+                                            onPageChange={(page) => handlePaginationChange(page, filters.per_page ?? 10)}
+                                            onPerPageChange={(perPage) =>
+                                                handlePaginationChange(users.current_page, perPage)
+                                            }
+                                        />
                                     </div>
-                                    {/* Conditional Rendering for Pagination */}
-                                    {users.last_page > 1 &&
-                                        !isLoading && ( // Only show pagination if not loading and more than one page
-                                            <div className="mt-4 flex justify-center">
-                                                <Pagination>
-                                                    <PaginationContent>
-                                                        <PaginationItem>
-                                                            <PaginationPrevious
-                                                                onClick={() => goToPage(users.current_page - 1)}
-                                                                disabled={users.current_page <= 1 || isLoading}
-                                                            />
-                                                        </PaginationItem>
-                                                        {paginationPages.map((page, i) => (
-                                                            <PaginationItem key={i}>
-                                                                {page === '...' ? (
-                                                                    <PaginationEllipsis />
-                                                                ) : (
-                                                                    <PaginationLink
-                                                                        onClick={() => goToPage(page as number)}
-                                                                        isActive={page === users.current_page}
-                                                                    >
-                                                                        {page}
-                                                                    </PaginationLink>
-                                                                )}
-                                                            </PaginationItem>
-                                                        ))}
-                                                        <PaginationItem>
-                                                            <PaginationNext
-                                                                onClick={() => goToPage(users.current_page + 1)}
-                                                                disabled={users.current_page >= users.last_page || isLoading}
-                                                            />
-                                                        </PaginationItem>
-                                                    </PaginationContent>
-                                                </Pagination>
-                                            </div>
-                                        )}
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="relative z-10 mt-auto w-full border-t border-slate-200/70 bg-white/80 py-4 text-center text-xs font-medium tracking-wide text-slate-600 dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
+                        DSWD Queuing System • User Management
+                    </footer>
                 </div>
+
+                {/* Role Modal */}
                 <UserRoleModal
                     open={roleModalOpen}
                     onClose={() => setRoleModalOpen(false)}
                     onSubmit={handleRoleChange}
                     userId={selectedUserId}
                     currentRole={selectedUserRole}
-                    roles={usePage<UsersProps>().props.roles}
+                    roles={roles}
                 />
+
+                {/* Loading Overlay */}
+                <LoadingOverlay visible={isLoading} title="Please wait..." message="Processing your request..." />
             </AppLayout>
         </>
     );
