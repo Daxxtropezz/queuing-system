@@ -29,61 +29,61 @@ export default function GuardPage() {
     function buildTicketHtml(type: string, number: string, datetime: string): string {
         const logoDSWD = '/img/dswd-ticket-logo.png';
         return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Ticket</title>
-<style>
-  /* ✅ Let height auto-adjust to content */
- @page {
-  size: 80mm auto portrait;
-  margin: 0;
-}
-html, body {
-  width: 80mm;
-  margin: 0;
-  padding: 0;
-}
+                <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>Ticket</title>
+                        <style>
+                        /* ✅ Let height auto-adjust to content */
+                        @page {
+                        size: 80mm auto portrait;
+                        margin: 0;
+                        }
+                        html, body {
+                        width: 80mm;
+                        margin: 0;
+                        padding: 0;
+                        }
 
 
-  body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    position: relative;
-  }
+                        body {
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                            position: relative;
+                        }
 
-  .ticket {
-    margin: 0;
-    padding: 2mm;
-    width: 80mm;
-    box-sizing: border-box;
-    background: #fff;
-    text-align: center;
-    font-family: Arial, sans-serif;
-    color: #000;
-  }
+                        .ticket {
+                            margin: 0;
+                            padding: 2mm;
+                            width: 80mm;
+                            box-sizing: border-box;
+                            background: #fff;
+                            text-align: center;
+                            font-family: Arial, sans-serif;
+                            color: #000;
+                        }
 
-  .logo {
-    width: 60mm;
-    height: auto;
-    margin: 0 auto 2mm auto;
-    display: block;
-  }
+                        .logo {
+                            width: 60mm;
+                            height: auto;
+                            margin: 0 auto 2mm auto;
+                            display: block;
+                        }
 
-  .type { font-weight: 700; font-size: 6mm; line-height: 1.1; margin: 0; }
-  .number { font-weight: 800; font-size: 16mm; line-height: 1; margin: 0; }
-  .datetime { font-size: 5mm; color: #333; line-height: 1.1; margin: 0; }
-</style>
-</head>
-<body>
-  <Box class="ticket">
-    <img src="${logoDSWD}" alt="DSWD Logo" class="logo" />
-    <Box class="type">${type}</Box>
-    <Box class="number">${number}</Box>
-    <Box class="datetime">${datetime}</Box>
-  </Box>
-</body>
-</html>`;
+                        .type { font-weight: 700; font-size: 6mm; line-height: 1.1; margin: 0; }
+                        .number { font-weight: 800; font-size: 16mm; line-height: 1; margin: 0; }
+                        .datetime { font-size: 5mm; color: #333; line-height: 1.1; margin: 0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="ticket">
+                            <img src="${logoDSWD}" alt="DSWD Logo" class="logo" />
+                            <div class="type">${type}</div>
+                            <div class="number">${number}</div>
+                            <div class="datetime">${datetime}</div>
+                        </div>
+                    </body>
+                </html>`;
     }
 
 
