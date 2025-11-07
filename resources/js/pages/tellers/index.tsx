@@ -7,7 +7,6 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { FileWarning, Search as SearchIcon, SquarePen, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-// 🔑 IMPORT NEW COMPONENTS
 import LoadingOverlay from '@/components/loading-overlay';
 import Pagination from '@/components/pagination';
 import Box from '@/components/ui/box';

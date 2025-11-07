@@ -5,16 +5,16 @@ import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 import Swal from 'sweetalert2';
-import LoadingOverlay from "@/components/loading-overlay";
 
 type TxType = { id: number; name: string; description?: string | null };
 type ModalProps = {
     isModalVisible: boolean;
     onClose: (open: boolean) => void;
     type?: TxType | null;
+    setIsLoading: (loading: boolean) => void; // <-- add this prop
 };
 
-export default function TransactionTypeModal({ isModalVisible, onClose, type }: ModalProps) {
+export default function TransactionTypeModal({ isModalVisible, onClose, type, setIsLoading }: ModalProps) {
     const isEditMode = !!type;
 
     const { data, setData, post, put, processing, errors, reset } = useForm({
@@ -35,6 +35,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }: 
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setIsLoading(true); // <-- show overlay in parent
         if (isEditMode) {
             put(route('transaction-types.update', type!.id), {
                 onSuccess: () => {
@@ -49,6 +50,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }: 
                     });
                     onClose(false);
                 },
+                onFinish: () => setIsLoading(false), // <-- hide overlay in parent
             });
         } else {
             post(route('transaction-types.store'), {
@@ -64,15 +66,13 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }: 
                     });
                     onClose(false);
                 },
+                onFinish: () => setIsLoading(false), // <-- hide overlay in parent
             });
         }
     };
 
     return (
         <Dialog open={isModalVisible} onOpenChange={onClose}>
-            {/* Loading Overlay implementation */}
-            <LoadingOverlay visible={processing} title={isEditMode ? 'Updating...' : 'Creating...'} />
-            
             <DialogContent className="max-w-lg border border-slate-200 bg-white/90 ring-1 ring-slate-200/60 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-slate-800/70 dark:bg-slate-900/80 dark:ring-slate-800/50">
                 <DialogHeader>
                     <DialogTitle className="text-slate-800 dark:text-slate-100">
@@ -87,7 +87,6 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }: 
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-slate-700 dark:text-slate-300">
                                 Name
-                                {/* Red asterisk for required field */}
                                 <span className="text-red-500 ml-1">*</span>
                             </Label>
                             <Input
@@ -114,8 +113,7 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }: 
                     <DialogFooter className="border-t border-slate-200 pt-4 dark:border-slate-800">
                         <Button
                             type="submit"
-                            // 🔑 KEY CHANGE: The button is disabled if 'processing' is true OR 'data.name' is empty
-                            disabled={processing || !data.name.trim()} 
+                            disabled={!data.name.trim()}
                             className="focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:outline-none"
                         >
                             {isEditMode ? 'Update' : 'Create'}
@@ -131,7 +129,6 @@ export default function TransactionTypeModal({ isModalVisible, onClose, type }: 
                     </DialogFooter>
                 </form>
             </DialogContent>
-
         </Dialog>
     );
 }
