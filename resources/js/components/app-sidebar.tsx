@@ -1,10 +1,27 @@
-// import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+} from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { CreditCard, FileChartColumnIncreasing, ListChecks, ScrollText, UserCheck, UserRoundCog, Users, Video } from 'lucide-react';
+import {
+    CreditCard,
+    FileChartColumnIncreasing,
+    ListChecks,
+    ScrollText,
+    UserCheck,
+    UserRoundCog,
+    Users,
+    Video,
+    BarChart3,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
@@ -22,22 +39,24 @@ export function AppSidebar() {
 
     const mainNavItems: NavItem[] = [];
 
+    // --- Queue Service Counters ---
     if (isAdmin || isTellerStep1) {
         mainNavItems.push({
-            title: "Step 1 - Service Counter",
-            href: "/queue/teller-step1",
+            title: 'Step 1 - Service Counter',
+            href: '/queue/teller-step1',
             icon: UserCheck,
         });
     }
 
     if (isAdmin || isTellerStep2) {
         mainNavItems.push({
-            title: "Step 2 - Service Counter",
-            href: "/queue/teller-step2",
+            title: 'Step 2 - Service Counter',
+            href: '/queue/teller-step2',
             icon: UserCheck,
         });
     }
 
+    // --- Administrator Section ---
     if (isAdmin) {
         mainNavItems.push({
             title: 'Administrator',
@@ -59,7 +78,6 @@ export function AppSidebar() {
                     href: '/tellers',
                     icon: CreditCard,
                 },
-
                 {
                     title: 'Videos',
                     href: '/videos',
@@ -72,35 +90,41 @@ export function AppSidebar() {
                 },
                 {
                     title: 'Reports',
-                    href: '/reports',
+                    href: '#',
                     icon: FileChartColumnIncreasing,
+                    children: [
+                        {
+                            title: 'Step 1 Reports',
+                            href: '/reports/step1',
+                            icon: BarChart3,
+                        },
+                        {
+                            title: 'Step 2 Reports',
+                            href: '/reports/step2',
+                            icon: BarChart3,
+                        },
+                    ],
                 },
             ],
         });
     }
 
+    // --- Serving Boards ---
     if (isAdmin || isTellerStep1) {
         mainNavItems.push({
-            title: "Step 1 - Serving Board",
-            href: "/queue/step-1",
-            icon: UserCheck,
-        });
-    }
-    if (isAdmin || isTellerStep2) {
-        mainNavItems.push({
-            title: "Step 2 - Serving Board",
-            href: "/queue/step-2",
+            title: 'Step 1 - Serving Board',
+            href: '/queue/step-1',
             icon: UserCheck,
         });
     }
 
-    // const footerNavItems: NavItem[] = [
-    //     {
-    //         title: 'User Management',
-    //         href: '/users',
-    //         icon: Users,
-    //     },
-    // ];
+    if (isAdmin || isTellerStep2) {
+        mainNavItems.push({
+            title: 'Step 2 - Serving Board',
+            href: '/queue/step-2',
+            icon: UserCheck,
+        });
+    }
 
     return (
         <Sidebar collapsible="icon" variant="inset" className="overflow-x-hidden max-w-full">
@@ -121,7 +145,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                {/* <NavFooter items={footerNavItems} className="mt-auto" /> */}
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

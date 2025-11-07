@@ -9,79 +9,99 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\KpiReportExport;
-use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    public function index(Request $request)
+    public function step1(Request $request)
     {
-        $filters = $request->only(['search', 'served_by', 'transaction_type_id', 'status', 'date_from', 'date_to']);
+        // Only allow user, ispriority, date_from, date_to
+        $filters = $request->only(['user', 'ispriority', 'date_from', 'date_to']);
 
-        $query = QueueTicket::with(['servedBy', 'transactionType'])
-            ->when($filters['served_by'] ?? null, fn($q, $servedBy) => $q->where('served_by', $servedBy))
-            ->when($filters['transaction_type_id'] ?? null, fn($q, $type) => $q->where('transaction_type_id', $type))
-            ->when($filters['status'] ?? null, fn($q, $status) => $q->where('status', $status))
+        $query = QueueTicket::with(['servedByStep1', 'transactionType'])
+            ->where('step', 1)
+            // Only tickets with both started_at_step1 and finished_at_step1
+            ->whereNotNull('started_at_step1')
+            ->whereNotNull('finished_at_step1')
+            ->when($filters['user'] ?? null, fn($q, $userId) => $q->where('served_by_step1', $userId))
+            ->when(isset($filters['ispriority']) && $filters['ispriority'] !== '', fn($q) => $q->where('ispriority', $filters['ispriority']))
             ->when($filters['date_from'] ?? null, fn($q, $from) => $q->whereDate('created_at', '>=', $from))
             ->when($filters['date_to'] ?? null, fn($q, $to) => $q->whereDate('created_at', '<=', $to));
 
         $tickets = $query->latest()->paginate(20);
 
-        // --- Step 1 and Step 2 "done" tickets, grouped for charts/tables ---
-        $step1Done = QueueTicket::with(['servedBy', 'transactionType'])
-            ->where('status', 'done')
-            ->where('step', 1)
-            ->when($filters['transaction_type_id'] ?? null, fn($q, $type) => $q->where('transaction_type_id', $type))
-            ->when($filters['date_from'] ?? null, fn($q, $from) => $q->whereDate('created_at', '>=', $from))
-            ->when($filters['date_to'] ?? null, fn($q, $to) => $q->whereDate('created_at', '<=', $to))
-            ->get();
+        $doneTickets = (clone $query)->get();
 
-        $step2Done = QueueTicket::with(['servedBy', 'transactionType'])
-            ->where('status', 'done')
-            ->where('step', 2)
-            ->when($filters['transaction_type_id'] ?? null, fn($q, $type) => $q->where('transaction_type_id', $type))
-            ->when($filters['date_from'] ?? null, fn($q, $from) => $q->whereDate('created_at', '>=', $from))
-            ->when($filters['date_to'] ?? null, fn($q, $to) => $q->whereDate('created_at', '<=', $to))
-            ->get();
-
-        // --- Group by transaction type and customer type (ispriority) ---
-        $groupedStep1 = $step1Done->groupBy(function($t) {
-            return ($t->transactionType->name ?? 'Unknown') . '|' . ($t->ispriority ? 'Priority' : 'Regular');
-        });
-        $groupedStep2 = $step2Done->groupBy(function($t) {
+        $grouped = $doneTickets->groupBy(function ($t) {
             return ($t->transactionType->name ?? 'Unknown') . '|' . ($t->ispriority ? 'Priority' : 'Regular');
         });
 
-        // --- Summary (per step) ---
         $summary = [
             'total' => $tickets->total(),
-            'served' => $tickets->where('status', 'done')->count(),
-            'no_shows' => $tickets->where('status', 'no_show')->count(),
-            'avg_service_time_step1' => $step1Done->avg(function ($ticket) {
+            'served' => $tickets->count(),
+            'no_shows' => 0, // Not relevant here since only completed tickets are shown
+            'avg_service_time' => $doneTickets->avg(function ($ticket) {
                 if ($ticket->started_at_step1 && $ticket->finished_at_step1) {
-                    return (strtotime($ticket->finished_at_step1) - strtotime($ticket->started_at_step1));
-                }
-                return 0;
-            }) ?? 0,
-            'avg_service_time_step2' => $step2Done->avg(function ($ticket) {
-                if ($ticket->started_at_step2 && $ticket->finished_at_step2) {
-                    return (strtotime($ticket->finished_at_step2) - strtotime($ticket->started_at_step2));
+                    return strtotime($ticket->finished_at_step1) - strtotime($ticket->started_at_step1);
                 }
                 return 0;
             }) ?? 0,
         ];
 
-        $users = User::whereNotNull('teller_id')->get();
-
-        return Inertia::render('reports/index', [
+        return Inertia::render('reports/step1', [
             'tickets' => $tickets,
             'summary' => $summary,
-            'users' => $users,
-            'types' => TransactionType::all(),
+            'users' => \App\Models\User::whereNotNull('teller_id')->get(),
+            'types' => \App\Models\TransactionType::all(),
             'filters' => $filters,
-            'step1Done' => $step1Done,
-            'step2Done' => $step2Done,
-            'groupedStep1' => $groupedStep1,
-            'groupedStep2' => $groupedStep2,
+            'grouped' => $grouped,
+            'doneTickets' => $doneTickets,
+        ]);
+    }
+
+    public function step2(Request $request)
+    {
+        // Allow user, ispriority, transaction_type_id, date_from, date_to
+        $filters = $request->only(['user', 'ispriority', 'transaction_type_id', 'date_from', 'date_to']);
+
+        $query = QueueTicket::with(['servedByStep2', 'transactionType'])
+            ->where('step', 2)
+            // Only tickets with both started_at_step2 and finished_at_step2
+            ->whereNotNull('started_at_step2')
+            ->whereNotNull('finished_at_step2')
+            ->when($filters['user'] ?? null, fn($q, $userId) => $q->where('served_by_step2', $userId))
+            ->when(isset($filters['ispriority']) && $filters['ispriority'] !== '', fn($q) => $q->where('ispriority', $filters['ispriority']))
+            ->when($filters['transaction_type_id'] ?? null, fn($q, $type) => $q->where('transaction_type_id', $type))
+            ->when($filters['date_from'] ?? null, fn($q, $from) => $q->whereDate('created_at', '>=', $from))
+            ->when($filters['date_to'] ?? null, fn($q, $to) => $q->whereDate('created_at', '<=', $to));
+
+        $tickets = $query->latest()->paginate(20);
+
+        $doneTickets = (clone $query)->get();
+
+        $grouped = $doneTickets->groupBy(function ($t) {
+            return ($t->transactionType->name ?? 'Unknown') . '|' . ($t->ispriority ? 'Priority' : 'Regular');
+        });
+
+        $summary = [
+            'total' => $tickets->total(),
+            'served' => $tickets->count(),
+            'no_shows' => 0, // Not relevant here since only completed tickets are shown
+            'avg_service_time' => $doneTickets->avg(function ($ticket) {
+                if ($ticket->started_at_step2 && $ticket->finished_at_step2) {
+                    return strtotime($ticket->finished_at_step2) - strtotime($ticket->started_at_step2);
+                }
+                return 0;
+            }) ?? 0,
+        ];
+
+        return Inertia::render('reports/step2', [
+            'tickets' => $tickets,
+            'summary' => $summary,
+            'users' => \App\Models\User::whereNotNull('teller_id')->get(),
+            'types' => \App\Models\TransactionType::all(),
+            'filters' => $filters,
+            'grouped' => $grouped,
+            'doneTickets' => $doneTickets,
         ]);
     }
 
