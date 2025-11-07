@@ -1,4 +1,5 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { useEffect } from 'react';
 import Box from '@/components/ui/box';
 
 import HeaderBar from './components/HeaderBar';
@@ -16,6 +17,29 @@ import BrandTitle from '../components/BrandTitle';
 export default function MainPage({ boardData, transactionTypes = [] }: MainPageProps) {
     const { servingWrapRef, waitingWrapRef, servingCapacity } = useCapacities();
     const { displayServingTickets, waitingTickets, loading, lastUpdated, redirectError } = useBoardData(boardData);
+
+    // Partial prop reload so VideoSlot isn't remounted; refresh lists periodically and on focus/visibility/online
+    useEffect(() => {
+        const refresh = () => router.reload({ only: ['boardData', 'transactionTypes'] });
+
+        const interval = window.setInterval(refresh, 5000);
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') refresh();
+        };
+        const onFocus = () => refresh();
+        const onOnline = () => refresh();
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        window.addEventListener('focus', onFocus);
+        window.addEventListener('online', onOnline);
+
+        return () => {
+            window.clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            window.removeEventListener('focus', onFocus);
+            window.removeEventListener('online', onOnline);
+        };
+    }, []);
 
     return (
         <>
@@ -61,7 +85,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: MainPageP
                                             </>
                                         )}
 
-                                        <WaitingList waitingTickets={waitingTickets} transactionTypes={transactionTypes} />
+                                        <WaitingList key={`waiting-${lastUpdated ?? 0}`} waitingTickets={waitingTickets} transactionTypes={transactionTypes} />
                                     </Box>
                                 </Box>
                             </Box>
@@ -78,7 +102,7 @@ export default function MainPage({ boardData, transactionTypes = [] }: MainPageP
                             </header>
 
                             <Box ref={servingWrapRef} className="min-h-0 flex-1 overflow-hidden">
-                                <ServingList tickets={displayServingTickets} servingCapacity={servingCapacity} loading={loading} />
+                                <ServingList key={`serving-${lastUpdated ?? 0}`} tickets={displayServingTickets} servingCapacity={servingCapacity} loading={loading} />
                             </Box>
                         </section>
                     </Box>

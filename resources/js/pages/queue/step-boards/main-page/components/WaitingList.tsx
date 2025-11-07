@@ -1,6 +1,6 @@
 import Box from '@/components/ui/box';
 import type { QueueTicket, TransactionType } from '../types';
-import { buildWaitingColumns } from '../utils';
+import { buildWaitingColumns, formatTicketNumber } from '../utils';
 
 interface Props {
     waitingTickets: QueueTicket[];
@@ -37,7 +37,7 @@ export default function WaitingList({ waitingTickets, transactionTypes = [] }: P
                                     {displayRegular.map((t) => (
                                         <Box key={`w-reg-${t.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
                                             <Box className="flex items-center gap-3">
-                                                <Box className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">{t.number}</Box>
+                                                <Box className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">{formatTicketNumber(t)}</Box>
                                             </Box>
                                             <Box className="text-xs text-slate-600 dark:text-slate-300">{t.teller_id ? `Teller ${t.teller_id}` : '—'}</Box>
                                         </Box>
@@ -51,7 +51,7 @@ export default function WaitingList({ waitingTickets, transactionTypes = [] }: P
                                     {displayPriority.map((t) => (
                                         <Box key={`w-prio-${t.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner">
                                             <Box className="flex items-center gap-3">
-                                                <Box className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">{t.number}</Box>
+                                                <Box className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">{formatTicketNumber(t)}</Box>
                                             </Box>
                                             <Box className="text-xs text-slate-600 dark:text-slate-300">{t.teller_id ? `Teller ${t.teller_id}` : '—'}</Box>
                                         </Box>
