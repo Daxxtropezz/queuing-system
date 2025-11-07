@@ -38,7 +38,7 @@ class QueueController extends Controller
             ->get();
 
         $data = QueueTicket::with(['transactionType'])
-            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
+            ->select('id', 'number', 'transaction_type_id', 'status', 'served_by_step1', 'served_by_step2', 'teller_id')
             ->get()
             ->map(function ($ticket) {
                 return [
@@ -46,7 +46,7 @@ class QueueController extends Controller
                     'number' => $ticket->formatted_number,
                     'transaction_type' => $ticket->transactionType->name ?? '',
                     'status' => $ticket->status,
-                    'served_by' => $ticket->served_by,
+                    'served_by' => $ticket->served_by_step1,
                     'teller_id' => $ticket->teller_id,
                     // 'video_url' => $ticket->video?->file_path ? asset('storage/' . $ticket->video->file_path) : null,
                 ];
@@ -99,7 +99,7 @@ class QueueController extends Controller
 
             // 3️⃣ Build data for table / board
             $data = QueueTicket::with(['transactionType:id,name', 'teller:id,name'])
-                ->select('id', 'number', 'transaction_type_id', 'status', 'served_by', 'teller_id')
+                ->select('id', 'number', 'transaction_type_id', 'status', 'served_by_step1', 'served_by_step2', 'teller_id')
                 ->get()
                 ->map(function ($ticket) {
                     $teller = $ticket->teller; // capture the relation
@@ -109,7 +109,7 @@ class QueueController extends Controller
                         'number' => $ticket->formatted_number,
                         'transaction_type' => $ticket->transactionType->name ?? '',
                         'status' => $ticket->status,
-                        'served_by' => $ticket->served_by,
+                        'served_by' => $ticket->served_by_step2,
                         'teller_id' => $ticket->teller_id,
                         'teller' => $teller ? [
                             'id' => $teller->id,
@@ -133,7 +133,7 @@ class QueueController extends Controller
                         'name' => $ticket->transactionType->name ?? '',
                     ],
                     'status' => $ticket->status,
-                    'served_by' => $ticket->served_by,
+                    'served_by' => $ticket->served_by_step2,
                     'teller_id' => $ticket->teller_id,
                     'teller' => $teller ? [
                         'id' => $teller->id,
@@ -154,7 +154,7 @@ class QueueController extends Controller
                         'name' => $ticket->transactionType->name ?? '',
                     ],
                     'status' => $ticket->status,
-                    'served_by' => $ticket->served_by,
+                    'served_by' => $ticket->served_by_step2,
                     'teller_id' => $ticket->teller_id,
                     'teller' => $teller ? [
                         'id' => $teller->id,
@@ -283,7 +283,7 @@ class QueueController extends Controller
 
         // Current ticket being served by this user (step1 flow)
         $current = QueueTicket::with('transactionType')
-            ->where('served_by', $user->id)
+            ->where('served_by_step1', $user->id)
             ->where('status', 'serving')
             ->where('step', 1)
             ->whereDate('created_at', now())
@@ -343,7 +343,7 @@ class QueueController extends Controller
         $user = $request->user();
 
         // Check if teller already has active
-        $current = QueueTicket::where('served_by', $user->id)
+        $current = QueueTicket::where('served_by_step1', $user->id)
             ->where('status', 'serving')
             ->where('step', 1)
             ->whereDate('created_at', now())
@@ -364,8 +364,8 @@ class QueueController extends Controller
         if ($next) {
             $next->update([
                 'status' => 'serving',
-                'served_by' => $user->id,
-                'started_at' => now(),
+                'served_by_step1' => $user->id,
+                'started_at_step1' => now(),
             ]);
 
             // Log Activity: Ticket Grabbed (Step 1)
@@ -393,19 +393,31 @@ class QueueController extends Controller
         try {
             DB::beginTransaction();
 
-            $current = $this->queueService->getCurrentTicket($user, 1);
+            $current = QueueTicket::where('served_by_step1', $user->id)
+                ->where('status', 'serving')
+                ->where('step', 1)
+                ->whereDate('created_at', now())
+                ->first();
 
             if ($current) {
-                $this->queueService->updateTicketStatus($current, 'ready_step2', $user);
+                $current->update([
+                    'status' => 'ready_step2',
+                    'finished_at_step1' => now(),
+                ]);
             }
 
-            $next = $this->queueService->getNextTicket([
-                'status' => 'waiting',
-                'ispriority' => $current ? $current->ispriority : $request->input('ispriority', 0)
-            ]);
+            $next = QueueTicket::where('status', 'waiting')
+                ->where('ispriority', $current ? $current->ispriority : $request->input('ispriority', 0))
+                ->whereDate('created_at', now())
+                ->orderBy('id')
+                ->first();
 
             if ($next) {
-                $this->queueService->updateTicketStatus($next, 'serving', $user);
+                $next->update([
+                    'status' => 'serving',
+                    'served_by_step1' => $user->id,
+                    'started_at_step1' => now(),
+                ]);
                 DB::commit();
                 return back()->with('success', "Now serving: {$next->formatted_number}");
             }
@@ -428,7 +440,7 @@ class QueueController extends Controller
     {
         $user = $request->user();
 
-        $current = QueueTicket::where('served_by', $user->id)
+        $current = QueueTicket::where('served_by_step1', $user->id)
             ->where('status', 'serving')
             ->whereDate('created_at', now())
             ->first();
@@ -440,7 +452,7 @@ class QueueController extends Controller
             $current->update([
                 'status' => 'no_show',
                 'step' => 1,
-                'finished_at' => now(),
+                'finished_at_step1' => now(),
                 'transaction_type_id' => $request->input('transaction_type_id', $current->transaction_type_id),
                 'remarks' => $request->input('remarks', $current->remarks),
             ]);
@@ -466,8 +478,8 @@ class QueueController extends Controller
         if ($next) {
             $next->update([
                 'status' => 'serving',
-                'served_by' => $user->id,
-                'started_at' => now(),
+                'served_by_step1' => $user->id,
+                'started_at_step1' => now(),
                 'transaction_type_id' => $next->transaction_type_id ?? $request->input('transaction_type_id'),
                 'remarks' => $next->remarks ?? '',
             ]);
@@ -513,11 +525,12 @@ class QueueController extends Controller
         }
 
         if (in_array($ticket->status, ['serving', 'ready_step2'])) {
-            return back()->with('error', "Ticket {$ticket->formatted_number} is already {$ticket->status}.");
-        }
+    return back()->with('error', "Ticket {$ticket->formatted_number} is already {$ticket->status}.");
+}
+
 
         // End current serving
-        $currentServing = QueueTicket::where('served_by', $user->id)
+        $currentServing = QueueTicket::where('served_by_step1', $user->id)
             ->where('status', 'serving')
             ->where('step', 1)
             ->whereDate('created_at', today())
@@ -531,7 +544,7 @@ class QueueController extends Controller
             $oldStatus = $currentServing->status;
             $currentServing->update([
                 'status' => 'ready_step2',
-                'finished_at' => now(),
+                'finished_at_step1' => now(),
             ]);
 
             // Log Activity: Current Serving Completed (Manual Step 1 Override)
@@ -550,8 +563,8 @@ class QueueController extends Controller
         $oldStatus = $ticket->status;
         $ticket->update([
             'status' => 'serving',
-            'served_by' => $user->id,
-            'started_at' => now(),
+            'served_by_step1' => $user->id,
+            'started_at_step1' => now(),
         ]);
 
         // Log Activity: Ticket Served (Manual Step 1 Override)
@@ -582,13 +595,13 @@ class QueueController extends Controller
         }
 
         // End any current serving
-        $currentServing = QueueTicket::where('served_by', $user->id)
+        $currentServing = QueueTicket::where('served_by_step1', $user->id)
             ->where('status', 'serving')
             ->first();
 
         if ($currentServing) {
             $oldStatus = $currentServing->status;
-            $currentServing->update(['status' => 'ready_step2', 'finished_at' => now()]);
+            $currentServing->update(['status' => 'ready_step2', 'finished_at_step1' => now()]);
             // Log Activity: Current Serving Completed (Serving No Show)
             activity()
                 ->inLog('Queue Action')
@@ -605,8 +618,8 @@ class QueueController extends Controller
         $oldStatus = $ticket->status;
         $ticket->update([
             'status' => 'serving',
-            'served_by' => $user->id,
-            'started_at' => now(),
+            'served_by_step1' => $user->id,
+            'started_at_step1' => now(),
         ]);
 
         // Log Activity: No Show Ticket Resumed (Step 1)
@@ -624,7 +637,7 @@ class QueueController extends Controller
         return back()->with('success', "Now serving no show: {$ticket->formatted_number}");
     }
 
-    public function setTransactionType(Request $request)
+     public function setTransactionType(Request $request)
     {
         $request->validate([
             'ticket_id' => 'required|exists:queue_tickets,id',
@@ -652,12 +665,13 @@ class QueueController extends Controller
         return back();
     }
 
+
     //Step2: Teller Page
     public function tellerStep2Page(Request $request)
     {
         $user = $request->user();
         $current = QueueTicket::with('transactionType')
-            ->where('served_by', $user->id)
+            ->where('served_by_step2', $user->id)
             ->where('step', 2)
             ->where('status', 'serving')
             ->whereDate('created_at', now())
@@ -764,14 +778,14 @@ class QueueController extends Controller
         }
 
         // End any expired serving
-        QueueTicket::where('served_by', $user->id)
+        QueueTicket::where('served_by_step2', $user->id)
             ->where('status', 'serving')
             ->where('step', 2)
             ->whereDate('created_at', '<', now()->toDateString())
             ->update(['status' => 'done']);
 
         // Check if teller already has active
-        $current = QueueTicket::where('served_by', $user->id)
+        $current = QueueTicket::where('served_by_step2', $user->id)
             ->where('status', 'serving')
             ->where('step', 2)
             ->whereDate('created_at', now()->toDateString())
@@ -794,9 +808,9 @@ class QueueController extends Controller
             $next->update([
                 'status' => 'serving',
                 'step' => 2,
-                'served_by' => $user->id,
+                'served_by_step2' => $user->id,
                 'teller_id' => $user->teller_id,
-                'started_at' => now(),
+                'started_at_step2' => now(),
             ]);
 
             // Log Activity: Ticket Grabbed (Step 2)
@@ -822,7 +836,7 @@ class QueueController extends Controller
     public function servingIndex()
     {
         $tickets = QueueTicket::where('status', 'serving')->get();
-        $userIds = $tickets->pluck('served_by')->filter()->unique();
+        $userIds = $tickets->pluck('served_by_step2')->filter()->unique();
         $users = $userIds->isEmpty()
             ? collect()
             : User::whereIn('id', $userIds)->get()->keyBy('id');
@@ -850,7 +864,7 @@ class QueueController extends Controller
         }
 
         // Mark current serving as done
-        $current = QueueTicket::where('served_by', $user->id)
+        $current = QueueTicket::where('served_by_step2', $user->id)
             ->where('status', 'serving')
             ->where('step', 2)
             ->whereDate('created_at', now())
@@ -858,7 +872,7 @@ class QueueController extends Controller
 
         if ($current) {
             $oldStatus = $current->status;
-            $current->update(['status' => 'done', 'finished_at' => now()]);
+            $current->update(['status' => 'done', 'finished_at_step2' => now()]);
 
             // Log Activity: Ticket Completed (Step 2)
             activity()
@@ -886,9 +900,9 @@ class QueueController extends Controller
             $next->update([
                 'status' => 'serving',
                 'step' => 2,
-                'served_by' => $user->id,
+                'served_by_step2' => $user->id,
                 'teller_id' => $user->teller_id,
-                'started_at' => now(),
+                'started_at_step2' => now(),
             ]);
 
             // Log Activity: Next Ticket Grabbed (Step 2)
@@ -919,7 +933,7 @@ class QueueController extends Controller
         }
 
         // Mark current serving as no_show and set step = 2
-        $current = QueueTicket::where('served_by', $user->id)
+        $current = QueueTicket::where('served_by_step2', $user->id)
             ->where('status', 'serving')
             ->whereDate('created_at', now())
             ->first();
@@ -928,8 +942,8 @@ class QueueController extends Controller
             $oldStatus = $current->status;
             $current->update([
                 'status' => 'no_show',
-                'step' => 2,        // ✅ ensure step is saved
-                'finished_at' => now()
+                'step' => 2,
+                'finished_at_step2' => now()
             ]);
 
             // Log Activity: Current Ticket Marked No Show (Step 2 Override)
@@ -957,9 +971,9 @@ class QueueController extends Controller
         if ($next) {
             $next->update([
                 'status' => 'serving',
-                'served_by' => $user->id,
+                'served_by_step2' => $user->id,
                 'teller_id' => $user->teller_id,
-                'started_at' => now(),
+                'started_at_step2' => now(),
             ]);
 
             // Log Activity: Next Ticket Grabbed (Step 2 Override)
@@ -1008,7 +1022,7 @@ class QueueController extends Controller
         }
 
         // End any current serving
-        $currentServing = QueueTicket::where('served_by', $user->id)
+        $currentServing = QueueTicket::where('served_by_step2', $user->id)
             ->where('status', 'serving')
             ->where('step', 2)
             ->whereDate('created_at', now())
@@ -1016,7 +1030,7 @@ class QueueController extends Controller
 
         if ($currentServing) {
             $oldStatus = $currentServing->status;
-            $currentServing->update(['status' => 'done', 'finished_at' => now()]);
+            $currentServing->update(['status' => 'done', 'finished_at_step2' => now()]);
 
             // Log Activity: Current Serving Completed (Manual Step 2 Override)
             activity()
@@ -1036,9 +1050,9 @@ class QueueController extends Controller
         $ticket->update([
             'status' => 'serving',
             'step' => 2,
-            'served_by' => $user->id,
+            'served_by_step2' => $user->id,
             'teller_id' => $user->teller_id,
-            'started_at' => now(),
+            'started_at_step2' => now(),
         ]);
 
         // Log Activity: No Show Ticket Resumed (Manual Step 2)
@@ -1060,7 +1074,7 @@ class QueueController extends Controller
     {
         $user = $request->user();
 
-        $ticket = QueueTicket::where('served_by', $user->id)
+        $ticket = QueueTicket::where('served_by_step2', $user->id)
             ->where('status', 'serving')
             ->whereDate('created_at', now())
             ->first();
@@ -1070,7 +1084,7 @@ class QueueController extends Controller
             $ticket->update([
                 'status' => 'no_show',
                 'step' => 2,
-                'finished_at' => now(),
+                'finished_at_step2' => now(),
             ]);
 
             // Log Activity: Current Ticket Marked No Show (Step 2)
@@ -1097,9 +1111,9 @@ class QueueController extends Controller
                 $next->update([
                     'status' => 'serving',
                     'step' => 2,
-                    'served_by' => $user->id,
+                    'served_by_step2' => $user->id,
                     'teller_id' => $user->teller_id,
-                    'started_at' => now(),
+                    'started_at_step2' => now(),
                 ]);
 
                 // Log Activity: Next Ticket Grabbed (Step 2 after No Show)

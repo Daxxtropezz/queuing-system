@@ -50,15 +50,13 @@ Route::get('/public-key', function () {
     return response($formattedKey, 200)->header('Content-Type', 'text/plain');
 });
 
-// DATA MANAGEMENT
-
 // Queuing System Routes
-
 Route::middleware(['auth', 'verified', 'role:Administrator'])->group(function () {
     Route::resource('transaction-types', TransactionTypeController::class);
     Route::resource('tellers', TellerController::class);
-    Route::resource('reports', ReportController::class);
-    Route::post('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+    Route::get('/reports/step1', [ReportController::class, 'step1'])->name('reports.step1');
+    Route::get('/reports/step2', [ReportController::class, 'step2'])->name('reports.step2');
+    Route::post('/export', [ReportController::class, 'export'])->name('reports.export');
 });
 
 // Public queue board JSON (no auth middleware)

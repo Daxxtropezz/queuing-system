@@ -13,7 +13,7 @@ class QueueTicket extends Model
     protected $table = 'queue_tickets';
 
     // Always eager-load these relations so frontend receives teller/transactionType consistently
-    protected $with = ['teller', 'servedBy', 'transactionType'];
+    protected $with = ['teller', 'servedByStep1', 'servedByStep2', 'transactionType'];
 
     protected $fillable = [
         'step',
@@ -24,13 +24,22 @@ class QueueTicket extends Model
         'ispriority',
         'started_at',
         'finished_at',
-        'served_by',
+        'served_by_step1',
+        'served_by_step2',
         'remarks',
+        'started_at_step1',
+        'finished_at_step1',
+        'started_at_step2',
+        'finished_at_step2',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'started_at_step1' => 'datetime',
+        'finished_at_step1' => 'datetime',
+        'started_at_step2' => 'datetime',
+        'finished_at_step2' => 'datetime',
     ];
 
     protected $appends = ['formatted_number'];
@@ -60,8 +69,13 @@ class QueueTicket extends Model
     }
 
 
-    public function servedBy()
+    public function servedByStep1()
     {
-        return $this->belongsTo(User::class, 'served_by');
+        return $this->belongsTo(User::class, 'served_by_step1');
+    }
+
+    public function servedByStep2()
+    {
+        return $this->belongsTo(User::class, 'served_by_step2');
     }
 }

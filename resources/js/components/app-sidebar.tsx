@@ -7,7 +7,7 @@ import {
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
-    SidebarMenuItem
+    SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
@@ -15,12 +15,12 @@ import {
     CreditCard,
     FileChartColumnIncreasing,
     ListChecks,
-    PanelTop,
     ScrollText,
     UserCheck,
     UserRoundCog,
     Users,
-    Video
+    Video,
+    BarChart3,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -39,10 +39,10 @@ export function AppSidebar() {
 
     const mainNavItems: NavItem[] = [];
 
-    // Step 1 Service Counter
+    // --- Queue Service Counters ---
     if (isAdmin || isTellerStep1) {
         mainNavItems.push({
-            title: isTellerStep1 ? 'Service Counter' : 'Step 1 - Service Counter',
+            title: 'Step 1 - Service Counter',
             href: '/queue/teller-step1',
             icon: UserCheck,
         });
@@ -51,44 +51,79 @@ export function AppSidebar() {
     // Step 2 Service Counter
     if (isAdmin || isTellerStep2) {
         mainNavItems.push({
-            title: isTellerStep2 ? 'Service Counter' : 'Step 2 - Service Counter',
+            title: 'Step 2 - Service Counter',
             href: '/queue/teller-step2',
             icon: UserCheck,
         });
     }
 
-    // Admin-only section
+    // --- Administrator Section ---
     if (isAdmin) {
         mainNavItems.push({
             title: 'Administrator',
             href: '#',
             icon: UserRoundCog,
             children: [
-                { title: 'User Management', href: '/users', icon: Users },
-                { title: 'Transaction Types', href: '/transaction-types', icon: ListChecks },
-                { title: 'Teller Management', href: '/tellers', icon: CreditCard },
-                { title: 'Videos', href: '/videos', icon: Video },
-                { title: 'Audit Logs', href: '/audit-logs', icon: ScrollText },
-                { title: 'Reports', href: '/reports', icon: FileChartColumnIncreasing },
+                {
+                    title: 'User Management',
+                    href: '/users',
+                    icon: Users,
+                },
+                {
+                    title: 'Transaction Types',
+                    href: '/transaction-types',
+                    icon: ListChecks,
+                },
+                {
+                    title: 'Teller Management',
+                    href: '/tellers',
+                    icon: CreditCard,
+                },
+                {
+                    title: 'Videos',
+                    href: '/videos',
+                    icon: Video,
+                },
+                {
+                    title: 'Audit Logs',
+                    href: '/audit-logs',
+                    icon: ScrollText,
+                },
+                {
+                    title: 'Reports',
+                    href: '#',
+                    icon: FileChartColumnIncreasing,
+                    children: [
+                        {
+                            title: 'Step 1 Reports',
+                            href: '/reports/step1',
+                            icon: BarChart3,
+                        },
+                        {
+                            title: 'Step 2 Reports',
+                            href: '/reports/step2',
+                            icon: BarChart3,
+                        },
+                    ],
+                },
             ],
         });
     }
 
-    // Step 1 Serving Board
+    // --- Serving Boards ---
     if (isAdmin || isTellerStep1) {
         mainNavItems.push({
-            title: isTellerStep1 ? 'Serving Board' : 'Step 1 - Serving Board',
+            title: 'Step 1 - Serving Board',
             href: '/queue/step-1',
-            icon: PanelTop,
+            icon: UserCheck,
         });
     }
 
-    // Step 2 Serving Board
     if (isAdmin || isTellerStep2) {
         mainNavItems.push({
-            title: isTellerStep2 ? 'Serving Board' : 'Step 2 - Serving Board',
+            title: 'Step 2 - Serving Board',
             href: '/queue/step-2',
-            icon: PanelTop,
+            icon: UserCheck,
         });
     }
 
