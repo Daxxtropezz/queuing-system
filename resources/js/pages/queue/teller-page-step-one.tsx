@@ -25,6 +25,19 @@ type TellerPageStepOneProps = {
     }[];
 };
 
+function formatTicketNumber(number: string, isPriority: boolean): string {
+    // 1. Remove non-numeric characters (in case the backend number is not clean)
+    let cleanNum = number.replace(/[^0-9]/g, '');
+    
+    // 2. Pad the numeric part to 4 digits
+    const paddedNum = cleanNum.padStart(4, '0');
+
+    // 3. Prepend the correct prefix
+    const prefix = isPriority ? 'P' : 'R';
+    
+    return prefix + paddedNum;
+}
+
 export default function TellerPageStepOne() {
     const form = useForm({ ispriority: "0", transaction_type_id: "", remarks: "" });
     const { processing } = form;
@@ -158,7 +171,7 @@ export default function TellerPageStepOne() {
     const handleOverride = () => {
         Swal.fire({
             title: 'Are you sure?',
-            text: `Mark ticket ${current?.number} as "No Show"?`,
+            text: `Mark ticket ${current ? formatTicketNumber(current.number, current.is_priority) : 'current'} as "No Show"?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -257,7 +270,7 @@ export default function TellerPageStepOne() {
                                             <Box className="text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                                                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
                                                 <Box className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
-                                                    {current.number}
+                                                   {formatTicketNumber(current.number, current.is_priority)}
                                                 </Box>
                                                 <Box className="mt-2">
                                                     <Badge variant={current.is_priority ? "destructive" : "secondary"}>
@@ -542,7 +555,7 @@ export default function TellerPageStepOne() {
                                                     <TableBody>
                                                         {waiting_list.map((ticket) => (
                                                             <TableRow key={ticket.id} className={ticket.is_priority ? "bg-rose-50 dark:bg-rose-900/20" : ""}>
-                                                                <TableCell className="font-medium">{ticket.number}</TableCell>
+                                                                <TableCell className="font-medium">{formatTicketNumber(ticket.number, ticket.is_priority)}</TableCell>
                                                                 <TableCell>{ticket.status}</TableCell>
                                                                 <TableCell>
                                                                     {ticket.is_priority ? (
@@ -579,7 +592,7 @@ export default function TellerPageStepOne() {
                                                     <TableBody>
                                                         {page.props.no_show_list.map((ticket) => (
                                                             <TableRow key={ticket.id} className="bg-amber-50 dark:bg-amber-900/20">
-                                                                <TableCell className="font-medium">{ticket.number}</TableCell>
+                                                                <TableCell className="font-medium">{formatTicketNumber(ticket.number, ticket.is_priority)}</TableCell>
                                                                 <TableCell>
                                                                     <Badge variant="outline" className="text-amber-600 border-amber-300">
                                                                         No Show

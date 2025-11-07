@@ -1,7 +1,7 @@
 import Box from '@/components/ui/box';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'; 
 import { Head, useForm } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
@@ -14,7 +14,7 @@ export default function GuardPage() {
         ispriority: null,
     });
 
-    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false); 
     const [generatedNumber, setGeneratedNumber] = useState('');
     const [priority, setPriority] = useState('');
     const [now, setNow] = useState<Date>(new Date());
@@ -25,14 +25,15 @@ export default function GuardPage() {
         return () => clearInterval(interval);
     }, []);
 
-    // Build a self-contained print document sized 80mm x 210mm, ticket at top-left
+    // Build a self-contained print document sized 80mm x auto, ticket at top-left
     function buildTicketHtml(type: string, number: string, datetime: string): string {
-        const logoDSWD = '/img/dswd-ticket-logo.png';
+        // Assuming this path is correct for your DSWD logo
+        const logoDSWD = '/img/dswd-ticket-logo.png'; 
         return `<!DOCTYPE html>
                 <html>
                     <head>
                         <meta charset="utf-8">
-                        <title>Ticket</title>
+                        <title>Queue Ticket</title>
                         <style>
                         /* ✅ Let height auto-adjust to content */
                         @page {
@@ -70,9 +71,33 @@ export default function GuardPage() {
                             display: block;
                         }
 
+                        .header-text { 
+                            font-weight: 700; 
+                            font-size: 5mm; 
+                            line-height: 1.1; 
+                            margin: 0 0 2mm 0; 
+                        }
                         .type { font-weight: 700; font-size: 6mm; line-height: 1.1; margin: 0; }
                         .number { font-weight: 800; font-size: 16mm; line-height: 1; margin: 0; }
                         .datetime { font-size: 5mm; color: #333; line-height: 1.1; margin: 0; }
+                        
+                        /* Added DSWD specific colors and message for ticket */
+                        .dswd-brand { 
+                            color: #004c97; /* DSWD Primary Blue */
+                            font-weight: bold;
+                        }
+                        /* ❌ REMOVED: Since the modal is the thank you message */
+                        /* .thank-you-message {
+                            font-size: 5.5mm;
+                            font-weight: 700;
+                            color: #c99a00;
+                            margin: 3mm 0 1mm 0;
+                        } */
+                        .instruction {
+                            font-size: 4mm;
+                            color: #555;
+                            margin-top: 1mm;
+                        }
                         </style>
                     </head>
                     <body>
@@ -80,6 +105,7 @@ export default function GuardPage() {
                             <img src="${logoDSWD}" alt="DSWD Logo" class="logo" />
                             <div class="type">${type}</div>
                             <div class="number">${number}</div>
+                            <div class="instruction">Please take your ticket and wait for your number to be called.</div>
                             <div class="datetime">${datetime}</div>
                         </div>
                     </body>
@@ -87,8 +113,7 @@ export default function GuardPage() {
     }
 
 
-
-    // Print via hidden iframe to avoid page CSS conflicting with print layout
+    // Print via hidden iframe (No change needed here, the kiosk flag handles the silent print)
     function printViaIframe(html: string): void {
         const frame = document.createElement('iframe');
         frame.style.position = 'fixed';
@@ -101,7 +126,8 @@ export default function GuardPage() {
 
         const doc = frame.contentDocument || frame.contentWindow?.document;
         if (!doc) {
-            window.print();
+            // Fallback if iframe fails - window.print() will show the dialog
+            window.print(); 
             return;
         }
         doc.open();
@@ -113,7 +139,8 @@ export default function GuardPage() {
             const img = doc.querySelector('.logo') as HTMLImageElement | null;
             if (img && img.complete) {
                 frame.contentWindow?.focus();
-                frame.contentWindow?.print();
+                // 💡 This is the line that will print silently IF the browser is in Kiosk-Print mode
+                frame.contentWindow?.print(); 
                 setTimeout(() => {
                     frame.parentNode && frame.parentNode.removeChild(frame);
                 }, 1000);
@@ -159,34 +186,37 @@ export default function GuardPage() {
 
             let num = response.generatedNumber.toString().replace(/[^0-9]/g, '');
             num = num.padStart(4, '0');
+            
             const typeLabel = value === 1 ? 'Priority' : 'Regular';
-
-            setGeneratedNumber(num);
+            const prefix = value === 1 ? 'P' : 'R';
+            const printedNumber = prefix + num; 
+            
+            setGeneratedNumber(printedNumber);
             setPriority(typeLabel);
 
-            // ✅ Print automatically right after generation
+            // 1. Show the Modal/Pop-up first
+            setDialogOpen(true);
+
+            // 2. Prepare for printing
             const nowDate = new Date();
             const monthNames = ["Jan.", "Feb.", "Mar.", "Apr.", "May.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
             const formattedDate = `${monthNames[nowDate.getMonth()]} ${nowDate.getDate()}, ${nowDate.getFullYear()}`;
             const formattedTime = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const datetime = `${formattedDate} ${formattedTime}`;
-            const html = buildTicketHtml(typeLabel, num, datetime);
+            
+            // 3. Trigger Print (The browser's kiosk flag will handle silent printing)
+            const html = buildTicketHtml(typeLabel, printedNumber, datetime);
             printViaIframe(html);
+            
+            // 4. Close the modal after 3 seconds (to allow user to see the number while it prints)
+            setTimeout(() => {
+                setDialogOpen(false);
+            }, 3000);
 
-            // ✅ Show success toast
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Number Generated!',
-                text: `Your ${typeLabel} number is ${num}`,
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
 
         } catch (error) {
             console.error(error);
+            setDialogOpen(false); 
             Swal.fire({
                 toast: true,
                 position: 'top-end',
@@ -202,58 +232,77 @@ export default function GuardPage() {
         }
     }
 
-
     return (
         <>
             <Head title="Generate Number" />
-            <Box className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-100">
-                <Card className="w-full max-w-md p-6 rounded-3xl bg-slate-800/70 text-center shadow-lg">
+            
+            {/* DSWD-inspired Interface */}
+            <Box className="flex min-h-screen items-center justify-center bg-blue-900 text-slate-100">
+                <Card className="w-full max-w-md p-6 rounded-3xl bg-white text-center shadow-2xl">
                     <CardHeader>
-                        <CardTitle className="text-3xl font-bold text-amber-400">
+                        <CardTitle className="text-3xl font-bold text-blue-800">
                             Choose Client Type
                         </CardTitle>
+                        <p className="text-sm text-gray-600">
+                            *Please select your type to get a queue number.
+                        </p>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-6">
+                        {/* Regular Button */}
                         <Button
                             type="button"
                             size="lg"
-                            disabled={cooldown}
-                            className="h-20 rounded-2xl text-xl font-bold bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={cooldown || processing}
+                            className="h-24 rounded-2xl text-2xl font-extrabold 
+                                       bg-blue-600 hover:bg-blue-700 text-white 
+                                       disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                             onClick={() => handleGenerate(0)}
                         >
-                            Regular
+                            Regular Client
                         </Button>
+                        {/* Priority Button */}
                         <Button
                             type="button"
                             size="lg"
-                            disabled={cooldown}
-                            className="h-auto min-h-[6rem] w-full rounded-2xl text-xl font-bold bg-amber-400 text-black hover:bg-amber-300 
-               disabled:opacity-50 disabled:cursor-not-allowed flex flex-col justify-center items-center 
-               px-3 py-3 text-center whitespace-normal break-words"
+                            disabled={cooldown || processing}
+                            className="h-auto min-h-[7rem] w-full rounded-2xl text-2xl font-extrabold 
+                                       bg-yellow-500 text-blue-900 hover:bg-yellow-600 
+                                       disabled:opacity-50 disabled:cursor-not-allowed 
+                                       flex flex-col justify-center items-center px-3 py-3 
+                                       text-center whitespace-normal break-words shadow-lg"
                             onClick={() => handleGenerate(1)}
                         >
-                            <span>Priority</span>
-                            <span className="text-xs text-slate-900 italic font-normal mt-1 leading-tight text-center">
+                            <span>Priority Lane</span>
+                            <span className="text-sm text-blue-900 italic font-normal mt-2 leading-tight text-center">
                                 For Senior Citizens, Pregnant Women, and Persons with Disabilities (PWD)
                             </span>
                         </Button>
-
-
-
                     </CardContent>
+                    <p className="text-sm text-gray-500 mt-4">
+                        Current Time: {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </p>
                 </Card>
 
-                {/* Ticket modal + print layout */}
-                <Dialog open={dialogOpen} onOpenChange={() => setDialogOpen(false)}>
-
-                    {/* Print-only ticket (kept for on-screen preview if needed) */}
-                    <Box className="print-ticket hidden text-center print:block">
-                        <Box className="type font-bold">{priority}</Box>
-                        <Box className="number font-bold">{generatedNumber}</Box>
-                        <Box className="datetime">
-                            {now.toLocaleDateString()} {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Box>
-                    </Box>
+                {/* The DSWD Thank You Pop-up / Modal */}
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogContent className="sm:max-w-[425px] rounded-2xl bg-white p-6 shadow-2xl">
+                        <DialogHeader className="text-center">
+                            <DialogTitle className="text-4xl font-extrabold text-blue-700 mt-4">
+                                THANK YOU!
+                            </DialogTitle>
+                            <div className="text-xl text-gray-600 mt-2">
+                                Your {priority} Queue Number is:
+                            </div>
+                        </DialogHeader>
+                        <div className="text-center my-6">
+                            <p className="text-8xl font-black text-yellow-500 leading-none">
+                                {generatedNumber}
+                            </p>
+                        </div>
+                        <div className="text-center text-lg text-blue-800 font-semibold mb-4">
+                            Please take your ticket now.
+                        </div>
+                    </DialogContent>
                 </Dialog>
             </Box>
         </>
