@@ -22,26 +22,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LoadingOverlay from '@/components/loading-overlay';
 import Box from '@/components/ui/box';
 
+type Ticket = {
+    id: number;
+    number: string;
+    transaction_type?: { name: string };
+    status: string;
+    is_priority: boolean;
+    remarks?: string;
+};
+
 type TellerPageProps = {
-    current?: any;
+    current?: Ticket; // Changed to use the Ticket type
     userTellerNumber?: string;
     transactionTypes?: { id: string; name: string }[];
     tellers?: { id: string; name: string }[];
-    waiting_list: {
-        id: number;
-        number: string;
-        transaction_type: { name: string };
-        status: string;
-        is_priority: boolean;
-    }[];
-    no_show_list: {
-        id: number;
-        number: string;
-        transaction_type: { name: string };
-        status: string;
-        is_priority: boolean;
-    }[];
+    waiting_list: Ticket[]; // Changed to use the Ticket type
+    no_show_list: Ticket[]; // Changed to use the Ticket type
 };
+
+// 💡 NEW HELPER FUNCTION TO FORMAT THE TICKET NUMBER
+function formatTicketNumber(number: string, isPriority: boolean): string {
+    // 1. Remove non-numeric characters (in case the backend number is not clean)
+    let cleanNum = number.toString().replace(/[^0-9]/g, '');
+
+    // 2. Pad the numeric part to 4 digits
+    const paddedNum = cleanNum.padStart(4, '0');
+
+    // 3. Prepend the correct prefix
+    const prefix = isPriority ? 'P' : 'R';
+
+    return prefix + paddedNum;
+}
 
 export default function TellerPage({ current, waiting_list, no_show_list, userTellerNumber, transactionTypes = [], tellers = [] }: TellerPageProps) {
     const form = useForm({
@@ -67,7 +78,7 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
         return () => window.clearInterval(id);
     }, []);
 
-    const page = usePage<{ flash?: { error?: string; success?: string; confirm_reset?: boolean; message?: string } }>();
+    const page = usePage<{ flash?: { error?: string; success?: string; confirm_reset?: boolean; message?: string; no_found?: string } }>();
 
     useEffect(() => {
         if (page.props.flash?.confirm_reset) {
@@ -76,11 +87,21 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
     }, [page.props.flash]);
 
     useEffect(() => {
-        if (page.props.flash?.confirm_reset) {
+        // Consolidated Toast/Dialog logic
+        const commonConfig = {
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+            toast: true,
+            timerProgressBar: true,
+        };
+
+        const { flash } = page.props;
+
+        if (flash?.confirm_reset) {
             Swal.fire({
                 title: "No Customers Found",
-                text: page.props.flash?.message ??
-                    "There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?",
+                text: flash?.message ?? "There are no more waiting customers for this Transaction Type and Status. Do you want to select a new Transaction Type and Status?",
                 icon: "info",
                 showCancelButton: true,
                 confirmButtonText: "Yes, Select New Transaction",
@@ -90,11 +111,19 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                 if (result.isConfirmed) {
                     handleSelectNew();
                 } else {
-                    // User chose to keep waiting, just clear the flash
                     router.reload({ only: ['flash'], preserveState: true });
                 }
             });
         }
+        else if (flash?.success)
+            Swal.fire({ ...commonConfig, icon: "success", title: "Success!", text: flash.success, toast: true });
+        else if (flash?.no_found)
+            Swal.fire({ ...commonConfig, icon: "error", title: "Not Found!", text: flash.no_found, toast: true });
+        else if (flash?.error)
+            Swal.fire({ ...commonConfig, icon: "error", title: "Error!", text: flash.error, toast: true });
+        else if (flash?.message)
+            Swal.fire({ ...commonConfig, icon: "info", title: "Notice", text: flash.message, toast: true });
+
     }, [page.props.flash]);
 
     function handleAssignTeller() {
@@ -143,10 +172,25 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
     }
 
     function handleOverride() {
-        form.post(route('queue.teller.override.step2'), {
-            onSuccess: () => {
-                setPriority('0');
-                form.setData('ispriority', '0');
+        // 💡 CHANGE 1: Use formatted number in the confirmation dialog
+        const formattedNumber = current ? formatTicketNumber(current.number, current.is_priority) : 'current customer';
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `Mark ticket ${formattedNumber} as "No Show"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, mark as no show!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.post(route('queue.teller.override.step2'), {
+                    onSuccess: () => {
+                        setPriority('0');
+                        form.setData('ispriority', '0');
+                    }
+                });
             }
         });
     }
@@ -163,7 +207,7 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
             return;
         }
 
-        // Validate 4-digit number
+        // The user should enter the 4-digit number *without* the P/R prefix
         const numberRegex = /^\d{4}$/;
         if (!numberRegex.test(manualOverrideForm.data.number)) {
             Swal.fire({
@@ -176,6 +220,8 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
 
         manualOverrideForm.post(route("queue.teller.step2.manual-override"), {
             onSuccess: () => {
+                // 💡 NOTE: The ticket number here is the raw 4-digit number. 
+                // We'll display it as the raw number for consistency with the input field.
                 Swal.fire({
                     toast: true,
                     position: "top-end",
@@ -219,45 +265,6 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
     function handleNoShow() {
         form.post(route('queue.teller.no-show.step2'));
     }
-
-    useEffect(() => {
-        if (page.props.flash?.success) {
-            Swal.fire({
-                toast: true,
-                position: "top-end",
-                icon: "success",
-                title: "Success!",
-                text: page.props.flash.success,
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-            });
-        }
-        if (page.props.flash?.no_found) {
-            Swal.fire({
-                toast: true,
-                position: "top-end",
-                icon: "error",
-                title: "Not Found!",
-                text: page.props.flash.no_found,
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-            });
-        }
-        if (page.props.flash?.error) {
-            Swal.fire({
-                toast: true,
-                position: "top-end",
-                icon: "error",
-                title: "Error!",
-                text: page.props.flash.error,
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-            });
-        }
-    }, [page.props.flash]);
 
     const breadcrumbs = [{ title: 'Service Counter', href: '/queue/teller-step2' }];
 
@@ -458,7 +465,8 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                                             <Box className="text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                                                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
                                                 <Box className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
-                                                    {current.number}
+                                                    {/* 💡 CHANGE 2: Display formatted ticket number */}
+                                                    {formatTicketNumber(current.number, current.is_priority)}
                                                 </Box>
                                                 <Box className="mt-2">
                                                     <Badge variant={current.is_priority ? "destructive" : "secondary"}>
@@ -544,14 +552,13 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                                             <Box className="space-y-4">
                                                 <Box className="space-y-2">
                                                     <Label htmlFor="ticket-number-step2" className="text-sm font-medium">
-                                                        Ticket Number
+                                                        Ticket Number (Raw)
                                                     </Label>
                                                     <Box className="flex items-center">
                                                         <Input
                                                             id="manual-ticket-number"
                                                             type="text"
                                                             placeholder="Enter 4-digit ticket number (e.g., 0001)"
-                                                            // CORRECTED: Bind to the form state
                                                             value={manualOverrideForm.data.number}
                                                             onChange={(e) => manualOverrideForm.setData("number", e.target.value)}
                                                             className="w-full"
@@ -560,19 +567,17 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                                                         />
                                                     </Box>
                                                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                        Must be a 4-digit number
+                                                        Enter the 4-digit number only (e.g. 0001, not R0001)
                                                     </p>
                                                 </Box>
                                             </Box>
                                             <Button
                                                 onClick={handleManualOverride}
-                                                // CORRECTED: Check the form state
                                                 disabled={processing || manualOverrideForm.data.number.trim() === ""}
                                                 size="lg"
                                                 variant="outline"
                                                 className="w-full py-4 text-base font-medium"
                                             >
-
                                                 {processing ? (
                                                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                                 ) : (
@@ -585,154 +590,105 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                                         </TabsContent>
                                     </Tabs>
                                 ) : (
-                                    // Ready to grab next customer
-                                    <Tabs defaultValue={!userTellerNumber ? "setup" : "now-serving"} className="w-full">
-                                        <TabsList className="grid w-full grid-cols-2">
-                                            {!userTellerNumber ? (
-                                                <TabsTrigger value="setup">Initial Setup</TabsTrigger>
-                                            ) : (
-                                                <TabsTrigger value="now-serving">Now Serving</TabsTrigger>
-                                            )}
-                                            <TabsTrigger value="manual-override">Manual Entry</TabsTrigger>
-                                        </TabsList>
-
-                                        {/* Initial Setup */}
-                                        {!userTellerNumber && (
-                                            <TabsContent value="setup" className="space-y-4 pt-4">
-                                                {/* keep your teller + transaction + priority setup form here */}
-                                            </TabsContent>
-                                        )}
-
-                                        {/* Now Serving */}
-                                        {userTellerNumber && (
-                                            <TabsContent value="now-serving" className="space-y-4 pt-4">
-                                                {current ? (
-                                                    // Currently serving
-                                                    <Box className="flex flex-col gap-6">
-                                                        <Box className="text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                                                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Now Serving</p>
-                                                            <Box className="bg-gradient-to-br from-blue-500 to-indigo-600 bg-clip-text text-6xl font-bold tracking-wider text-transparent tabular-nums md:text-7xl">
-                                                                {current.number}
-                                                            </Box>
-                                                        </Box>
-                                                        <Box className="flex flex-col sm:flex-row gap-3">
-                                                            <Button onClick={handleNext} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white">
-                                                                <CheckCircle className="mr-2 h-5 w-5" /> Complete Transaction
-                                                            </Button>
-                                                            <Button onClick={handleOverride} className="flex-1 border-rose-300 text-rose-600 hover:bg-rose-50" variant="outline">
-                                                                <AlertCircle className="mr-2 h-5 w-5" /> Mark as No Show
-                                                            </Button>
-                                                        </Box>
-                                                    </Box>
-                                                ) : (
-                                                    // Ready to grab next customer → NO customer type selection
-                                                    <Box className="space-y-4">
-                                                        <Button onClick={handleGrab} className="w-full py-4">
-                                                            <ArrowRight className="mr-2 h-5 w-5" /> Call Next Customer
-                                                        </Button>
-                                                    </Box>
-                                                )}
-                                            </TabsContent>
-                                        )}
-
-                                        {/* Manual Override - UPDATED TO MATCH MANUAL ENTRY */}
-                                        <TabsContent value="manual-override" className="space-y-4 pt-4">
-                                            <Box className="text-center p-4">
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                                                    Manually serve a customer who is not in the waiting list
-                                                </p>
-                                            </Box>
-
-                                            <Box className="space-y-4">
-                                                <Box className="space-y-2">
-                                                    <Label htmlFor="manual-ticket-number" className="text-sm font-medium">
-                                                        Ticket Number
-                                                    </Label>
-                                                    <Box className="flex items-center">
-                                                        <Input
-                                                            id="manual-ticket-number"
-                                                            type="text"
-                                                            placeholder="Enter 4-digit ticket number (e.g., 0001)"
-                                                            // CORRECTED: Bind to the form state
-                                                            value={manualOverrideForm.data.number}
-                                                            onChange={(e) => manualOverrideForm.setData("number", e.target.value)}
-                                                            className="w-full"
-                                                            maxLength={4}
-                                                            pattern="[0-9]{4}"
-                                                        />
-                                                    </Box>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                        Must be a 4-digit number
-                                                    </p>
-                                                </Box>
-                                            </Box>
-                                            <Button
-                                                onClick={handleManualOverride}
-                                                // CORRECTED: Check the form state
-                                                disabled={processing || manualOverrideForm.data.number.trim() === ""}
-                                                size="lg"
-                                                variant="outline"
-                                                className="w-full py-4 text-base font-medium"
-                                            >
-                                                {processing ? (
+                                    // Ready to serve next customer (Teller assigned, but no current customer)
+                                    <Box className="text-center p-6 space-y-4">
+                                        <p className="text-lg font-medium text-slate-700 dark:text-slate-300">
+                                            Ready to call the next customer.
+                                        </p>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                                            You are currently serving **{transactionTypes.find(t => t.id === form.data.transaction_type_id)?.name}** customers with **{priority === '1' ? 'Priority' : 'Regular'}** status.
+                                        </p>
+                                        <Button
+                                            onClick={handleGrab}
+                                            disabled={processing}
+                                            size="lg"
+                                            className="w-full py-6 text-base font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                                        >
+                                            {processing ? (
+                                                <>
                                                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                                ) : (
-                                                    <>
-                                                        <UserCog className="mr-2 h-5 w-5" />
-                                                        Serve This Customer
-                                                    </>
-                                                )}
-                                            </Button>
-                                        </TabsContent>
-                                    </Tabs>
+                                                    Calling...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Play className="mr-2 h-5 w-5" />
+                                                    Call Next Customer
+                                                </>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            onClick={() => setShowSetupForm(true)}
+                                            disabled={processing}
+                                            size="sm"
+                                            variant="ghost"
+                                            className="w-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                        >
+                                            Change Selection
+                                        </Button>
+                                    </Box>
                                 )}
                             </CardContent>
                         </Card>
 
-                        {/* Queue Card with Waiting & No Show */}
-                        <Card className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                        {/* Queue and No Show List */}
+                        <Card className="flex-1 mt-6 md:mt-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
                             <CardHeader className="border-b border-slate-200 bg-slate-50 pb-4 dark:border-slate-700 dark:bg-slate-700/50">
                                 <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
-                                    <Users className="h-5 w-5 text-indigo-500" /> Customer Queue
+                                    <Clock className="h-5 w-5 text-blue-500" /> Client Queue
                                 </CardTitle>
                                 <CardDescription>
-                                    Manage Waiting and No Show customers
+                                    {waiting_list.length} waiting • {no_show_list.length} no show
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="pt-6">
                                 <Tabs defaultValue="waiting" className="w-full">
-                                    <TabsList className="grid w-full grid-cols-2">
-                                        <TabsTrigger value="waiting">
-                                            Waiting ({waiting_list.length})
-                                        </TabsTrigger>
-                                        <TabsTrigger value="no_show">
-                                            No Show ({no_show_list.length})
-                                        </TabsTrigger>
+                                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                                        <TabsTrigger value="waiting">Waiting</TabsTrigger>
+                                        <TabsTrigger value="no-show">No Show</TabsTrigger>
                                     </TabsList>
 
                                     {/* Waiting List */}
                                     <TabsContent value="waiting">
                                         {waiting_list.length > 0 ? (
-                                            <Box className="rounded-md border border-slate-200 dark:border-slate-700">
+                                            <Box className="overflow-auto max-h-[400px]">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
-                                                            <TableHead>Ticket #</TableHead>
+                                                            <TableHead className="w-[120px]">Ticket No.</TableHead>
+                                                            <TableHead>Type</TableHead>
                                                             <TableHead>Transaction</TableHead>
-                                                            <TableHead>Category</TableHead>
+                                                            <TableHead className="text-right">Action</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
                                                         {waiting_list.map((ticket) => (
                                                             <TableRow key={ticket.id}>
-                                                                <TableCell className="font-medium">{ticket.number}</TableCell>
-                                                                <TableCell>{ticket.transaction_type.name}</TableCell>
+                                                                <TableCell className="font-medium text-lg">
+                                                                    {/* 💡 CHANGE 3: Display formatted ticket number in Waiting List */}
+                                                                    {formatTicketNumber(ticket.number, ticket.is_priority)}
+                                                                </TableCell>
                                                                 <TableCell>
-                                                                    {ticket.is_priority ? (
-                                                                        <Badge variant="destructive">Priority</Badge>
-                                                                    ) : (
-                                                                        <Badge variant="outline">Regular</Badge>
-                                                                    )}
+                                                                    <Badge variant={ticket.is_priority ? "destructive" : "secondary"}>
+                                                                        {ticket.is_priority ? "Priority" : "Regular"}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                                <TableCell className="text-sm">
+                                                                    {ticket.transaction_type?.name ?? 'N/A'}
+                                                                </TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => {
+                                                                            // This handles selecting a specific ticket
+                                                                            form.post(route("queue.teller.select.ticket.step2", { ticket: ticket.id }), {
+                                                                                preserveState: true,
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        Select
+                                                                        <ArrowRight className="ml-1 h-4 w-4" />
+                                                                    </Button>
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}
@@ -740,39 +696,36 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                                                 </Table>
                                             </Box>
                                         ) : (
-                                            <Box className="text-center py-8 text-slate-500 dark:text-slate-400">
-                                                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                                <p>No customers waiting</p>
-                                            </Box>
+                                            <p className="text-center py-8 text-slate-500 dark:text-slate-400">No clients currently waiting for your selection.</p>
                                         )}
                                     </TabsContent>
 
                                     {/* No Show List */}
-                                    <TabsContent value="no_show">
+                                    <TabsContent value="no-show">
                                         {no_show_list.length > 0 ? (
-                                            <Box className="rounded-md border border-slate-200 dark:border-slate-700">
+                                            <Box className="overflow-auto max-h-[400px]">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
-                                                            <TableHead>Ticket #</TableHead>
+                                                            <TableHead className="w-[120px]">Ticket No.</TableHead>
+                                                            <TableHead>Type</TableHead>
                                                             <TableHead>Transaction</TableHead>
-                                                            <TableHead>Category</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
                                                         {no_show_list.map((ticket) => (
-                                                            <TableRow
-                                                                key={ticket.id}
-                                                                className="bg-amber-50 dark:bg-amber-900/20"
-                                                            >
-                                                                <TableCell className="font-medium">{ticket.number}</TableCell>
-                                                                <TableCell>{ticket.transaction_type.name}</TableCell>
+                                                            <TableRow key={ticket.id} className="opacity-70">
+                                                                <TableCell className="font-medium">
+                                                                    {/* 💡 CHANGE 4: Display formatted ticket number in No Show List */}
+                                                                    {formatTicketNumber(ticket.number, ticket.is_priority)}
+                                                                </TableCell>
                                                                 <TableCell>
-                                                                    {ticket.is_priority ? (
-                                                                        <Badge variant="destructive">Priority</Badge>
-                                                                    ) : (
-                                                                        <Badge variant="outline">Regular</Badge>
-                                                                    )}
+                                                                    <Badge variant={ticket.is_priority ? "destructive" : "secondary"}>
+                                                                        {ticket.is_priority ? "Priority" : "Regular"}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                                <TableCell className="text-sm">
+                                                                    {ticket.transaction_type?.name ?? 'N/A'}
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}
@@ -780,33 +733,12 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                                                 </Table>
                                             </Box>
                                         ) : (
-                                            <Box className="text-center py-8 text-slate-500 dark:text-slate-400">
-                                                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                                <p>No customers in No Show</p>
-                                            </Box>
+                                            <p className="text-center py-8 text-slate-500 dark:text-slate-400">No clients currently marked as No Show.</p>
                                         )}
                                     </TabsContent>
                                 </Tabs>
                             </CardContent>
                         </Card>
-
-                    </Box>
-
-                    {/* Help text for non-technical users */}
-                    <Box className="mt-6 rounded-xl bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                        <Box className="flex items-start gap-3">
-                            <Box className="mt-0.5">
-                                <AlertCircle className="h-5 w-5" />
-                            </Box>
-                            <Box>
-                                <p className="font-medium">Need help?</p>
-                                <ul className="mt-2 list-disc space-y-1 pl-5">
-                                    <li>Click "Call Next Customer" to serve the next person in line</li>
-                                    <li>Click "Complete Transaction" when finished with the current customer</li>
-                                    <li>Use "Mark as No Show" if the customer doesn't arrive after being called</li>
-                                </ul>
-                            </Box>
-                        </Box>
                     </Box>
                 </main>
             </Box>

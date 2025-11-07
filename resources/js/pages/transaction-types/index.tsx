@@ -303,10 +303,21 @@ export default function TransactionTypes() {
                                 </Box>
 
                                 {/* Create Modal */}
-                                {isCreateModalVisible && <TransactionTypeModal isModalVisible={isCreateModalVisible} onClose={closeCreateModal} />}
+                                {isCreateModalVisible && (
+                                    <TransactionTypeModal
+                                        isModalVisible={isCreateModalVisible}
+                                        onClose={closeCreateModal}
+                                        setIsLoading={setIsLoading}
+                                    />
+                                )}
                                 {/* Edit Modal */}
                                 {isEditModalVisible && (
-                                    <TransactionTypeModal type={selectedType} isModalVisible={isEditModalVisible} onClose={closeEditModal} />
+                                    <TransactionTypeModal
+                                        type={selectedType}
+                                        isModalVisible={isEditModalVisible}
+                                        onClose={closeEditModal}
+                                        setIsLoading={setIsLoading}
+                                    />
                                 )}
                             </Box>
                         </Box>
@@ -317,6 +328,7 @@ export default function TransactionTypes() {
                         DSWD Queuing System • Transaction Types
                     </footer>
                 </Box>
+                
                 {/* 🔑 MAIN LOADING OVERLAY (Full-Screen) */}
                 <LoadingOverlay
                     visible={isLoading}

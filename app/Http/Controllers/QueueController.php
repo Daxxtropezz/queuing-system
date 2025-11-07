@@ -305,6 +305,7 @@ class QueueController extends Controller
 
         $no_show_list = QueueTicket::with('transactionType')
             ->where('status', 'no_show')
+            ->where('step', 1)
             ->whereDate('created_at', now())
             ->orderBy('updated_at', 'desc')
             ->limit(50)
@@ -317,6 +318,7 @@ class QueueController extends Controller
                     'is_priority' => (bool) $ticket->ispriority,
                 ];
             });
+
 
         return Inertia::render('queue/teller-page-step-one', [
             'userTellerNumber' => $user->teller_id,
@@ -332,6 +334,7 @@ class QueueController extends Controller
             'no_show_list' => $no_show_list,
         ]);
     }
+
     // Step1: Grab next waiting ticket (no longer requires user->teller_id to be set)
     public function grabStep1Number(Request $request)
     {
@@ -1163,5 +1166,115 @@ class QueueController extends Controller
             ->log('teller_reset_step2');
 
         return redirect()->route('queue.teller.step2')->with('success', 'Transaction type cleared. Please select a new transaction type and customer type.');
+    }
+
+    public function serveNoShowStep2(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'ticket_id' => 'required|exists:queue_tickets,id', // Expect the ID of the ticket
+        ]);
+
+        $ticket = QueueTicket::where('id', $request->ticket_id)
+            ->where('step', 2)
+            ->where('status', 'no_show')
+            ->whereDate('created_at', now())
+            ->first();
+
+        if (!$ticket) {
+            return back()->with('no_found', 'No show ticket not found or already in use.');
+        }
+
+        // Check if user has teller and transaction type assigned
+        if (is_null($user->teller_id) || is_null($user->transaction_type_id)) {
+            return back()->with('error', 'Please select a teller number and transaction type first.');
+        }
+
+        // End any current serving (optional, but good practice to prevent double-serving)
+        $currentServing = QueueTicket::where('served_by_step2', $user->id)
+            ->where('status', 'serving')
+            ->where('step', 2)
+            ->whereDate('created_at', now())
+            ->first();
+
+        if ($currentServing) {
+            $currentServing->update(['status' => 'done', 'finished_at_step2' => now()]);
+            // Log Activity: Current Serving Completed (Serve No Show)
+            activity()
+                ->inLog('Queue Action')
+                ->causedBy($user)
+                ->performedOn($currentServing)
+                ->log('completed_step2_to_serve_no_show');
+        }
+
+        // Serve the chosen no_show ticket in Step 2
+        $oldStatus = $ticket->status;
+        $ticket->update([
+            'status' => 'serving',
+            'step' => 2, // Ensure step is 2
+            'served_by_step2' => $user->id,
+            'teller_id' => $user->teller_id,
+            'started_at_step2' => now(),
+        ]);
+
+        // Log Activity: No Show Ticket Resumed (Serve No Show)
+        activity()
+            ->inLog('Queue Action')
+            ->causedBy($user)
+            ->performedOn($ticket)
+            ->log('resumed_no_show_step2');
+
+        // 💡 FIX: Return updated props so frontend updates immediately
+        // Fetch updated current, waiting_list, no_show_list
+        $current = QueueTicket::with('transactionType')
+            ->where('served_by_step2', $user->id)
+            ->where('step', 2)
+            ->where('status', 'serving')
+            ->whereDate('created_at', now())
+            ->first();
+
+        $waiting_list = QueueTicket::with('transactionType')
+            ->where('status', 'ready_step2')
+            ->whereDate('created_at', now())
+            ->orderBy('created_at')
+            ->limit(200)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => [
+                        'name' => $ticket->transactionType->name ?? '',
+                    ],
+                    'status' => $ticket->status,
+                    'is_priority' => (bool) $ticket->ispriority,
+                ];
+            });
+
+        $no_show_list = QueueTicket::with('transactionType')
+            ->where('status', 'no_show')
+            ->where('step', 2)
+            ->whereDate('created_at', now())
+            ->orderBy('updated_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'number' => $ticket->formatted_number,
+                    'transaction_type' => [
+                        'name' => $ticket->transactionType->name ?? '',
+                    ],
+                    'status' => $ticket->status,
+                    'is_priority' => (bool) $ticket->ispriority,
+                ];
+            });
+
+        return redirect()->route('queue.teller.step2')
+            ->with([
+                'success' => "Now serving no show client in Step 2: {$ticket->formatted_number}",
+                // Optionally, you can pass the updated lists as flash if you want to use them in the frontend
+            ]);
     }
 }
