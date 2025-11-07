@@ -84,10 +84,9 @@ class QueueController extends Controller
                 'sample' => optional($serving->first())->toArray(),
             ]);
 
-            // 2️⃣ Fetch waiting queue
+            // 2️⃣ Fetch waiting queue: Step 2 uses ready_step2 (do not filter by step as step may still be 1)
             $waiting = QueueTicket::with(['transactionType', 'teller'])
-                ->where('status', 'waiting')
-                ->where('step', 2)
+                ->where('status', 'ready_step2')
                 ->orderBy('created_at')
                 ->limit(200)
                 ->get();
@@ -525,8 +524,8 @@ class QueueController extends Controller
         }
 
         if (in_array($ticket->status, ['serving', 'ready_step2'])) {
-    return back()->with('error', "Ticket {$ticket->formatted_number} is already {$ticket->status}.");
-}
+            return back()->with('error', "Ticket {$ticket->formatted_number} is already {$ticket->status}.");
+        }
 
 
         // End current serving
@@ -637,7 +636,7 @@ class QueueController extends Controller
         return back()->with('success', "Now serving no show: {$ticket->formatted_number}");
     }
 
-     public function setTransactionType(Request $request)
+    public function setTransactionType(Request $request)
     {
         $request->validate([
             'ticket_id' => 'required|exists:queue_tickets,id',

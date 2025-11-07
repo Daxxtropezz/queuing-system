@@ -10,10 +10,21 @@ interface Props {
     getTellerName: (t: QueueTicket) => string;
 }
 
+function isReadyStep2Status(v: unknown): boolean {
+    const s = String(v ?? '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+    return s === 'ready_step2';
+}
+
 export default function WaitingList({ waitingTickets, waitingCapacity, transactionTypes = [], getTellerName }: Props) {
+    // Prefer tickets with status ready_step2; if none detected, fall back to original list to avoid empty UI
+    const filtered = useMemo(() => {
+        const onlyReady = (waitingTickets || []).filter((t: any) => isReadyStep2Status(t?.status));
+        return onlyReady.length > 0 ? onlyReady : waitingTickets;
+    }, [waitingTickets]);
+
     const waitingColumns = useMemo(() => {
         const map = new Map<string, { name: string; priority: QueueTicket[]; regular: QueueTicket[] }>();
-        for (const t of waitingTickets) {
+        for (const t of filtered) {
             const key = (typeof t.transaction_type === 'string' ? t.transaction_type : t.transaction_type?.name) || 'Other';
             if (!map.has(key)) map.set(key, { name: key, priority: [], regular: [] });
             const bucket = map.get(key)!;
@@ -33,7 +44,7 @@ export default function WaitingList({ waitingTickets, waitingCapacity, transacti
             return ordered;
         }
         return Array.from(map.values());
-    }, [waitingTickets, transactionTypes]);
+    }, [filtered, transactionTypes]);
 
     if (waitingColumns.length === 0) {
         return (

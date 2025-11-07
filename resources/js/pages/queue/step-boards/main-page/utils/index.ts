@@ -25,3 +25,13 @@ export function buildWaitingColumns(waitingTickets: QueueTicket[], transactionTy
     }
     return Array.from(map.values());
 }
+
+// Add a unified formatter for displaying queue numbers with P/R prefix
+export function formatTicketNumber(t: Pick<QueueTicket, 'number' | 'ispriority'>): string {
+    const prefix = isPriority(t.ispriority) ? 'P' : 'R';
+    const raw = String(t.number ?? '');
+    const digits = raw.replace(/\D/g, '');
+    const num = digits ? parseInt(digits, 10) : NaN;
+    const padded = Number.isFinite(num) ? String(num).padStart(4, '0') : raw.padStart(4, '0');
+    return `${prefix}${padded}`;
+}

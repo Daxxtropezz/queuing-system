@@ -72,6 +72,30 @@ export function useBoardData(initial: BoardData) {
         prevServingIdsRef.current = displayServingTickets.map((t) => t.id);
     }, []);
 
+    // Sync with updated server props (from Inertia partial reload) so lists update without manual refresh
+    useEffect(() => {
+        const serverTs = initial.generated_at ? new Date(initial.generated_at) : null;
+        const nextServing = filterServingTickets(initial.serving || []);
+        const nextWaiting = initial.waiting || [];
+        const nextIds = nextServing.map((t) => t.id);
+        const prevIds = prevServingIdsRef.current || [];
+        const idsEqual = (a: number[], b: number[]) => a.length === b.length && b.every((x) => a.includes(x));
+
+        if (serverTs && lastGeneratedRef.current && serverTs <= lastGeneratedRef.current && idsEqual(nextIds, prevIds)) {
+            setWaitingTickets(nextWaiting);
+            return;
+        }
+
+        prevServingIdsRef.current = nextIds;
+        setServingTickets(nextServing);
+        setDisplayServingTickets(nextServing);
+        setWaitingTickets(nextWaiting);
+        lastGeneratedRef.current = serverTs;
+        setLastUpdated(serverTs);
+        initialFetchRef.current = false;
+        consecutiveEmptyRef.current = nextServing.length === 0 ? consecutiveEmptyRef.current + 1 : 0;
+    }, [initial.generated_at, initial.serving, initial.waiting]);
+
     const fetchBoard = async () => {
         try {
             setLoading(true);

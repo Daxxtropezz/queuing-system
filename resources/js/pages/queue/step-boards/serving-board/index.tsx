@@ -17,7 +17,8 @@ import VideoSlot from '../components/VideoSlot';
 
 export default function MainPage({ boardData, transactionTypes = [], tellers = [] }: ServingBoardPageProps) {
     const { servingWrapRef, waitingWrapRef, servingCapacity, waitingCapacity } = useCapacities();
-    const { servingTickets, waitingTickets, loading, lastUpdated, redirectError } = useBoardData(boardData);
+    // Enable internal polling to fetch /queue/board-data?step=2; avoids relying on partial reload
+    const { servingTickets, waitingTickets, loading, lastUpdated, redirectError } = useBoardData(boardData, { polling: true });
 
     const tellerMap = useMemo(() => buildTellerMap(tellers as Teller[]), [tellers]);
     const getTellerName = (t: any) => _getTellerName(t, tellerMap);
@@ -66,7 +67,7 @@ export default function MainPage({ boardData, transactionTypes = [], tellers = [
                                             </>
                                         )}
 
-                                        <WaitingList waitingTickets={waitingTickets} waitingCapacity={waitingCapacity} transactionTypes={transactionTypes} getTellerName={getTellerName} />
+                                        <WaitingList key={`waiting-${lastUpdated?.getTime?.() ?? 0}`} waitingTickets={waitingTickets} waitingCapacity={waitingCapacity} transactionTypes={transactionTypes} getTellerName={getTellerName} />
                                     </Box>
                                 </Box>
                             </Box>
@@ -83,7 +84,7 @@ export default function MainPage({ boardData, transactionTypes = [], tellers = [
                             </header>
 
                             <Box ref={servingWrapRef} className="min-h-0 flex-1 overflow-hidden">
-                                <ServingList servingTickets={servingTickets} servingCapacity={servingCapacity} transactionTypes={transactionTypes} getTellerName={getTellerName} />
+                                <ServingList key={`serving-${lastUpdated?.getTime?.() ?? 0}`} servingTickets={servingTickets} servingCapacity={servingCapacity} transactionTypes={transactionTypes} getTellerName={getTellerName} />
                             </Box>
                         </section>
                     </Box>
