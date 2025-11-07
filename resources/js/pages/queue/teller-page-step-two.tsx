@@ -657,7 +657,6 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                                                             <TableHead className="w-[120px]">Ticket No.</TableHead>
                                                             <TableHead>Type</TableHead>
                                                             <TableHead>Transaction</TableHead>
-                                                            <TableHead className="text-right">Action</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
@@ -674,21 +673,6 @@ export default function TellerPage({ current, waiting_list, no_show_list, userTe
                                                                 </TableCell>
                                                                 <TableCell className="text-sm">
                                                                     {ticket.transaction_type?.name ?? 'N/A'}
-                                                                </TableCell>
-                                                                <TableCell className="text-right">
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={() => {
-                                                                            // This handles selecting a specific ticket
-                                                                            form.post(route("queue.teller.select.ticket.step2", { ticket: ticket.id }), {
-                                                                                preserveState: true,
-                                                                            });
-                                                                        }}
-                                                                    >
-                                                                        Select
-                                                                        <ArrowRight className="ml-1 h-4 w-4" />
-                                                                    </Button>
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}

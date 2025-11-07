@@ -396,6 +396,9 @@ export default function TellerPageStepOne() {
                                                             className="w-full"
                                                         />
                                                     </Box>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                        Enter the 4-digit number only (e.g. 0001, not R0001)
+                                                    </p>
                                                 </Box>
                                             </Box>
 
