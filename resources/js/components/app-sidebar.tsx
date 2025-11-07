@@ -42,7 +42,7 @@ export function AppSidebar() {
     // --- Queue Service Counters ---
     if (isAdmin || isTellerStep1) {
         mainNavItems.push({
-            title: 'Step 1 - Service Counter',
+            title: isAdmin ? 'Step 1 - Service Counter' : (isTellerStep1 ? 'Service Counter' : ''),
             href: '/queue/teller-step1',
             icon: UserCheck,
         });
@@ -51,7 +51,7 @@ export function AppSidebar() {
     // Step 2 Service Counter
     if (isAdmin || isTellerStep2) {
         mainNavItems.push({
-            title: 'Step 2 - Service Counter',
+            title: isAdmin ? 'Step 2 - Service Counter' : (isTellerStep2 ? 'Service Counter' : ''),
             href: '/queue/teller-step2',
             icon: UserCheck,
         });
@@ -113,7 +113,7 @@ export function AppSidebar() {
     // --- Serving Boards ---
     if (isAdmin || isTellerStep1) {
         mainNavItems.push({
-            title: 'Step 1 - Serving Board',
+            title: isAdmin ? 'Step 1 - Serving Board' : (isTellerStep1 ? 'Serving Board for Step 1' : ''),
             href: '/queue/step-1',
             icon: UserCheck,
         });
@@ -121,7 +121,7 @@ export function AppSidebar() {
 
     if (isAdmin || isTellerStep2) {
         mainNavItems.push({
-            title: 'Step 2 - Serving Board',
+            title: isAdmin ? 'Step 2 - Serving Board' : (isTellerStep2 ? 'Serving Board for Step 2' : ''),
             href: '/queue/step-2',
             icon: UserCheck,
         });

@@ -25,7 +25,7 @@ export default function WaitingList({ waitingTickets, waitingCapacity, transacti
     const waitingColumns = useMemo(() => {
         const map = new Map<string, { name: string; priority: QueueTicket[]; regular: QueueTicket[] }>();
         for (const t of filtered) {
-            const key = (typeof t.transaction_type === 'string' ? t.transaction_type : t.transaction_type?.name) || 'Other';
+            const key = (typeof t.transaction_type === 'string' ? t.transaction_type : t.transaction_type?.name) || '';
             if (!map.has(key)) map.set(key, { name: key, priority: [], regular: [] });
             const bucket = map.get(key)!;
             if (isPriority(t.ispriority)) bucket.priority.push(t);
