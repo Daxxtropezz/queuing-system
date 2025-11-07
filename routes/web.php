@@ -32,9 +32,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
         if ($user->hasRole('Step2-Teller')) {
             return redirect()->route('queue.teller.step2');
         }
+
+        // If user is Guest, redirect to access-denied page
+        if ($user->hasRole('Guest')) {
+            return redirect()->route('access-denied');
+        }
+
         // Default redirect for other roles (e.g., Administrator)
         return redirect()->route('queue.teller.step1');
     })->name('home.authenticated');
+
+    // No access page for Guest users only
+    Route::get('/access-denied', function () {
+        $user = auth()->user();
+
+        // Prevent access if user is not Guest
+        if (!$user->hasRole('Guest')) {
+            return redirect()->route('home.authenticated');
+        }
+
+        return inertia('no-access');
+    })->name('access-denied');
 });
 
 // Route to get the public key

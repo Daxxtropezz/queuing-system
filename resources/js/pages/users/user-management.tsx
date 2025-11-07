@@ -37,6 +37,11 @@ interface UsersProps {
     };
 }
 
+// Utility function to convert a string to title case
+function toTitleCase(str: string) {
+    return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
+
 export default function UserIndex() {
     const { users, filters, roles } = usePage<UsersProps>().props;
     const authUser = usePage().props.auth.user as User;
@@ -175,10 +180,10 @@ export default function UserIndex() {
                     <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70">
                         <Box className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
                             <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
-                                User Management
+                                {"User Management"}
                             </h1>
                             <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
-                                Manage users, roles, and account status
+                                {"Manage users, roles, and account status"}
                             </p>
                         </Box>
                     </header>
@@ -209,11 +214,11 @@ export default function UserIndex() {
                                                     disabled={isLoading}
                                                 />
                                                 {searchQuery.length > 0 && searchQuery.length < 3 && (
-                                                    <p className="mt-1 text-xs text-rose-500">Type at least 3 characters</p>
+                                                    <p className="mt-1 text-xs text-rose-500">{"Type at least 3 characters"}</p>
                                                 )}
                                                 {filters?.search && (
                                                     <p className="mt-1 text-xs text-emerald-600">
-                                                        Showing results for "{filters.search}"
+                                                        {`Showing results for "${filters.search}"`}
                                                     </p>
                                                 )}
                                             </Box>
@@ -233,12 +238,12 @@ export default function UserIndex() {
                                         <Table className="w-full">
                                             <TableHeader className="bg-slate-50 dark:bg-slate-900/60">
                                                 <TableRow>
-                                                    <TableHead className="text-center w-16">#</TableHead>
-                                                    <TableHead className="text-center">Name</TableHead>
-                                                    <TableHead className="text-center">Email</TableHead>
-                                                    <TableHead className="text-center">Role</TableHead>
-                                                    <TableHead className="text-center">Status</TableHead>
-                                                    <TableHead className="text-center">Actions</TableHead>
+                                                    <TableHead className="text-center w-16">{"#"}</TableHead>
+                                                    <TableHead className="text-center">{"Name"}</TableHead>
+                                                    <TableHead className="text-center">{"Email"}</TableHead>
+                                                    <TableHead className="text-center">{"Role"}</TableHead>
+                                                    <TableHead className="text-center">{"Status"}</TableHead>
+                                                    <TableHead className="text-center">{"Actions"}</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -252,7 +257,7 @@ export default function UserIndex() {
                                                                 {itemStartIndex + index + 1}
                                                             </TableCell>
                                                             <TableCell className="text-center">
-                                                                {user.first_name} {user.last_name}
+                                                                {toTitleCase(user.first_name)} {toTitleCase(user.last_name)}
                                                             </TableCell>
                                                             <TableCell className="text-center">{user.email}</TableCell>
                                                             <TableCell className="text-center">{user.role}</TableCell>
@@ -278,7 +283,7 @@ export default function UserIndex() {
                                                                         className="text-xs"
                                                                         disabled={isLoading}
                                                                     >
-                                                                        Change Role
+                                                                        {"Change Role"}
                                                                     </Button>
                                                                 )}
                                                             </TableCell>
@@ -289,9 +294,9 @@ export default function UserIndex() {
                                                         <TableCell colSpan={6} className="p-10 text-center">
                                                             <Box className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50">
                                                                 <FileWarning className="h-12 w-12 text-muted-foreground" />
-                                                                <p className="text-xl font-semibold">No Records Found</p>
+                                                                <p className="text-xl font-semibold">{"No Records Found"}</p>
                                                                 <p className="text-muted-foreground">
-                                                                    No users found. Try adjusting your search criteria.
+                                                                    {"No users found. Try adjusting your search criteria."}
                                                                 </p>
                                                             </Box>
                                                         </TableCell>
@@ -319,7 +324,7 @@ export default function UserIndex() {
 
                     {/* Footer */}
                     <footer className="relative z-10 mt-auto w-full border-t border-slate-200/70 bg-white/80 py-4 text-center text-xs font-medium tracking-wide text-slate-600 dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
-                        DSWD Queuing System • User Management
+                        {"DSWD Queuing System • User Management"}
                     </footer>
                 </Box>
 

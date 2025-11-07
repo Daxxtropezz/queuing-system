@@ -1,11 +1,22 @@
 <?php
 
 use App\Http\Controllers\QueueController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Step 1 Teller Page (restricted to Step1-Teller role)
-Route::middleware(['auth', 'verified', 'role:Step1-Teller|Administrator'])->group(function () {
-    Route::get('/queue/teller-step1', [QueueController::class, 'tellerStep1Page'])->name('queue.teller.step1');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/queue/teller-step1', function (Request $request) {
+        $user = $request->user();
+        if ($user->hasRole('Guest')) {
+            return redirect()->route('access-denied');
+        }
+        // Redirect unauthorized roles (including Step2-Teller) to access-denied instead of 403
+        if (!$user->hasRole('Step1-Teller') && !$user->hasRole('Administrator')) {
+            return redirect()->route('access-denied');
+        }
+        return app(\App\Http\Controllers\QueueController::class)->tellerStep1Page($request);
+    })->name('queue.teller.step1');
     Route::post('/teller/assign-step1', [QueueController::class, 'assignTellerStep1'])->name('queue.teller.assign.step1');
     Route::post('/queue/teller/grab-step1', [QueueController::class, 'grabStep1Number'])->name('queue.teller.grab.step1');
     Route::post('/queue/teller/next-step1', [QueueController::class, 'nextStep1Number'])->name('queue.teller.next.step1');
@@ -18,9 +29,23 @@ Route::middleware(['auth', 'verified', 'role:Step1-Teller|Administrator'])->grou
         ->name('queue.teller.setTransactionType');
 });
 
-// Step 2 Teller Page (restricted to Step2-Teller role)
+// Step 2 Teller Page GET with custom role redirect (show access-denied for unauthorized roles)
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/queue/teller-step2', function (Request $request) {
+        $user = $request->user();
+        if ($user->hasRole('Guest')) {
+            return redirect()->route('access-denied');
+        }
+        if (!$user->hasRole('Step2-Teller') && !$user->hasRole('Administrator')) {
+            return redirect()->route('access-denied');
+        }
+        return app(\App\Http\Controllers\QueueController::class)->tellerStep2Page($request);
+    })->name('queue.teller.step2');
+});
+
+// Step 2 Teller Page actions (restricted to Step2-Teller role)
 Route::middleware(['auth', 'verified', 'role:Step2-Teller|Administrator'])->group(function () {
-    Route::get('/queue/teller-step2', [QueueController::class, 'tellerStep2Page'])->name('queue.teller.step2');
+    // Removed the GET route here to allow custom redirect behavior above
     Route::post('/teller/assign-step2', [QueueController::class, 'assignTellerStep2'])->name('queue.teller.assign.step2');
     Route::post('/queue/teller/grab-step2', [QueueController::class, 'grabStep2Number'])->name('queue.teller.grab.step2');
     Route::post('/queue/teller/next-step2', [QueueController::class, 'nextStep2Number'])->name('queue.teller.next.step2');
