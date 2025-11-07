@@ -16,6 +16,13 @@ function isReadyStep2Status(v: unknown): boolean {
 }
 
 export default function WaitingList({ waitingTickets, waitingCapacity, transactionTypes = [], getTellerName }: Props) {
+    // Helper to prefix ticket number with P/R and pad to 4 digits
+    const formatDisplayNumber = (t: QueueTicket) => {
+        const raw = String(t.number ?? '').replace(/\D/g, '');
+        const padded = raw.padStart(4, '0');
+        return `${isPriority(t.ispriority) ? 'P' : 'R'}${padded}`;
+    };
+
     // Prefer tickets with status ready_step2; if none detected, fall back to original list to avoid empty UI
     const filtered = useMemo(() => {
         const onlyReady = (waitingTickets || []).filter((t: any) => isReadyStep2Status(t?.status));
@@ -74,7 +81,7 @@ export default function WaitingList({ waitingTickets, waitingCapacity, transacti
                                 {displayRegular.length ? (
                                     displayRegular.map((t) => (
                                         <Box key={`w-reg-${t.id}`} className="flex flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-                                            <Box className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">{t.number}</Box>
+                                            <Box className="text-lg font-black text-slate-800 tabular-nums dark:text-slate-100">{formatDisplayNumber(t)}</Box>
                                             <Box className="text-xs text-slate-600 dark:text-slate-300">{getTellerName(t)}</Box>
                                         </Box>
                                     ))
@@ -86,7 +93,7 @@ export default function WaitingList({ waitingTickets, waitingCapacity, transacti
                                 {displayPriority.length ? (
                                     displayPriority.map((t) => (
                                         <Box key={`w-prio-${t.id}`} className="flex flex-col items-center gap-1 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner">
-                                            <Box className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">{t.number}</Box>
+                                            <Box className="text-lg font-black text-amber-700 tabular-nums dark:text-amber-200">{formatDisplayNumber(t)}</Box>
                                             <Box className="text-xs text-slate-600 dark:text-slate-300">{getTellerName(t)}</Box>
                                         </Box>
                                     ))
