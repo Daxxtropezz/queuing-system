@@ -48,6 +48,7 @@ export function AppSidebar() {
         });
     }
 
+    // Step 2 Service Counter
     if (isAdmin || isTellerStep2) {
         mainNavItems.push({
             title: 'Step 2 - Service Counter',

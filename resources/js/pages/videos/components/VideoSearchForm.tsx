@@ -22,7 +22,7 @@ export default function VideoSearchForm({
     const activeFilterSearch = filters?.search;
 
     return (
-        <div className="w-full flex flex-col items-end">
+        <Box className="w-full flex flex-col items-end">
             {/* Search Input + Button */}
             <form
                 onSubmit={handleSearch}
@@ -60,7 +60,7 @@ export default function VideoSearchForm({
             </form>
 
             {/* Validation or Active Filter Message */}
-            <div className="mt-2 text-right w-full max-w-md">
+            <Box className="mt-2 text-right w-full max-w-md">
                 {searchQuery.length > 0 && searchQuery.trim().length < 3 && (
                     <p className="text-xs text-rose-500 dark:text-rose-400">
                         Type at least 3 characters to search
@@ -71,7 +71,7 @@ export default function VideoSearchForm({
                         Showing results for "{activeFilterSearch}"
                     </p>
                 )}
-            </div>
-        </div>
+            </Box>
+        </Box>
     );
 }

@@ -1,4 +1,5 @@
 import InputError from '@/components/input-error';
+import Box from '@/components/ui/box';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -162,14 +163,14 @@ export default function Login({ status, recaptchaEnabled = false, recaptchaSiteK
             <Head title="Log in" />
 
             {status && (
-                <div className="mb-6 rounded-lg bg-green-100 p-4 text-center text-lg text-green-800 dark:bg-green-900 dark:text-green-200">
+                <Box className="mb-6 rounded-lg bg-green-100 p-4 text-center text-lg text-green-800 dark:bg-green-900 dark:text-green-200">
                     {status}
-                </div>
+                </Box>
             )}
 
             <form className="space-y-6" onSubmit={submit}>
-                <div className="space-y-4">
-                    <div>
+                <Box className="space-y-4">
+                    <Box>
                         <Input
                             id="email"
                             type="text"
@@ -183,10 +184,10 @@ export default function Login({ status, recaptchaEnabled = false, recaptchaSiteK
                             className="w-full rounded-lg border-2 border-gray-300 bg-white/90 p-4 text-lg dark:border-gray-600 dark:bg-gray-800/90 dark:text-white"
                         />
                         <InputError message={errors.email || propErrors?.email} className="text-lg text-red-600 dark:text-red-400" />
-                    </div>
+                    </Box>
 
-                    <div className="relative">
-                        <div className="relative">
+                    <Box className="relative">
+                        <Box className="relative">
                             <Input
                                 id="password"
                                 type={showPassword ? 'text' : 'password'}
@@ -206,11 +207,11 @@ export default function Login({ status, recaptchaEnabled = false, recaptchaSiteK
                             >
                                 {showPassword ? <EyeOff className="h-6 w-6" /> : <Eye className="h-6 w-6" />}
                             </button>
-                        </div>
+                        </Box>
                         <InputError message={errors.password || propErrors?.password} className="text-lg text-red-600 dark:text-red-400" />
-                    </div>
+                    </Box>
 
-                    <div className="flex items-center space-x-3">
+                    <Box className="flex items-center space-x-3">
                         <Checkbox
                             id="remember"
                             name="remember"
@@ -222,20 +223,20 @@ export default function Login({ status, recaptchaEnabled = false, recaptchaSiteK
                         <Label htmlFor="remember" className="text-lg text-gray-800 dark:text-gray-200">
                             Remember me
                         </Label>
-                    </div>
+                    </Box>
 
                     {recaptchaEnabled && recaptchaSiteKey && (
                         <>
-                            <div className="flex justify-center py-4">
-                                <div className="mx-auto flex w-full max-w-xs justify-center sm:max-w-sm md:max-w-md">
+                            <Box className="flex justify-center py-4">
+                                <Box className="mx-auto flex w-full max-w-xs justify-center sm:max-w-sm md:max-w-md">
                                     <ReCAPTCHA
                                         ref={recaptchaRef}
                                         sitekey={recaptchaSiteKey}
                                         onChange={handleRecaptchaChange}
                                         theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
                                     />
-                                </div>
-                            </div>
+                                </Box>
+                            </Box>
                             {propErrors?.recaptcha && (
                                 <InputError message={propErrors.recaptcha} className="text-center text-lg text-red-600 dark:text-red-400" />
                             )}
@@ -257,7 +258,7 @@ export default function Login({ status, recaptchaEnabled = false, recaptchaSiteK
                             'Log in'
                         )}
                     </Button>
-                </div>
+                </Box>
             </form>
         </AuthLayout>
     );

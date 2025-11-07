@@ -13,7 +13,7 @@ export default function BrandTitle() {
             <TooltipProvider delayDuration={100}>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Link href="/tellers" prefetch>
+                        <Link href="/home" prefetch>
                             <h2 className="flex items-center text-xl font-semibold tracking-wide text-slate-800 md:text-2xl dark:text-slate-200 hover:opacity-90 transition-opacity">
                                 <span className="bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent dark:from-slate-200 dark:to-slate-400">
                                     {"Department of Social Welfare and Development"}

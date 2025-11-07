@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import LoadingOverlay from '@/components/loading-overlay';
 import Pagination from '@/components/pagination';
+import Box from '@/components/ui/box';
 
 export default function TransactionTypes() {
     const { types, flash, filters = {} } = usePage().props;
@@ -52,10 +53,10 @@ export default function TransactionTypes() {
     // 2. NEW: Function to execute the search when the button is clicked or form is submitted
     const handleSearch = (e) => {
         e.preventDefault(); // Prevent default form submission
-        
+
         // Only allow search if query is empty (to reset) or meets the 3 character minimum
         const finalQuery = searchQuery.trim();
-        
+
         if (finalQuery.length === 0 || finalQuery.length >= 3) {
             setIsLoading(true);
             router.get(
@@ -87,14 +88,14 @@ export default function TransactionTypes() {
         router.get(
             route('transaction-types.index'),
             { ...filters, page: page, per_page: perPage },
-            { 
-                preserveState: true, 
-                replace: true, 
-                onFinish: () => setIsLoading(false) 
+            {
+                preserveState: true,
+                replace: true,
+                onFinish: () => setIsLoading(false)
             }
         );
     }
-    
+
     // ... (rest of the modal/delete functions remain the same) ...
 
     const openCreateModal = () => {
@@ -161,30 +162,30 @@ export default function TransactionTypes() {
         <>
             <Head title="Transaction Types" />
             <AppLayout>
-                <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
-                    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
-                        <div className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl dark:bg-red-600/15" />
-                    </div>
+                <Box className="relative flex min-h-screen flex-col bg-gradient-to-br from-white via-slate-50 to-white text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100">
+                    <Box className="pointer-events-none absolute inset-0 overflow-hidden">
+                        <Box className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-500/15 blur-3xl dark:bg-blue-600/20" />
+                        <Box className="absolute right-0 bottom-0 h-[28rem] w-[28rem] rounded-full bg-red-500/10 blur-3xl dark:bg-red-600/15" />
+                    </Box>
 
                     <header className="relative z-10 w-full border-b border-slate-200/70 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:border-slate-800/70 dark:bg-slate-900/70">
-                        <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
+                        <Box className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-6 py-6 text-center md:py-8">
                             <h1 className="bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-500 bg-clip-text text-3xl font-extrabold tracking-[0.18em] text-transparent uppercase drop-shadow-sm md:text-5xl dark:from-amber-300 dark:via-yellow-200 dark:to-amber-400">
                                 Transaction Types
                             </h1>
                             <p className="text-sm font-medium tracking-wide text-slate-600 md:text-base dark:text-slate-300">
                                 Manage and search transaction types
                             </p>
-                        </div>
+                        </Box>
                     </header>
 
                     <main className="relative z-10 mx-auto flex w-full flex-1 flex-col px-4 pt-6 pb-12 md:px-8 md:pt-10">
-                        <div className="mx-auto w-full max-w-7xl">
+                        <Box className="mx-auto w-full max-w-7xl">
                             {/* Card container */}
-                            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-200/60 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
-                                <div className="p-6">
+                            <Box className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-200/60 backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-900/70 dark:ring-slate-800/50">
+                                <Box className="p-6">
                                     {/* Top bar */}
-                                    <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                                    <Box className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                                         <h2 className="text-lg font-semibold tracking-wide text-slate-800 md:text-xl dark:text-slate-200">
                                             <Button
                                                 onClick={openCreateModal}
@@ -196,7 +197,7 @@ export default function TransactionTypes() {
                                         </h2>
                                         {/* 3. WRAP SEARCH INPUT AND BUTTON IN A FORM AND ADD BUTTON */}
                                         <form onSubmit={handleSearch} className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
-                                            <div className="relative w-full sm:w-72">
+                                            <Box className="relative w-full sm:w-72">
                                                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
                                                     <SearchIcon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                                                 </span>
@@ -218,9 +219,9 @@ export default function TransactionTypes() {
                                                         Showing results for "{filters.search}"
                                                     </p>
                                                 )}
-                                            </div>
-                                            <Button 
-                                                type="submit" 
+                                            </Box>
+                                            <Button
+                                                type="submit"
                                                 onClick={handleSearch}
                                                 disabled={isLoading}
                                                 className="bg-blue-500 hover:bg-blue-600 text-white font-semibold disabled:opacity-60"
@@ -228,11 +229,11 @@ export default function TransactionTypes() {
                                                 <SearchIcon className="h-4 w-4 mr-1" />
                                             </Button>
                                         </form>
-                                        
-                                    </div>
+
+                                    </Box>
 
                                     {/* Table */}
-                                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
+                                    <Box className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/70 dark:bg-slate-900/40">
                                         <Table className="w-full">
                                             <TableHeader className="bg-slate-50 dark:bg-slate-900/60">
                                                 <TableRow className="hover:bg-transparent">
@@ -277,11 +278,11 @@ export default function TransactionTypes() {
                                                 ) : (
                                                     <TableRow>
                                                         <TableCell colSpan={4} className="p-10">
-                                                            <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
+                                                            <Box className="flex flex-col items-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50 dark:text-slate-400">
                                                                 <FileWarning className="h-12 w-12 text-muted-foreground" />
-                                                            <p className="text-xl font-semibold">No Records Found</p>
-                                                            <p className="text-muted-foreground"> "No results match your filters. Try adjusting your search criteria."</p>
-                                                            </div>
+                                                                <p className="text-xl font-semibold">No Records Found</p>
+                                                                <p className="text-muted-foreground"> "No results match your filters. Try adjusting your search criteria."</p>
+                                                            </Box>
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
@@ -298,8 +299,8 @@ export default function TransactionTypes() {
                                             onPageChange={(page) => handlePaginationChange(page, filters.per_page)}
                                             onPerPageChange={(perPage) => handlePaginationChange(types.current_page, perPage)}
                                         />
-                                    </div>
-                                </div>
+                                    </Box>
+                                </Box>
 
                                 {/* Create Modal */}
                                 {isCreateModalVisible && <TransactionTypeModal isModalVisible={isCreateModalVisible} onClose={closeCreateModal} />}
@@ -307,19 +308,19 @@ export default function TransactionTypes() {
                                 {isEditModalVisible && (
                                     <TransactionTypeModal type={selectedType} isModalVisible={isEditModalVisible} onClose={closeEditModal} />
                                 )}
-                            </div>
-                        </div>
+                            </Box>
+                        </Box>
                     </main>
 
                     {/* Footer (optional, mirrors main-page) */}
                     <footer className="relative z-10 mt-auto w-full border-t border-slate-200/70 bg-white/80 py-4 text-center text-xs font-medium tracking-wide text-slate-600 backdrop-blur dark:border-slate-800/70 dark:bg-slate-900/70 dark:text-slate-400">
                         DSWD Queuing System • Transaction Types
                     </footer>
-                </div>
+                </Box>
                 {/* 🔑 MAIN LOADING OVERLAY (Full-Screen) */}
-                <LoadingOverlay 
-                    visible={isLoading} 
-                    title="Please wait..." 
+                <LoadingOverlay
+                    visible={isLoading}
+                    title="Please wait..."
                     message="Fetching data from the server."
                 />
             </AppLayout>

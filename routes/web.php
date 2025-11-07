@@ -25,9 +25,14 @@ Route::get('/twodasactor-challenge', function () {
 })->middleware(middleware: ['guest'])->name('two-factor.login');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-
-    // Optional: Add a new home route for authenticated users
+    // Redirect authenticated users based on their role
     Route::get('/home', function () {
+        $user = auth()->user();
+
+        if ($user->hasRole('Step2-Teller')) {
+            return redirect()->route('queue.teller.step2');
+        }
+        // Default redirect for other roles (e.g., Administrator)
         return redirect()->route('queue.teller.step1');
     })->name('home.authenticated');
 });
