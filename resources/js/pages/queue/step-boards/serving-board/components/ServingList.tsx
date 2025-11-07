@@ -10,6 +10,13 @@ interface Props {
 }
 
 export default function ServingList({ servingTickets, servingCapacity, transactionTypes = [], getTellerName }: Props) {
+    // Helper to prefix ticket number with P/R and pad to 4 digits
+    const formatDisplayNumber = (t: QueueTicket) => {
+        const raw = String(t.number ?? '').replace(/\D/g, '');
+        const padded = raw.padStart(4, '0');
+        return `${isPriority(t.ispriority) ? 'P' : 'R'}${padded}`;
+    };
+
     const columns: string[] = transactionTypes && transactionTypes.length > 0 ? transactionTypes.map((t) => String(t.name)) : ['Guarantee Letter', 'Cash Assistance'];
     const numCols = Math.max(1, columns.length);
     const servingRows = Math.max(1, Math.floor(servingCapacity / numCols));
@@ -50,7 +57,7 @@ export default function ServingList({ servingTickets, servingCapacity, transacti
                                     {regularItems.map((t) => (
                                         <Box key={`s-reg-${t.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
                                             <Box className="flex flex-col items-center gap-1">
-                                                <Box className="text-2xl font-black text-slate-800 tabular-nums md:text-3xl dark:text-slate-100">{t.number}</Box>
+                                                <Box className="text-2xl font-black text-slate-800 tabular-nums md:text-3xl dark:text-slate-100">{formatDisplayNumber(t)}</Box>
                                                 <Box className="text-xs text-slate-600 dark:text-slate-300">{getTellerName(t)}</Box>
                                             </Box>
                                         </Box>
@@ -64,7 +71,7 @@ export default function ServingList({ servingTickets, servingCapacity, transacti
                                     {priorityItems.map((t) => (
                                         <Box key={`s-prio-${t.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-gradient-to-r px-3 py-2 shadow-inner">
                                             <Box className="flex flex-col items-center gap-1">
-                                                <Box className="text-2xl font-black text-amber-700 tabular-nums md:text-3xl dark:text-amber-200">{t.number}</Box>
+                                                <Box className="text-2xl font-black text-amber-700 tabular-nums md:text-3xl dark:text-amber-200">{formatDisplayNumber(t)}</Box>
                                                 <Box className="text-xs text-slate-600 dark:text-slate-300">{getTellerName(t)}</Box>
                                             </Box>
                                         </Box>
