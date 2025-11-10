@@ -151,6 +151,8 @@ This system handles sensitive data. Follow best practices for authentication, au
 
 ## 🤝 Contributing
 
+![Alt](https://repobeats.axiom.co/api/embed/b0c1a38c963deb7e7f302b2a45121af11f304a50.svg "Repobeats analytics image")
+
 This is a private project. If you have access and want to contribute, please follow the guidelines in [CONTRUBUTING.md](CONTRIBUTING.md).
 
 ## 📄 License
